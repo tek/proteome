@@ -32,13 +32,20 @@ library
     Proteome.Init,
     Proteome.Config,
     Proteome.Add,
+    Proteome.Data.Env,
+    Proteome.Data.Project,
+    Proteome.Data.Proteome,
     Ribosome.Test.Functional,
     Ribosome.Test.Exists,
-    Ribosome.Test.IO
+    Ribosome.Api.Option,
+    Ribosome.Api.Response
   build-depends:
     base >= 4.7 && < 5,
     directory,
+    unliftio,
     nvim-hs >= 1 && < 2,
+    utf8-string,
+    split,
     time
   default-language: Haskell2010
 
@@ -49,7 +56,10 @@ test-suite proteome-functional
   build-depends:
     base >= 4.7 && < 5,
     directory,
+    unliftio,
     nvim-hs >= 1 && < 2,
+    utf8-string,
+    split,
     time,
     HTF
   hs-source-dirs:
@@ -60,8 +70,12 @@ test-suite proteome-functional
     Proteome.Init,
     Proteome.Config,
     Proteome.Add,
+    Proteome.Data.Env,
+    Proteome.Data.Project,
+    Proteome.Data.Proteome,
     Ribosome.Test.Functional,
     Ribosome.Test.Exists,
-    Ribosome.Test.IO
+    Ribosome.Api.Option,
+    Ribosome.Api.Response
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   default-language: Haskell2010

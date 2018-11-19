@@ -13,7 +13,7 @@ configSpec :: Neovim env ()
 configSpec =
   do
     e <- vim_call_function "ProReadConfig" []
-    liftIO (print e)
+    liftIO $ print e
     return ()
 
 test_config :: IO ()

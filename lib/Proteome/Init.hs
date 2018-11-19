@@ -1,15 +1,10 @@
-{-# LANGUAGE TemplateHaskell #-}
-
-module Proteome.Init
-(
-  initialize,
-  env
+module Proteome.Init(
+  initialize
 ) where
 
 import Neovim
+import UnliftIO.STM (TVar, newTVarIO)
+import Proteome.Data.Env
 
-env :: Neovim startupEnv ()
-env = return ()
-
-initialize :: Neovim startupEnv ()
-initialize = return ()
+initialize :: Neovim startupEnv (TVar Env)
+initialize = newTVarIO $ Env Nothing []
