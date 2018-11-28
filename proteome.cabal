@@ -35,6 +35,7 @@ library
     Proteome.Data.Env,
     Proteome.Data.Project,
     Proteome.Data.ProjectSpec,
+    Proteome.Log,
     Proteome.Project.Resolve,
     Proteome.Settings,
     Proteome.Data.Proteome,
@@ -47,7 +48,8 @@ library
     Ribosome.Data.Ribo,
     Ribosome.Data.Ribosome,
     Ribosome.Api.Option,
-    Ribosome.Api.Response
+    Ribosome.Api.Response,
+    Ribosome.Log
   build-depends:
     base >= 4.7 && < 5,
     directory,
@@ -96,6 +98,7 @@ test-suite proteome-functional
     Proteome.Data.Env,
     Proteome.Data.Project,
     Proteome.Data.ProjectSpec,
+    Proteome.Log,
     Proteome.Project.Resolve,
     Proteome.Settings,
     Proteome.Data.Proteome,
@@ -108,6 +111,7 @@ test-suite proteome-functional
     Ribosome.Data.Ribo,
     Ribosome.Data.Ribosome,
     Ribosome.Api.Option,
-    Ribosome.Api.Response
+    Ribosome.Api.Response,
+    Ribosome.Log
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   default-language: Haskell2010
