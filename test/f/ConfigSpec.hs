@@ -6,16 +6,13 @@ module ConfigSpec(
 
 import Test.Framework
 import Neovim
-import Neovim.Test
-import Ribosome.Test.Functional (fSpec)
+import Proteome.Test.Functional (embeddedSpec)
 
 configSpec :: Neovim env ()
 configSpec =
   do
     e <- vim_call_function "ProReadConfig" []
     liftIO $ print e
-    return ()
 
 test_config :: IO ()
-test_config =
-  testWithEmbeddedNeovim Nothing (Seconds 5) () (fSpec "Proteome" configSpec)
+test_config = embeddedSpec configSpec

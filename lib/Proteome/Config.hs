@@ -16,7 +16,6 @@ import qualified Data.Map as Map
 import Data.Map.Strict
 import UnliftIO.STM (readTVar, atomically)
 import Neovim
-import Neovim.Log
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project
 import Proteome.Data.Proteome
@@ -62,7 +61,6 @@ readConfig confDir project = do
 
 proReadConfig :: Proteome ()
 proReadConfig = do
-  liftIO $ debugM "ribo" "asdf"
   t <- ask
   main <- atomically $ fmap Env.mainProject $ readTVar t
   readConfig "project" main
