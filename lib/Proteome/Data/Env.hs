@@ -5,6 +5,6 @@ module Proteome.Data.Env (
 import Proteome.Data.Project
 
 data Env = Env {
-  main :: (Maybe Project),
+  mainProject :: Project,
   projects :: [Project]
 }
