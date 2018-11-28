@@ -2,8 +2,8 @@ module Proteome.Data.Proteome(
   Proteome
 ) where
 
-import Neovim
 import UnliftIO.STM (TVar)
-import Proteome.Data.Env
+import Ribosome.Data.Ribo (Ribo)
+import Proteome.Data.Env (Env)
 
-type Proteome a = Neovim (TVar Env) a
+type Proteome a = Ribo (TVar Env) a
