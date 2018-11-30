@@ -16,9 +16,11 @@ import qualified Data.Map as Map
 import Data.Map.Strict
 import UnliftIO.STM (readTVar, atomically)
 import Neovim
+import Ribosome.Data.Ribosome
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project
 import Proteome.Data.Proteome
+import Proteome.Log
 
 newtype ProjectConfig =
   ProjectConfig {
@@ -61,6 +63,7 @@ readConfig confDir project = do
 
 proReadConfig :: Proteome ()
 proReadConfig = do
-  t <- ask
+  debug "hello"
+  Ribosome _ t <- ask
   main <- atomically $ fmap Env.mainProject $ readTVar t
   readConfig "project" main
