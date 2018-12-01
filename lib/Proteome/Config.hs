@@ -6,7 +6,7 @@
 module Proteome.Config(
   proReadConfig,
   readConfig,
-  ProjectConfig (..)
+  ProjectConfig (..),
 )
 where
 
@@ -14,13 +14,16 @@ import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import qualified Data.Map as Map
 import Data.Map.Strict
-import UnliftIO.STM (readTVar, atomically)
 import Neovim
-import Ribosome.Data.Ribosome
+import Ribosome.Data.Ribo (riboInspect, Ribo)
 import qualified Proteome.Data.Env as Env (mainProject)
-import Proteome.Data.Project
+import Proteome.Data.Project (
+  Project(Project, types),
+  ProjectType(ProjectType, projectType),
+  ProjectName(ProjectName),
+  ProjectMetadata(DirProject),
+  )
 import Proteome.Data.Proteome
-import Proteome.Log
 
 newtype ProjectConfig =
   ProjectConfig {
@@ -35,35 +38,33 @@ instance NvimObject ProjectConfig where
       ("projectTypes", toObject projectTypes)
     ]
 
-runtime :: FilePath -> Neovim a ()
-runtime path = vim_command' $ "runtime " ++ path
+runtime :: FilePath -> Ribo a ()
+runtime path = vim_command' $ "runtime " ++ path ++ ".vim"
 
-runtimeConf :: FilePath -> String -> Neovim a ()
+runtimeConf :: FilePath -> String -> Ribo a ()
 runtimeConf confDir path = runtime(confDir ++ "/" ++ path)
 
-typeProjectConf :: FilePath -> ProjectName -> ProjectType -> Neovim a ()
+typeProjectConf :: FilePath -> ProjectName -> ProjectType -> Ribo a ()
 typeProjectConf confDir (ProjectName name') (ProjectType tpe') = do
   runtimeConf confDir tpe'
   runtimeConf confDir $ tpe' ++ "/" ++ name'
 
-readConfigMeta :: String -> Project -> Neovim a ()
-readConfigMeta confDir (Project (DirProject name' _ tpe') _ _ _) = do
+readConfigMeta :: String -> Project -> Ribo a ()
+readConfigMeta confDir (Project (DirProject name' _ tpe') _ _ _) =
   void $ traverse (typeProjectConf confDir name') tpe'
 readConfigMeta _ _ = return ()
 
-readConfigProject :: String -> Project -> Neovim a ()
+readConfigProject :: String -> Project -> Ribo a ()
 readConfigProject confDir project = do
   readConfigMeta confDir project
   void $ traverse (runtimeConf confDir) (fmap projectType (types project))
 
-readConfig :: String -> Project -> Neovim a ()
+readConfig :: String -> Project -> Ribo a ()
 readConfig confDir project = do
   runtimeConf confDir "all/*"
   readConfigProject confDir project
 
 proReadConfig :: Proteome ()
 proReadConfig = do
-  debug "hello"
-  Ribosome _ t <- ask
-  main <- atomically $ fmap Env.mainProject $ readTVar t
+  main <- riboInspect Env.mainProject
   readConfig "project" main

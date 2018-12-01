@@ -62,16 +62,21 @@ unsafeEmbeddedSpec :: TestConfig -> Ribo () () -> IO ()
 unsafeEmbeddedSpec conf spec =
   testWithEmbeddedNeovim Nothing (Seconds 5) (Ribosome (pluginName conf) ()) $ fSpec conf spec
 
-
-showLog :: TestConfig -> IO ()
-showLog conf = do
-  output <- readFile $ logFile conf
+showLog' :: String -> IO ()
+showLog' output = do
   putStrLn ""
   setSGR [SetColor Foreground Dull Green]
   putStrLn $ "plugin output:"
   setSGR [Reset]
   _ <- traverse putStrLn (lines output)
   putStrLn ""
+
+showLog :: TestConfig -> IO ()
+showLog conf = do
+  output <- readFile $ logFile conf
+  case output of
+    [] -> return ()
+    o -> showLog' o
 
 embeddedSpec :: TestConfig -> Ribo () () -> IO ()
 embeddedSpec conf spec =

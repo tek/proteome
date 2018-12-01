@@ -6,15 +6,16 @@ module ConfigSpec(
 
 import Control.Monad.IO.Class (liftIO)
 import Test.Framework
-import Neovim (vim_call_function)
+import Neovim (vim_call_function, vim_get_var')
 import Ribosome.Data.Ribo (Ribo)
 import Proteome.Test.Functional (embeddedSpecWith)
 import Config (vars)
 
 configSpec :: Ribo env ()
 configSpec = do
-  e <- vim_call_function "ProReadConfig" []
-  liftIO $ print e
+  _ <- vim_call_function "ProReadConfig" []
+  x <- vim_get_var' "flag"
+  liftIO $ print x
 
 test_config :: IO ()
 test_config = do

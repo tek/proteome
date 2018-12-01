@@ -22,7 +22,7 @@ plugin' env =
       $(function' 'proteomeStage2) Async,
       $(function' 'proteomeStage4) Async,
       $(function "ProAdd" 'proAdd) Async,
-      $(function' 'proReadConfig) Async
+      $(function' 'proReadConfig) Sync
     ]
   }
 
