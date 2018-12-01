@@ -7,6 +7,7 @@ module Proteome.Init(
 import Control.Monad.Reader
 import System.Directory (getCurrentDirectory, makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
+import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
 import Control.Monad.IO.Class (MonadIO)
 import Neovim.Context.Internal (Neovim)
 import UnliftIO.STM (TVar, newTVarIO)
@@ -18,7 +19,6 @@ import Proteome.Data.Env (Env(Env))
 import Proteome.Data.Proteome
 import Proteome.Data.Project (Project(meta), ProjectName(..), ProjectType(..), ProjectMetadata(DirProject))
 import Proteome.Project.Resolve (resolveProject)
-import Proteome.Log (infoS)
 import qualified Proteome.Settings as S
 
 pathData :: MonadIO m => Either String FilePath -> m (FilePath, ProjectName, ProjectType)
@@ -52,7 +52,6 @@ setProjectVars _ = return ()
 
 initWithMain :: Project -> Ribo e Env
 initWithMain main = do
-  infoS main
   loadPersistedBuffers main
   setProjectVars (meta main)
   return $ Env main []
@@ -64,6 +63,7 @@ initialize' = do
 
 initialize :: Neovim e (TVar Env)
 initialize = do
+  liftIO $ updateGlobalLogger "Neovim.Plugin" (setLevel ERROR)
   env <- retypeNeovim (Ribosome "proteome") initialize'
   newTVarIO env
 
