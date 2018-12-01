@@ -1,6 +1,8 @@
 module Proteome.Log(
   debug,
   info,
+  debugS,
+  infoS,
 ) where
 
 import Ribosome.Data.Ribo (Ribo)
@@ -11,3 +13,9 @@ debug = R.debug "proteome"
 
 info :: String -> Ribo e ()
 info = R.info "proteome"
+
+debugS :: Show a => a -> Ribo e ()
+debugS = R.debug "proteome"
+
+infoS :: Show a => a -> Ribo e ()
+infoS = R.info "proteome"

@@ -3,6 +3,7 @@ module Ribosome.Config.Settings(
   setting,
   settingE,
   updateSetting,
+  settingVariableName,
 ) where
 
 import Neovim
@@ -16,15 +17,15 @@ data Setting a =
     fallback :: Maybe a
   }
 
-settingVariableName :: Bool -> String -> Ribo e String
-settingVariableName False n = return n
-settingVariableName True n = do
+settingVariableName :: Setting a -> Ribo e String
+settingVariableName (Setting n False _) = return n
+settingVariableName (Setting n True _) = do
   pluginName <- fmap R.name $ ask
   return $ pluginName ++ "_" ++ n
 
 settingE :: NvimObject a => Setting a -> Ribo e (Either String a)
-settingE (Setting name' prefix' fallback') = do
-  varName <- settingVariableName prefix' name'
+settingE s @ (Setting _ _ fallback') = do
+  varName <- settingVariableName s
   raw <- vim_get_var varName
   case raw of
     Right o -> fromObject' o
@@ -40,7 +41,7 @@ setting s = do
     Left e -> fail e
 
 updateSetting :: NvimObject a => Setting a -> a -> Ribo e ()
-updateSetting (Setting name' prefix' _) a = do
-  varName <- settingVariableName prefix' name'
+updateSetting s a = do
+  varName <- settingVariableName s
   _ <- vim_set_var' varName (toObject a)
   return ()

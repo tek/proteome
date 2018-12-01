@@ -5,7 +5,7 @@ module Proteome.Init(
 ) where
 
 import Control.Monad.Reader
-import System.Directory (getCurrentDirectory)
+import System.Directory (getCurrentDirectory, makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
 import Control.Monad.IO.Class (MonadIO)
 import Neovim.Context.Internal (Neovim)
@@ -18,12 +18,14 @@ import Proteome.Data.Env (Env(Env))
 import Proteome.Data.Proteome
 import Proteome.Data.Project (Project(meta), ProjectName(..), ProjectType(..), ProjectMetadata(DirProject))
 import Proteome.Project.Resolve (resolveProject)
+import Proteome.Log (infoS)
 import qualified Proteome.Settings as S
 
 pathData :: MonadIO m => Either String FilePath -> m (FilePath, ProjectName, ProjectType)
 pathData override = do
   cwd <- liftIO $ either (const getCurrentDirectory) pure override
-  return (cwd, ProjectName $ takeFileName cwd, ProjectType $ (takeFileName . takeDirectory) cwd)
+  absMainDir <- liftIO $ makeAbsolute cwd
+  return (absMainDir, ProjectName $ takeFileName absMainDir, ProjectType $ (takeFileName . takeDirectory) absMainDir)
 
 mainProject :: Ribo e Project
 mainProject = do
@@ -50,6 +52,7 @@ setProjectVars _ = return ()
 
 initWithMain :: Project -> Ribo e Env
 initWithMain main = do
+  infoS main
   loadPersistedBuffers main
   setProjectVars (meta main)
   return $ Env main []

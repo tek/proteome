@@ -12,27 +12,31 @@ module Proteome.Data.Project(
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import Neovim.Classes (NvimObject(..))
+import Ribosome.Internal.NvimObject (deriveString)
 
 newtype ProjectName = ProjectName String
-  deriving (Eq, Generic, NFData)
+  deriving (Eq, Show, Generic, NFData)
 
 instance NvimObject ProjectName where
   toObject (ProjectName s) = toObject s
+  fromObject = deriveString ProjectName
 
 newtype ProjectType =
   ProjectType {
     projectType :: String
   }
-  deriving (Ord, Eq, Generic, NFData)
+  deriving (Ord, Eq, Show, Generic, NFData)
 
 instance NvimObject ProjectType where
   toObject (ProjectType s) = toObject s
+  fromObject = deriveString ProjectType
 
 newtype ProjectLang = ProjectLang String
-  deriving (Eq, Generic, NFData)
+  deriving (Eq, Show, Generic, NFData)
 
 instance NvimObject ProjectLang where
   toObject (ProjectLang s) = toObject s
+  fromObject = deriveString ProjectLang
 
 data ProjectMetadata =
   DirProject {
@@ -43,6 +47,7 @@ data ProjectMetadata =
   | VirtualProject {
     name :: ProjectName
   }
+  deriving (Eq, Show)
 
 data Project =
   Project {
@@ -51,3 +56,4 @@ data Project =
     lang :: Maybe ProjectLang,
     langs :: [ProjectLang]
   }
+  deriving (Eq, Show)

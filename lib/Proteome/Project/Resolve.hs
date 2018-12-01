@@ -6,7 +6,7 @@ module Proteome.Project.Resolve(
 
 import Data.List (find)
 import Data.Maybe (fromMaybe)
-import System.FilePath (takeFileName, takeDirectory)
+import System.FilePath (takeDirectory)
 import Ribosome.Data.Maybe (orElse)
 import Proteome.Config (ProjectConfig)
 import Proteome.Data.Project (
@@ -39,7 +39,7 @@ byProjectTypeName :: [ProjectSpec] -> ProjectName -> ProjectType -> Maybe Projec
 byProjectTypeName specs name tpe = find (hasProjectTypeName tpe name) specs
 
 byProjectBases :: [FilePath] -> FilePath -> Bool
-byProjectBases baseDirs root = elem ((takeFileName . takeDirectory . takeDirectory) root) baseDirs
+byProjectBases baseDirs root = elem ((takeDirectory . takeDirectory) root) baseDirs
 
 virtualProject :: ProjectName -> Project
 virtualProject name = Project (VirtualProject name) [] Nothing []

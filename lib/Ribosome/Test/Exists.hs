@@ -3,6 +3,7 @@ module Ribosome.Test.Exists(
 ) where
 
 import Data.Time.Clock.POSIX
+import Data.Strings (strCapitalize)
 import Control.Monad.IO.Class
 import Control.Concurrent (threadDelay)
 import Neovim
@@ -35,8 +36,8 @@ waitForPlugin :: String -> Double -> Int -> Neovim env ()
 waitForPlugin name interval timeout = do
   retry interval timeout thunk check
   where
-    thunk = vim_call_function "exists" [toObject $ "*" ++ name ++ "Poll"]
+    thunk = vim_call_function "exists" [toObject $ "*" ++ (strCapitalize name) ++ "Poll"]
     check (Right (ObjectInt 1)) = return $ Right ()
     check (Right a) = return $ Left $ errormsg ++ "weird return type " ++ (show a)
     check (Left e) = return $ Left $ errormsg ++ (show e)
-    errormsg = "plugin didn't start in " ++ (show timeout) ++ " seconds: "
+    errormsg = "plugin didn't start within " ++ (show timeout) ++ " seconds: "

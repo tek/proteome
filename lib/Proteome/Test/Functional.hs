@@ -1,13 +1,21 @@
 module Proteome.Test.Functional(
   embeddedSpec,
+  embeddedSpecWith,
 ) where
 
-import Neovim (Neovim)
+import Ribosome.Data.Ribo (Ribo)
 import Ribosome.Test.Functional (TestConfig)
-import qualified Ribosome.Test.Functional as R (embeddedSpec, defaultTestConfig)
+import Ribosome.Test.Functional (Vars)
+import qualified Ribosome.Test.Functional as R (embeddedSpec, defaultTestConfig, defaultTestConfigWith)
+
+defaultTestConfigWith :: Vars -> TestConfig
+defaultTestConfigWith = R.defaultTestConfigWith "proteome"
 
 defaultTestConfig :: TestConfig
-defaultTestConfig = R.defaultTestConfig "Proteome"
+defaultTestConfig = R.defaultTestConfig "proteome"
 
-embeddedSpec :: Neovim () () -> IO ()
+embeddedSpec :: Ribo () () -> IO ()
 embeddedSpec = R.embeddedSpec defaultTestConfig
+
+embeddedSpecWith :: Vars -> Ribo () () -> IO ()
+embeddedSpecWith vars = R.embeddedSpec $ defaultTestConfigWith vars

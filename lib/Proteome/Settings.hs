@@ -33,4 +33,4 @@ mainName :: Setting ProjectName
 mainName = Setting "main_name" True Nothing
 
 mainType :: Setting ProjectType
-mainType = Setting "main_name" True Nothing
+mainType = Setting "main_type" True Nothing
