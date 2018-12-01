@@ -12,3 +12,4 @@ extra-deps:
   - mono-traversable-1.0.9.0
   - time-1.7.0.1
   - strings-1.1
+  - pretty-terminal-0.1.0.0
