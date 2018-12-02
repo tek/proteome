@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3fb6218adc262dc0d02a4cf891c8c9da16a024d9b0354ceb41a28c724f6e82d2
+-- hash: 501c085db4596c6d3cbdcd9b0e742dc869241d038cdfedfd1b6ebc596fec79f1
 
 name:           proteome
 version:        0.1.0.0
@@ -66,7 +66,7 @@ library
     , hslogger
     , messagepack
     , mtl
-    , nvim-hs >=1 && <2
+    , nvim-hs
     , pretty-terminal
     , prettyprinter
     , resourcet
@@ -95,7 +95,7 @@ executable proteome-exe
     , hslogger
     , messagepack
     , mtl
-    , nvim-hs >=1 && <2
+    , nvim-hs
     , pretty-terminal
     , prettyprinter
     , proteome
@@ -130,7 +130,7 @@ test-suite proteome-functional
     , hslogger
     , messagepack
     , mtl
-    , nvim-hs >=1 && <2
+    , nvim-hs
     , pretty-terminal
     , prettyprinter
     , proteome

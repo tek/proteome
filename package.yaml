@@ -17,7 +17,7 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 - unliftio
-- nvim-hs >= 1 && < 2
+- nvim-hs
 - utf8-string
 - split
 - time
