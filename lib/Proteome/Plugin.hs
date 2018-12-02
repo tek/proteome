@@ -12,16 +12,20 @@ import Proteome.Init
 import Proteome.Data.Env
 import Proteome.Add (proAdd, proteomePoll)
 import Proteome.Config (proReadConfig)
+import Proteome.Tags (proTags)
+import Proteome.Save (proSave)
 
-plugin' :: (TVar Env) -> Plugin (Ribosome (TVar Env))
+plugin' :: TVar Env -> Plugin (Ribosome (TVar Env))
 plugin' env =
   Plugin {
     environment = Ribosome "proteome" env,
     exports = [
-      $(function "ProteomePoll" 'proteomePoll) Sync,
+      $(function' 'proteomePoll) Sync,
       $(function' 'proteomeStage2) Async,
       $(function' 'proteomeStage4) Async,
-      $(function "ProAdd" 'proAdd) Async,
+      $(function' 'proAdd) Async,
+      $(function' 'proSave) Async,
+      $(function' 'proTags) Async,
       $(function' 'proReadConfig) Sync
     ]
   }

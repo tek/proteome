@@ -1,131 +1,144 @@
-name: proteome
-version: 0.1.0.0
-synopsis: neovim project manager
-description: neovim plugin for managing project-specific configuration and performing runtime tasks on projects
-license: MIT
-license-file: LICENSE
-author: Torsten Schmits
-maintainer: tek@tryp.io
-copyright: 2018 Torsten Schmits
-category: Neovim
-build-type: Simple
-extra-source-files: README.md
-cabal-version: >=1.10
-x-curation: uncurated-no-trustee-contact
+cabal-version: 1.12
 
-executable proteome
-  main-is: Main.hs
-  hs-source-dirs:
-    executable
-  build-depends:
-    base >= 4.7 && < 5,
-    proteome,
-    nvim-hs >= 1 && < 2,
-    HTF
-  default-language: Haskell2010
+-- This file has been generated from package.yaml by hpack version 0.31.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 3fb6218adc262dc0d02a4cf891c8c9da16a024d9b0354ceb41a28c724f6e82d2
+
+name:           proteome
+version:        0.1.0.0
+synopsis:       neovim project manager
+category:       Neovim
+homepage:       https://github.com/tek/proteome-hs#readme
+bug-reports:    https://github.com/tek/proteome-hs/issues
+author:         Torsten Schmits
+maintainer:     tek@tryp.io
+copyright:      2018 Torsten Schmits
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/tek/proteome-hs
 
 library
-  hs-source-dirs:
-    lib
   exposed-modules:
-    Proteome.Plugin,
-    Proteome.Init,
-    Proteome.Config,
-    Proteome.Add,
-    Proteome.Data.Env,
-    Proteome.Data.Project,
-    Proteome.Data.ProjectSpec,
-    Proteome.Data.Proteome,
-    Proteome.Log,
-    Proteome.Project.Resolve,
-    Proteome.Settings,
-    Proteome.Test.Functional,
-    Ribosome.Test.Functional,
-    Ribosome.Test.Exists,
-    Ribosome.Config.Settings,
-    Ribosome.Internal.IO,
-    Ribosome.Internal.NvimObject,
-    Ribosome.Data.Maybe,
-    Ribosome.Data.Ribo,
-    Ribosome.Data.Ribosome,
-    Ribosome.Api.Option,
-    Ribosome.Api.Response,
-    Ribosome.Log
+      Proteome.Add
+      Proteome.Config
+      Proteome.Data.Env
+      Proteome.Data.Project
+      Proteome.Data.ProjectSpec
+      Proteome.Data.Proteome
+      Proteome.Init
+      Proteome.Log
+      Proteome.Plugin
+      Proteome.Project.Resolve
+      Proteome.Save
+      Proteome.Settings
+      Proteome.Tags
+      Proteome.Test.Functional
+      Ribosome.Api.Option
+      Ribosome.Api.Response
+      Ribosome.Config.Settings
+      Ribosome.Data.Maybe
+      Ribosome.Data.Ribo
+      Ribosome.Data.Ribosome
+      Ribosome.Internal.IO
+      Ribosome.Internal.NvimObject
+      Ribosome.Log
+      Ribosome.Test.Exists
+      Ribosome.Test.Functional
+  other-modules:
+      Paths_proteome
+  hs-source-dirs:
+      lib
   build-depends:
-    base >= 4.7 && < 5,
-    directory,
-    unliftio,
-    nvim-hs >= 1 && < 2,
-    utf8-string,
-    split,
-    time,
-    prettyprinter,
-    containers,
-    filepath,
-    resourcet,
-    mtl,
-    deepseq,
-    messagepack,
-    strings,
-    text,
-    pretty-terminal,
-    ansi-terminal,
-    hslogger
+      ansi-terminal
+    , base >=4.7 && <5
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , hslogger
+    , messagepack
+    , mtl
+    , nvim-hs >=1 && <2
+    , pretty-terminal
+    , prettyprinter
+    , resourcet
+    , split
+    , strings
+    , text
+    , time
+    , unliftio
+    , utf8-string
+  default-language: Haskell2010
+
+executable proteome-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_proteome
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      ansi-terminal
+    , base >=4.7 && <5
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , hslogger
+    , messagepack
+    , mtl
+    , nvim-hs >=1 && <2
+    , pretty-terminal
+    , prettyprinter
+    , proteome
+    , resourcet
+    , split
+    , strings
+    , text
+    , time
+    , unliftio
+    , utf8-string
   default-language: Haskell2010
 
 test-suite proteome-functional
   type: exitcode-stdio-1.0
-  hs-source-dirs: test/f
   main-is: SpecMain.hs
-  build-depends:
-    base >= 4.7 && < 5,
-    HTF,
-    directory,
-    unliftio,
-    nvim-hs >= 1 && < 2,
-    utf8-string,
-    split,
-    time,
-    prettyprinter,
-    containers,
-    filepath,
-    resourcet,
-    mtl,
-    deepseq,
-    messagepack,
-    strings,
-    text,
-    pretty-terminal,
-    ansi-terminal,
-    hslogger
-  hs-source-dirs:
-    lib
   other-modules:
-    ConfigSpec,
-    InitSpec,
-    Config,
-    Proteome.Plugin,
-    Proteome.Init,
-    Proteome.Config,
-    Proteome.Add,
-    Proteome.Data.Env,
-    Proteome.Data.Project,
-    Proteome.Data.ProjectSpec,
-    Proteome.Data.Proteome,
-    Proteome.Log,
-    Proteome.Project.Resolve,
-    Proteome.Settings,
-    Proteome.Test.Functional,
-    Ribosome.Test.Functional,
-    Ribosome.Test.Exists,
-    Ribosome.Config.Settings,
-    Ribosome.Internal.IO,
-    Ribosome.Internal.NvimObject,
-    Ribosome.Data.Maybe,
-    Ribosome.Data.Ribo,
-    Ribosome.Data.Ribosome,
-    Ribosome.Api.Option,
-    Ribosome.Api.Response,
-    Ribosome.Log
+      Config
+      ConfigSpec
+      InitSpec
+      Paths_proteome
+  hs-source-dirs:
+      test/f
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HTF
+    , ansi-terminal
+    , base >=4.7 && <5
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , hslogger
+    , messagepack
+    , mtl
+    , nvim-hs >=1 && <2
+    , pretty-terminal
+    , prettyprinter
+    , proteome
+    , resourcet
+    , split
+    , strings
+    , text
+    , time
+    , unliftio
+    , utf8-string
   default-language: Haskell2010

@@ -1,0 +1,63 @@
+name: proteome
+version: 0.1.0.0
+synopsis: neovim project manager
+github: "tek/proteome-hs"
+license: MIT
+license-file: LICENSE
+author: "Torsten Schmits"
+maintainer: "tek@tryp.io"
+copyright: "2018 Torsten Schmits"
+category: Neovim
+build-type: Simple
+# x-curation: uncurated-no-trustee-contact
+
+extra-source-files:
+- README.md
+
+dependencies:
+- base >= 4.7 && < 5
+- unliftio
+- nvim-hs >= 1 && < 2
+- utf8-string
+- split
+- time
+- prettyprinter
+- containers
+- filepath
+- resourcet
+- mtl
+- deepseq
+- messagepack
+- strings
+- text
+- pretty-terminal
+- ansi-terminal
+- hslogger
+- directory
+
+library:
+  source-dirs: lib
+
+executables:
+  proteome-exe:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - proteome
+
+tests:
+  proteome-functional:
+    # type: exitcode-stdio-1.0
+    main: SpecMain.hs
+    source-dirs: test/f
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - proteome
+    - HTF
