@@ -4,7 +4,7 @@ module Config(
 
 import Neovim (toObject)
 import System.Directory (getCurrentDirectory)
-import Ribosome.Test.Functional (Vars(..))
+import Ribosome.Test.Embed (Vars(..))
 
 vars :: IO Vars
 vars = do

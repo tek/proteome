@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Proteome.Plugin(
-  plugin
+  plugin,
 )
 where
 

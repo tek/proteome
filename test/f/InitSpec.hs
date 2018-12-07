@@ -17,7 +17,7 @@ initSpec :: Ribo env ()
 initSpec = do
   tpe <- setting S.mainType
   name <- setting S.mainName
-  liftIO $ assertEqual name (ProjectName "proteome")
+  liftIO $ assertEqual name (ProjectName "flagellum")
   liftIO $ assertEqual tpe (ProjectType "haskell")
 
 test_init :: IO ()
