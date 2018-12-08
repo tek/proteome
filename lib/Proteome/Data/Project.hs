@@ -80,7 +80,7 @@ makeClassy_ ''Project
 instance Default Project where
   def = Project def def def def
 
-langOrType :: (Maybe ProjectLang) -> (Maybe ProjectType) -> (Maybe ProjectLang)
-langOrType (Just lang') _ = (Just lang')
+langOrType :: Maybe ProjectLang -> Maybe ProjectType -> Maybe ProjectLang
+langOrType (Just lang') _ = Just lang'
 langOrType Nothing (Just (ProjectType tpe')) = Just (ProjectLang tpe')
 langOrType _ _ = Nothing

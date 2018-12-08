@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 81b720b86c668e183d0953b555ceeee00f091b8fab30262928a1f7e78bf0ec53
+-- hash: 89a1deff18eb51b2cc90afdb6f10f9311df1371fa68a97cc319b7a417770d725
 
 name:           proteome
 version:        0.1.0.0
@@ -46,6 +46,7 @@ library
       Ribosome.Api.Option
       Ribosome.Api.Response
       Ribosome.Config.Settings
+      Ribosome.Data.Errors
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo
       Ribosome.Data.Ribosome

@@ -7,16 +7,20 @@ module Proteome.Tags(
 import GHC.IO.Exception (ExitCode(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
+import Control.Lens (over)
 import Data.List (intercalate)
+import qualified Data.Map.Strict as Map (adjust)
 import Data.Maybe (maybeToList)
 import Data.String.Utils (replace)
 import System.Process (readProcessWithExitCode)
 import System.FilePath ((</>))
 import System.Directory (setCurrentDirectory, doesFileExist, removePathForcibly)
 import Ribosome.Config.Settings (setting)
-import Ribosome.Data.Ribo (riboInspect)
+import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
+import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
 import Ribosome.Internal.IO (forkNeovim)
 import Proteome.Data.Env (Env(mainProject))
+import qualified Proteome.Data.Env as Env (_errors)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project (Project),
@@ -48,8 +52,16 @@ deleteTags (ProjectRoot root) = do
   exists <- liftIO $ doesFileExist path
   when exists $ liftIO $ removePathForcibly path
 
+storeError :: ComponentName -> [String] -> Errors -> Errors
+storeError name msg (Errors errors) =
+  Errors (Map.adjust (err:) name errors)
+  where
+    err = Error time msg
+    time = 0
+
 notifyError :: String -> Proteome ()
-notifyError _ = return ()
+notifyError e =
+  Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") [e])
 
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags (ProjectRoot root) cmd args = do
@@ -72,7 +84,7 @@ regenerateTags root langs = do
 
 proTags :: Proteome ()
 proTags = do
-  main <- riboInspect mainProject
+  main <- Ribo.inspect mainProject
   case main of
     Project (DirProject _ root tpe) _ lang langs ->
       regenerateTags root (maybeToList (langOrType lang tpe) ++ langs)

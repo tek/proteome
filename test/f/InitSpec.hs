@@ -10,7 +10,7 @@ import Ribosome.Data.Ribo (Ribo)
 import Ribosome.Config.Settings (setting)
 import qualified Proteome.Settings as S
 import Proteome.Data.Project (ProjectName(ProjectName), ProjectType(ProjectType))
-import Proteome.Test.Functional (embeddedSpecWith)
+import Proteome.Test.Functional (specWith)
 import Config (vars)
 
 initSpec :: Ribo env ()
@@ -23,4 +23,4 @@ initSpec = do
 test_init :: IO ()
 test_init = do
   v <- vars
-  embeddedSpecWith v initSpec
+  specWith v initSpec

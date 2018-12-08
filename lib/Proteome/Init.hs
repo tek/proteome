@@ -5,6 +5,7 @@ module Proteome.Init(
 ) where
 
 import Control.Monad.Reader
+import Data.Default.Class (Default(def))
 import System.Directory (getCurrentDirectory, makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
@@ -64,7 +65,7 @@ initWithMain :: Project -> Ribo e Env
 initWithMain main = do
   loadPersistedBuffers main
   setProjectVars (meta main)
-  return $ Env main []
+  return $ Env main [] def
 
 initialize' :: Ribo e Env
 initialize' = do

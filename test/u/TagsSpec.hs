@@ -10,7 +10,7 @@ import System.FilePath ((</>))
 import System.Directory (doesFileExist)
 import Test.Framework
 import Ribosome.Config.Settings (updateSetting)
-import Ribosome.Data.Ribo (riboModify)
+import qualified Ribosome.Data.Ribo as Ribo (modify)
 import Ribosome.Test.Unit (tempDir)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Env (_mainProject)
@@ -34,8 +34,8 @@ main root = DirProject (ProjectName "flagellum") (ProjectRoot root) (Just (Proje
 tagsSpec :: Proteome ()
 tagsSpec = do
   root <- tempDir "projects/haskell/flagellum"
-  riboModify $ set (_mainProject._meta) (main root)
-  riboModify $ set (_mainProject._lang) (Just (ProjectLang "idris"))
+  Ribo.modify $ set (_mainProject._meta) (main root)
+  Ribo.modify $ set (_mainProject._lang) (Just (ProjectLang "idris"))
   updateSetting S.tagsCommand "touch"
   updateSetting S.tagsArgs "tags-{langsComma}-{tagFile}"
   updateSetting S.tagsFork False

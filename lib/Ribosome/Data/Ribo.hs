@@ -1,8 +1,8 @@
 module Ribosome.Data.Ribo(
   Ribo,
-  riboState,
-  riboInspect,
-  riboModify,
+  state,
+  inspect,
+  modify,
 ) where
 
 import Control.Concurrent.STM.TVar (modifyTVar)
@@ -12,15 +12,15 @@ import Ribosome.Data.Ribosome
 
 type Ribo e = Neovim (Ribosome e)
 
-riboState :: Ribo (TVar e) e
-riboState = do
+state :: Ribo (TVar e) e
+state = do
   Ribosome _ t <- ask
   readTVarIO t
 
-riboInspect :: (e -> a) -> Ribo (TVar e) a
-riboInspect f = fmap f riboState
+inspect :: (e -> a) -> Ribo (TVar e) a
+inspect f = fmap f state
 
-riboModify :: (e -> e) -> Ribo (TVar e) ()
-riboModify f = do
+modify :: (e -> e) -> Ribo (TVar e) ()
+modify f = do
   Ribosome _ t <- ask
   atomically $ modifyTVar t f

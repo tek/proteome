@@ -4,10 +4,11 @@ module Ribosome.Test.Functional(
   functionalSpec,
 ) where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class
 import Control.Exception (finally)
 import Data.Foldable (traverse_)
-import System.Directory (getCurrentDirectory, createDirectoryIfMissing, removePathForcibly)
+import System.Directory (getCurrentDirectory, createDirectoryIfMissing, removePathForcibly, doesFileExist)
 import System.FilePath (takeDirectory)
 import System.Console.ANSI (setSGR, SGR(SetColor, Reset), ConsoleLayer(Foreground), ColorIntensity(Dull), Color(Green))
 import Neovim (Neovim, vim_command')
@@ -46,10 +47,13 @@ showLog' output = do
 
 showLog :: TestConfig -> IO ()
 showLog conf = do
-  output <- readFile $ logFile conf
-  case output of
-    [] -> return ()
-    o -> showLog' o
+  let file = logFile conf
+  exists <- doesFileExist file
+  when exists $ do
+    output <- readFile file
+    case output of
+      [] -> return ()
+      o -> showLog' o
 
 functionalSpec :: TestConfig -> Ribo () () -> IO ()
 functionalSpec conf spec =

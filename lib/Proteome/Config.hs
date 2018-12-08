@@ -13,9 +13,11 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import qualified Data.Map as Map
-import Data.Map.Strict
-import Neovim
-import Ribosome.Data.Ribo (riboInspect, Ribo)
+import Data.Foldable (traverse_)
+import Data.Map.Strict (Map)
+import Neovim (NvimObject, toObject, Dictionary, Object, vim_command')
+import Ribosome.Data.Ribo (Ribo)
+import qualified Ribosome.Data.Ribo as Ribo (inspect)
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project (
   Project(Project, types),
@@ -51,13 +53,13 @@ typeProjectConf confDir (ProjectName name') (ProjectType tpe') = do
 
 readConfigMeta :: String -> Project -> Ribo a ()
 readConfigMeta confDir (Project (DirProject name' _ tpe') _ _ _) =
-  void $ traverse (typeProjectConf confDir name') tpe'
+  traverse_ (typeProjectConf confDir name') tpe'
 readConfigMeta _ _ = return ()
 
 readConfigProject :: String -> Project -> Ribo a ()
 readConfigProject confDir project = do
   readConfigMeta confDir project
-  void $ traverse (runtimeConf confDir) (fmap projectType (types project))
+  traverse_ (runtimeConf confDir) (fmap projectType (types project))
 
 readConfig :: String -> Project -> Ribo a ()
 readConfig confDir project = do
@@ -66,5 +68,5 @@ readConfig confDir project = do
 
 proReadConfig :: Proteome ()
 proReadConfig = do
-  main <- riboInspect Env.mainProject
+  main <- Ribo.inspect Env.mainProject
   readConfig "project" main
