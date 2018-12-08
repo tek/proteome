@@ -6,6 +6,9 @@ module Proteome.Settings(
   projectConfig,
   mainName,
   mainType,
+  tagsCommand,
+  tagsArgs,
+  tagsFork,
 ) where
 
 import qualified Data.Map as Map
@@ -34,3 +37,12 @@ mainName = Setting "main_name" True Nothing
 
 mainType :: Setting ProjectType
 mainType = Setting "main_type" True Nothing
+
+tagsCommand :: Setting String
+tagsCommand = Setting "tags_command" True (Just "ctags")
+
+tagsArgs :: Setting String
+tagsArgs = Setting "tags_args" True (Just "-R --languages={langs} -f {tag_file} {root}")
+
+tagsFork :: Setting Bool
+tagsFork = Setting "tags_fork" True (Just True)

@@ -10,6 +10,7 @@ module Proteome.Data.Project(
 ) where
 
 import GHC.Generics (Generic)
+import Data.Default.Class (Default(def))
 import Control.DeepSeq
 import Neovim.Classes (NvimObject(..))
 import Ribosome.Internal.NvimObject (deriveString)
@@ -49,6 +50,9 @@ data ProjectMetadata =
   }
   deriving (Eq, Show)
 
+instance Default ProjectMetadata where
+  def = VirtualProject (ProjectName "main")
+
 data Project =
   Project {
     meta :: ProjectMetadata,
@@ -57,3 +61,6 @@ data Project =
     langs :: [ProjectLang]
   }
   deriving (Eq, Show)
+
+instance Default Project where
+  def = Project def def def def

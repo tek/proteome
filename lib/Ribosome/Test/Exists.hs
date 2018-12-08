@@ -1,5 +1,6 @@
 module Ribosome.Test.Exists(
-  waitForPlugin
+  waitForPlugin,
+  sleep,
 ) where
 
 import Data.Time.Clock.POSIX
