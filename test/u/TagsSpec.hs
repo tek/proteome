@@ -12,32 +12,35 @@ import Test.Framework
 import Ribosome.Config.Settings (updateSetting)
 import Ribosome.Data.Ribo (riboModify)
 import Ribosome.Test.Unit (tempDir)
--- import Ribosome.Test.Exists (sleep)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Env (_mainProject)
 import Proteome.Data.Project (
-  Project(Project),
   ProjectName(..),
+  ProjectRoot(..),
   ProjectType(..),
+  ProjectLang(..),
   ProjectMetadata(DirProject),
+  _meta,
+  _lang,
   )
 import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork)
 import Proteome.Tags (proTags)
 import Proteome.Test.Unit (specWithDef)
 import Config (vars)
 
-main :: FilePath -> Project
-main root = Project (DirProject (ProjectName "flagellum") root (Just (ProjectType "haskell"))) [] Nothing []
+main :: FilePath -> ProjectMetadata
+main root = DirProject (ProjectName "flagellum") (ProjectRoot root) (Just (ProjectType "haskell"))
 
 tagsSpec :: Proteome ()
 tagsSpec = do
   root <- tempDir "projects/haskell/flagellum"
-  riboModify $ set _mainProject (main root)
+  riboModify $ set (_mainProject._meta) (main root)
+  riboModify $ set (_mainProject._lang) (Just (ProjectLang "idris"))
   updateSetting S.tagsCommand "touch"
-  updateSetting S.tagsArgs "tags"
+  updateSetting S.tagsArgs "tags-{langsComma}-{tagFile}"
   updateSetting S.tagsFork False
   proTags
-  let tagsFile = root </> "tags"
+  let tagsFile = root </> "tags-idris-.tags"
   exists <- liftIO $ doesFileExist tagsFile
   liftIO $ assertBool exists
 

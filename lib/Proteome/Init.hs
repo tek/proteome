@@ -17,15 +17,25 @@ import Ribosome.Data.Ribosome (Ribosome(Ribosome))
 import Ribosome.Internal.IO (retypeNeovim)
 import Proteome.Data.Env (Env(Env))
 import Proteome.Data.Proteome
-import Proteome.Data.Project (Project(meta), ProjectName(..), ProjectType(..), ProjectMetadata(DirProject))
+import Proteome.Data.Project (
+  Project(meta),
+  ProjectName(..),
+  ProjectRoot(..),
+  ProjectType(..),
+  ProjectMetadata(DirProject),
+  )
 import Proteome.Project.Resolve (resolveProject)
 import qualified Proteome.Settings as S
 
-pathData :: MonadIO m => Either String FilePath -> m (FilePath, ProjectName, ProjectType)
+pathData :: MonadIO m => Either String FilePath -> m (ProjectRoot, ProjectName, ProjectType)
 pathData override = do
   cwd <- liftIO $ either (const getCurrentDirectory) pure override
   absMainDir <- liftIO $ makeAbsolute cwd
-  return (absMainDir, ProjectName $ takeFileName absMainDir, ProjectType $ (takeFileName . takeDirectory) absMainDir)
+  return (
+    ProjectRoot absMainDir,
+    ProjectName $ takeFileName absMainDir,
+    ProjectType $ (takeFileName . takeDirectory) absMainDir
+    )
 
 mainProject :: Ribo e Project
 mainProject = do

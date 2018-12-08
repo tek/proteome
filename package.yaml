@@ -34,11 +34,11 @@ dependencies:
 - ansi-terminal
 - hslogger
 - directory
-- text-format-heavy
 - process
 - stm
 - lens
 - data-default-class
+- MissingH
 
 library:
   source-dirs: lib

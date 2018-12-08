@@ -13,12 +13,12 @@ import qualified Data.Map as Map
 import Data.Maybe (catMaybes)
 import Data.MessagePack
 import Neovim.Classes (NvimObject(..), Dictionary)
-import Proteome.Data.Project (ProjectName, ProjectType, ProjectLang)
+import Proteome.Data.Project (ProjectName, ProjectType, ProjectLang, ProjectRoot)
 
 data ProjectSpec =
   ProjectSpec {
     name :: ProjectName,
-    root :: FilePath,
+    root :: ProjectRoot,
     tpe :: Maybe ProjectType,
     types :: [ProjectType],
     lang :: Maybe ProjectLang,

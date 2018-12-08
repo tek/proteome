@@ -12,6 +12,7 @@ import Proteome.Config (ProjectConfig)
 import Proteome.Data.Project (
   Project(Project),
   ProjectName(..),
+  ProjectRoot(..),
   ProjectType(..),
   ProjectLang(..),
   ProjectMetadata(DirProject, VirtualProject),
@@ -19,7 +20,7 @@ import Proteome.Data.Project (
 import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
 
-projectFromSegments :: ProjectType -> ProjectName -> FilePath -> Project
+projectFromSegments :: ProjectType -> ProjectName -> ProjectRoot -> Project
 projectFromSegments tpe name root =
   Project (DirProject name root (Just tpe)) [] (Just (ProjectLang (projectType tpe))) []
 
@@ -27,7 +28,7 @@ projectFromSpec :: ProjectSpec -> Project
 projectFromSpec (ProjectSpec name root tpe types lang langs) =
   Project (DirProject name root tpe) types lang langs
 
-hasProjectRoot :: FilePath -> ProjectSpec -> Bool
+hasProjectRoot :: ProjectRoot -> ProjectSpec -> Bool
 hasProjectRoot root spec = root == PS.root spec
 
 hasProjectTypeName :: ProjectType -> ProjectName -> ProjectSpec -> Bool
@@ -38,20 +39,20 @@ hasProjectTypeName _ _ _ = False
 byProjectTypeName :: [ProjectSpec] -> ProjectName -> ProjectType -> Maybe ProjectSpec
 byProjectTypeName specs name tpe = find (hasProjectTypeName tpe name) specs
 
-byProjectBases :: [FilePath] -> FilePath -> Bool
-byProjectBases baseDirs root = elem ((takeDirectory . takeDirectory) root) baseDirs
+byProjectBases :: [FilePath] -> ProjectRoot -> Bool
+byProjectBases baseDirs (ProjectRoot root) = elem ((takeDirectory . takeDirectory) root) baseDirs
 
 virtualProject :: ProjectName -> Project
 virtualProject name = Project (VirtualProject name) [] Nothing []
 
-resolveByType :: [FilePath] -> [ProjectSpec] -> FilePath -> ProjectName -> ProjectType -> Maybe Project
+resolveByType :: [FilePath] -> [ProjectSpec] -> ProjectRoot -> ProjectName -> ProjectType -> Maybe Project
 resolveByType baseDirs explicit root name tpe =
   orElse (if byPath then Just (projectFromSegments tpe name root) else Nothing) (fmap projectFromSpec byTypeName)
   where
     byTypeName = byProjectTypeName explicit name tpe
     byPath = byProjectBases baseDirs root
 
-resolveByRoot :: [ProjectSpec] -> FilePath -> Maybe Project
+resolveByRoot :: [ProjectSpec] -> ProjectRoot -> Maybe Project
 resolveByRoot explicit root =
   fmap projectFromSpec byRoot
   where
@@ -61,7 +62,7 @@ resolveProject ::
   [FilePath] ->
   [ProjectSpec] ->
   ProjectConfig ->
-  FilePath ->
+  ProjectRoot ->
   ProjectName ->
   Maybe ProjectType ->
   Project

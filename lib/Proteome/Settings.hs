@@ -9,6 +9,7 @@ module Proteome.Settings(
   tagsCommand,
   tagsArgs,
   tagsFork,
+  tagsFileName,
 ) where
 
 import qualified Data.Map as Map
@@ -46,3 +47,6 @@ tagsArgs = Setting "tags_args" True (Just "-R --languages={langs} -f {tag_file} 
 
 tagsFork :: Setting Bool
 tagsFork = Setting "tags_fork" True (Just True)
+
+tagsFileName :: Setting FilePath
+tagsFileName = Setting "tags_file_name" True (Just ".tags")
