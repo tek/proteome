@@ -40,7 +40,7 @@ byProjectTypeName :: [ProjectSpec] -> ProjectName -> ProjectType -> Maybe Projec
 byProjectTypeName specs name tpe = find (hasProjectTypeName tpe name) specs
 
 byProjectBases :: [FilePath] -> ProjectRoot -> Bool
-byProjectBases baseDirs (ProjectRoot root) = elem ((takeDirectory . takeDirectory) root) baseDirs
+byProjectBases baseDirs (ProjectRoot root) = (takeDirectory . takeDirectory) root `elem` baseDirs
 
 virtualProject :: ProjectName -> Project
 virtualProject name = Project (VirtualProject name) [] Nothing []

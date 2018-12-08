@@ -13,10 +13,13 @@ import Control.Monad.IO.Class (MonadIO)
 import Neovim.Context.Internal (Neovim)
 import UnliftIO.STM (TVar, newTVarIO)
 import Ribosome.Config.Settings (setting, settingE, updateSetting)
-import Ribosome.Data.Ribo
+import Ribosome.Data.Ribo (Ribo)
+import qualified Ribosome.Data.Ribo as Ribo (inspect)
 import Ribosome.Data.Ribosome (Ribosome(Ribosome))
+import Ribosome.File (canonicalPaths)
 import Ribosome.Internal.IO (retypeNeovim)
 import Proteome.Data.Env (Env(Env))
+import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Proteome
 import Proteome.Data.Project (
   Project(meta),
@@ -26,6 +29,8 @@ import Proteome.Data.Project (
   ProjectMetadata(DirProject),
   )
 import Proteome.Project.Resolve (resolveProject)
+import Proteome.Config (readConfig)
+import Proteome.Log
 import qualified Proteome.Settings as S
 
 pathData :: MonadIO m => Either String FilePath -> m (ProjectRoot, ProjectName, ProjectType)
@@ -42,7 +47,7 @@ mainProject :: Ribo e Project
 mainProject = do
   mainDir <- settingE S.mainProjectDir
   (root, name, tpe) <- pathData mainDir
-  baseDirs <- setting S.projectBaseDirs
+  baseDirs <- (canonicalPaths <=< setting) S.projectBaseDirs
   -- typeDirs <- setting S.projectTypeDirs
   explicit <- setting S.projects
   config <- setting S.projectConfig
@@ -63,6 +68,7 @@ setProjectVars _ = return ()
 
 initWithMain :: Project -> Ribo e Env
 initWithMain main = do
+  debugS $ "initializing with main project: " ++ show main
   loadPersistedBuffers main
   setProjectVars (meta main)
   return $ Env main [] def
@@ -79,7 +85,11 @@ initialize = do
   newTVarIO env
 
 proteomeStage2 :: Proteome ()
-proteomeStage2 = return ()
+proteomeStage2 = do
+  main <- Ribo.inspect Env.mainProject
+  readConfig "project" main
 
 proteomeStage4 :: Proteome ()
-proteomeStage4 = return ()
+proteomeStage4 = do
+  main <- Ribo.inspect Env.mainProject
+  readConfig "project_after" main

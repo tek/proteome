@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 741c4011b66ad0ea90a227159a63f9ecd7298bea6b7917dbdb729b0e7b4b7c01
+-- hash: a7974ae6d973fdcff8262102880124d6400dae923b552ab14ba9c03c744e1804
 
 name:           proteome
-version:        0.1.0.0
+version:        0.2.0.0
 synopsis:       neovim project manager
 description:    Please see the README on GitHub at <https://github.com/tek/proteome-hs>
 category:       Neovim
@@ -51,6 +51,7 @@ library
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo
       Ribosome.Data.Ribosome
+      Ribosome.File
       Ribosome.Internal.IO
       Ribosome.Internal.NvimObject
       Ribosome.Log
@@ -90,7 +91,7 @@ library
     , utf8-string
   default-language: Haskell2010
 
-executable proteome-exe
+executable proteome
   main-is: Main.hs
   other-modules:
       Paths_proteome
@@ -170,6 +171,7 @@ test-suite proteome-unit
   main-is: SpecMain.hs
   other-modules:
       Config
+      ResolveSpec
       TagsSpec
       Paths_proteome
   hs-source-dirs:

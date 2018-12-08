@@ -44,7 +44,7 @@ library:
   source-dirs: lib
 
 executables:
-  proteome-exe:
+  proteome:
     main: Main.hs
     source-dirs: app
     ghc-options:

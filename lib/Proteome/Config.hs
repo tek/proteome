@@ -70,3 +70,4 @@ proReadConfig :: Proteome ()
 proReadConfig = do
   main <- Ribo.inspect Env.mainProject
   readConfig "project" main
+  readConfig "project_after" main
