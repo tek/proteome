@@ -20,11 +20,11 @@ data Setting a =
 settingVariableName :: Setting a -> Ribo e String
 settingVariableName (Setting n False _) = return n
 settingVariableName (Setting n True _) = do
-  pluginName <- fmap R.name $ ask
+  pluginName <- R.name <$> ask
   return $ pluginName ++ "_" ++ n
 
 settingE :: NvimObject a => Setting a -> Ribo e (Either String a)
-settingE s @ (Setting _ _ fallback') = do
+settingE s@(Setting _ _ fallback') = do
   varName <- settingVariableName s
   raw <- vim_get_var varName
   case raw of

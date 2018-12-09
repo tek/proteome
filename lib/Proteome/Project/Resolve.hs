@@ -5,10 +5,12 @@ module Proteome.Project.Resolve(
 ) where
 
 import Data.List (find)
+import Data.List.Utils (uniq)
 import Data.Maybe (fromMaybe)
+import Data.Map.Strict ((!?), Map)
 import System.FilePath (takeDirectory)
 import Ribosome.Data.Maybe (orElse)
-import Proteome.Config (ProjectConfig)
+import Proteome.Config (ProjectConfig(ProjectConfig))
 import Proteome.Data.Project (
   Project(Project),
   ProjectName(..),
@@ -58,6 +60,25 @@ resolveByRoot explicit root =
   where
     byRoot = find (hasProjectRoot root) explicit
 
+augment :: Eq a => Map ProjectType [a] -> ProjectType -> [a] -> [a]
+augment m tpe as =
+  case m !? tpe of
+    Just extra -> uniq $ as ++ extra
+    Nothing -> as
+
+augmentTypes :: ProjectConfig -> ProjectType -> [ProjectType] -> [ProjectType]
+augmentTypes (ProjectConfig _ typeMap _) =
+  augment typeMap
+
+augmentLangs :: ProjectConfig -> ProjectType -> [ProjectLang] -> [ProjectLang]
+augmentLangs (ProjectConfig _ _ langMap) =
+  augment langMap
+
+augmentFromConfig :: ProjectConfig -> Project -> Project
+augmentFromConfig config (Project meta@(DirProject _ _ (Just tpe)) types lang langs) =
+  Project meta (augmentTypes config tpe types) lang (augmentLangs config tpe langs)
+augmentFromConfig _ project = project
+
 resolveProject ::
   [FilePath] ->
   [ProjectSpec] ->
@@ -66,9 +87,10 @@ resolveProject ::
   ProjectName ->
   Maybe ProjectType ->
   Project
-resolveProject baseDirs explicit _ root name tpe =
-  fromMaybe byTypeOrVirtual byRoot
+resolveProject baseDirs explicit config root name tpe =
+  augmentFromConfig config project
   where
+    project = fromMaybe byTypeOrVirtual byRoot
     byTypeOrVirtual = fromMaybe (virtualProject name) byType
     byType = tpe >>= resolveByType baseDirs explicit root name
     byRoot = resolveByRoot explicit root

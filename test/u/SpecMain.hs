@@ -4,6 +4,7 @@ module Main where
 
 import {-@ HTF_TESTS @-} TagsSpec
 import {-@ HTF_TESTS @-} ResolveSpec
+import {-@ HTF_TESTS @-} TypeMapSpec
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 

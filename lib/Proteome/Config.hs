@@ -15,21 +15,26 @@ import Control.DeepSeq (NFData)
 import qualified Data.Map as Map
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
-import Neovim (NvimObject, toObject, Dictionary, Object, vim_command')
+import Data.Text.Prettyprint.Doc ((<+>), viaShow)
+import Neovim (NvimObject(..), Dictionary, Object(ObjectMap), vim_command')
 import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Internal.NvimObject (extractObject)
 import qualified Ribosome.Data.Ribo as Ribo (inspect)
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project (
   Project(Project, types),
   ProjectType(ProjectType, projectType),
+  ProjectLang,
   ProjectName(ProjectName),
   ProjectMetadata(DirProject),
   )
 import Proteome.Data.Proteome
 
-newtype ProjectConfig =
+data ProjectConfig =
   ProjectConfig {
-    projectTypes :: Map ProjectType [FilePath]
+    projectTypes :: Map ProjectType [FilePath],
+    typeMap :: Map ProjectType [ProjectType],
+    langMap :: Map ProjectType [ProjectLang]
   }
   deriving (Generic, NFData)
 
@@ -37,8 +42,15 @@ instance NvimObject ProjectConfig where
   toObject ProjectConfig {..} =
     (toObject :: Dictionary -> Object) . Map.fromList $
     [
-      ("projectTypes", toObject projectTypes)
+      ("projectTypes", toObject projectTypes),
+      ("typeMap", toObject typeMap)
     ]
+  fromObject (ObjectMap o) = do
+    projectTypes' <- extractObject "projectTypes" o
+    typeMap' <- extractObject "typeMap" o
+    langMap' <- extractObject "langMap" o
+    return $ ProjectConfig projectTypes' typeMap' langMap'
+  fromObject o = Left ("invalid type for ProjectConfig: " <+> viaShow o)
 
 runtime :: FilePath -> Ribo a ()
 runtime path = vim_command' $ "runtime " ++ path ++ ".vim"

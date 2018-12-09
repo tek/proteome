@@ -12,7 +12,7 @@ module Proteome.Settings(
   tagsFileName,
 ) where
 
-import qualified Data.Map as Map
+import Data.Default.Class (Default(def))
 import Ribosome.Config.Settings
 import Proteome.Data.Project (ProjectName, ProjectType)
 import Proteome.Data.ProjectSpec (ProjectSpec)
@@ -31,7 +31,7 @@ projectTypeDirs :: Setting [FilePath]
 projectTypeDirs = Setting "project_type_dirs" True (Just [])
 
 projectConfig :: Setting ProjectConfig
-projectConfig = Setting "project_config" True (Just (ProjectConfig Map.empty))
+projectConfig = Setting "project_config" True (Just (ProjectConfig def def def))
 
 mainName :: Setting ProjectName
 mainName = Setting "main_name" True Nothing

@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a7974ae6d973fdcff8262102880124d6400dae923b552ab14ba9c03c744e1804
+-- hash: 845cf5492bfa14d87d17ee2ac0f3888dc73af676895119b8b4ecddf1ee44670b
 
 name:           proteome
-version:        0.2.0.0
+version:        0.2.1.0
 synopsis:       neovim project manager
 description:    Please see the README on GitHub at <https://github.com/tek/proteome-hs>
 category:       Neovim
@@ -173,6 +173,7 @@ test-suite proteome-unit
       Config
       ResolveSpec
       TagsSpec
+      TypeMapSpec
       Paths_proteome
   hs-source-dirs:
       test/u

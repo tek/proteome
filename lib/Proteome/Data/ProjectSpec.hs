@@ -9,7 +9,7 @@ module Proteome.Data.ProjectSpec(
 
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
-import qualified Data.Map as Map
+import qualified Data.Map as Map (fromList)
 import Data.Maybe (catMaybes)
 import Data.MessagePack
 import Neovim.Classes (NvimObject(..), Dictionary)
