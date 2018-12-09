@@ -28,7 +28,6 @@ paths = [
 test_canonicalPaths :: IO ()
 test_canonicalPaths = do
   canon <- canonicalPaths paths
-  print canon
   assertNotEqual canon paths
 
 root :: ProjectRoot
