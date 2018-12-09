@@ -70,8 +70,8 @@ readConfigMeta _ _ = return ()
 
 readConfigProject :: String -> Project -> Ribo a ()
 readConfigProject confDir project = do
-  readConfigMeta confDir project
   traverse_ (runtimeConf confDir) (fmap projectType (types project))
+  readConfigMeta confDir project
 
 readConfig :: String -> Project -> Ribo a ()
 readConfig confDir project = do
