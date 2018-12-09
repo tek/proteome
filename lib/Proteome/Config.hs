@@ -53,7 +53,7 @@ instance NvimObject ProjectConfig where
   fromObject o = Left ("invalid type for ProjectConfig: " <+> viaShow o)
 
 runtime :: FilePath -> Ribo a ()
-runtime path = vim_command' $ "runtime " ++ path ++ ".vim"
+runtime path = vim_command' $ "runtime! " ++ path ++ ".vim"
 
 runtimeConf :: FilePath -> String -> Ribo a ()
 runtimeConf confDir path = runtime(confDir ++ "/" ++ path)
