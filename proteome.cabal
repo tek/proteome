@@ -46,7 +46,7 @@ library
       Proteome.Test.Unit
       Ribosome.Api.Option
       Ribosome.Api.Response
-      Ribosome.Config.Settings
+      Ribosome.Config.Setting
       Ribosome.Data.Errors
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo

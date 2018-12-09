@@ -1,4 +1,4 @@
-module Ribosome.Config.Settings(
+module Ribosome.Config.Setting(
   Setting (..),
   setting,
   settingE,

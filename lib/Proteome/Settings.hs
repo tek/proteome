@@ -13,7 +13,7 @@ module Proteome.Settings(
 ) where
 
 import Data.Default.Class (Default(def))
-import Ribosome.Config.Settings
+import Ribosome.Config.Setting
 import Proteome.Data.Project (ProjectName, ProjectType)
 import Proteome.Data.ProjectSpec (ProjectSpec)
 import Proteome.Config
