@@ -10,7 +10,7 @@ module Proteome.Data.Env (
 import Control.Lens (makeClassy_)
 import Data.Default.Class (Default(def))
 import Ribosome.Data.Errors (Errors)
-import Proteome.Data.Project
+import Proteome.Data.Project(Project)
 
 data Env = Env {
   mainProject :: Project,

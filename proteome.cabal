@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: dfe077ab56d3e81349c7547c0773d7b18ddb5947b966f46296a738c0dbb6041b
+-- hash: 50e47e3070326334068db8d5f0b392ede490e0b6f6007fcc00215d5161764196
 
 name:           proteome
 version:        0.3.2.0
@@ -34,8 +34,10 @@ library
       Proteome.Data.Project
       Proteome.Data.ProjectSpec
       Proteome.Data.Proteome
+      Proteome.Env
       Proteome.Init
       Proteome.Log
+      Proteome.PersistBuffers
       Proteome.Plugin
       Proteome.Project.Resolve
       Proteome.Save
@@ -44,9 +46,11 @@ library
       Proteome.Test.Config
       Proteome.Test.Functional
       Proteome.Test.Unit
+      Ribosome.Api.Buffer
       Ribosome.Api.Option
       Ribosome.Api.Response
       Ribosome.Config.Setting
+      Ribosome.Config.Settings
       Ribosome.Data.Errors
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo
@@ -55,6 +59,7 @@ library
       Ribosome.Internal.IO
       Ribosome.Internal.NvimObject
       Ribosome.Log
+      Ribosome.Persist
       Ribosome.Test.Embed
       Ribosome.Test.Exists
       Ribosome.Test.File
@@ -66,8 +71,10 @@ library
       lib
   build-depends:
       MissingH
+    , aeson
     , ansi-terminal
     , base >=4.7 && <5
+    , bytestring
     , containers
     , data-default-class
     , deepseq
@@ -100,8 +107,10 @@ executable proteome
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       MissingH
+    , aeson
     , ansi-terminal
     , base >=4.7 && <5
+    , bytestring
     , containers
     , data-default-class
     , deepseq
@@ -140,8 +149,10 @@ test-suite proteome-functional
   build-depends:
       HTF
     , MissingH
+    , aeson
     , ansi-terminal
     , base >=4.7 && <5
+    , bytestring
     , containers
     , data-default-class
     , deepseq
@@ -171,9 +182,9 @@ test-suite proteome-unit
   main-is: SpecMain.hs
   other-modules:
       Config
+      PersistBuffersSpec
       ResolveSpec
       TagsSpec
-      TypeMapSpec
       Paths_proteome
   hs-source-dirs:
       test/u
@@ -181,8 +192,10 @@ test-suite proteome-unit
   build-depends:
       HTF
     , MissingH
+    , aeson
     , ansi-terminal
     , base >=4.7 && <5
+    , bytestring
     , containers
     , data-default-class
     , deepseq

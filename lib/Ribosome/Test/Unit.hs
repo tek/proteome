@@ -3,13 +3,15 @@ module Ribosome.Test.Unit(
   tempDir,
   tempFile,
   uPrefix,
+  fixture,
 ) where
 
+import Control.Monad.IO.Class (MonadIO)
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import Neovim (Neovim)
 import Ribosome.Data.Ribo (Ribo)
 import Ribosome.Test.Embed (TestConfig(..), setupPluginEnv, unsafeEmbeddedSpec)
-import qualified Ribosome.Test.File as F (tempDir)
+import qualified Ribosome.Test.File as F (tempDir, fixture)
 
 uPrefix :: String
 uPrefix = "u"
@@ -30,3 +32,6 @@ tempFile :: FilePath -> Neovim e FilePath
 tempFile file = do
   absDir <- tempDir $ takeDirectory file
   return $ absDir </> takeFileName file
+
+fixture :: MonadIO m => FilePath -> m FilePath
+fixture = F.fixture uPrefix

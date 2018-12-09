@@ -9,7 +9,7 @@ import Control.Lens (set)
 import System.FilePath ((</>))
 import System.Directory (doesFileExist)
 import Test.Framework
-import Ribosome.Config.Settings (updateSetting)
+import Ribosome.Config.Setting (updateSetting)
 import qualified Ribosome.Data.Ribo as Ribo (modify)
 import Ribosome.Test.Unit (tempDir)
 import Proteome.Data.Proteome (Proteome)

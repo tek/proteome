@@ -19,8 +19,6 @@ import Data.Text.Prettyprint.Doc ((<+>), viaShow)
 import Neovim (NvimObject(..), Dictionary, Object(ObjectMap), vim_command')
 import Ribosome.Data.Ribo (Ribo)
 import Ribosome.Internal.NvimObject (extractObject)
-import qualified Ribosome.Data.Ribo as Ribo (inspect)
-import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project (
   Project(Project, types),
   ProjectType(ProjectType, projectType),
@@ -29,6 +27,7 @@ import Proteome.Data.Project (
   ProjectMetadata(DirProject),
   )
 import Proteome.Data.Proteome
+import Proteome.Env (getMainProject)
 
 data ProjectConfig =
   ProjectConfig {
@@ -80,6 +79,6 @@ readConfig confDir project = do
 
 proReadConfig :: Proteome ()
 proReadConfig = do
-  main <- Ribo.inspect Env.mainProject
+  main <- getMainProject
   readConfig "project" main
   readConfig "project_after" main

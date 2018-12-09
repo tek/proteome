@@ -39,6 +39,8 @@ dependencies:
 - lens
 - data-default-class
 - MissingH
+- aeson
+- bytestring
 
 library:
   source-dirs: lib
