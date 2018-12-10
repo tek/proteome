@@ -30,6 +30,7 @@ import Proteome.Data.Project (
   )
 import Proteome.Project.Resolve (resolveProject)
 import Proteome.Config (readConfig)
+import Proteome.PersistBuffers (loadBuffers)
 import Proteome.Log
 import qualified Proteome.Settings as S
 
@@ -83,6 +84,9 @@ initialize = do
   liftIO $ updateGlobalLogger "Neovim.Plugin" (setLevel ERROR)
   env <- retypeNeovim (Ribosome "proteome") initialize'
   newTVarIO env
+
+proteomeStage1 :: Proteome ()
+proteomeStage1 = loadBuffers
 
 proteomeStage2 :: Proteome ()
 proteomeStage2 = do
