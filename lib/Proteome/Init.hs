@@ -2,6 +2,7 @@ module Proteome.Init(
   initialize,
   proteomeStage2,
   proteomeStage4,
+  proteomePoll,
   proteomeStage1,
 ) where
 
@@ -98,3 +99,6 @@ proteomeStage4 :: Proteome ()
 proteomeStage4 = do
   main <- Ribo.inspect Env.mainProject
   readConfig "project_after" main
+
+proteomePoll :: Neovim e Bool
+proteomePoll = return True
