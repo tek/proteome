@@ -58,7 +58,6 @@ executables:
 
 tests:
   proteome-unit:
-    # type: exitcode-stdio-1.0
     main: SpecMain.hs
     source-dirs: test/u
     ghc-options:
@@ -69,7 +68,6 @@ tests:
     - proteome
     - HTF
   proteome-functional:
-    # type: exitcode-stdio-1.0
     main: SpecMain.hs
     source-dirs: test/f
     ghc-options:

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 50e47e3070326334068db8d5f0b392ede490e0b6f6007fcc00215d5161764196
+-- hash: db6c151c50491e9e4c460225beba9e5136936544c19a763ba69f512141a98cb9
 
 name:           proteome
 version:        0.3.2.0
@@ -182,7 +182,8 @@ test-suite proteome-unit
   main-is: SpecMain.hs
   other-modules:
       Config
-      PersistBuffersSpec
+      PersistLoadSpec
+      PersistStoreSpec
       ResolveSpec
       TagsSpec
       Paths_proteome

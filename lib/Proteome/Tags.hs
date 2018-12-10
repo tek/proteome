@@ -12,9 +12,10 @@ import Data.List (intercalate)
 import qualified Data.Map.Strict as Map (adjust)
 import Data.Maybe (maybeToList)
 import Data.String.Utils (replace)
-import System.Process (readProcessWithExitCode)
+import System.Process (readCreateProcessWithExitCode)
+import qualified System.Process as Proc (proc, CreateProcess(cwd))
 import System.FilePath ((</>))
-import System.Directory (setCurrentDirectory, doesFileExist, removePathForcibly)
+import System.Directory (doesFileExist, removePathForcibly)
 import Ribosome.Config.Setting (setting)
 import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
 import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
@@ -65,9 +66,8 @@ notifyError e =
 
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags (ProjectRoot root) cmd args = do
-  liftIO $ setCurrentDirectory root
   deleteTags (ProjectRoot root)
-  (exitcode, _, stderr) <- liftIO $ readProcessWithExitCode cmd [args] ""
+  (exitcode, _, stderr) <- liftIO $ readCreateProcessWithExitCode ((Proc.proc cmd [args]) { Proc.cwd = (Just root) }) ""
   case exitcode of
     ExitSuccess -> return ()
     ExitFailure _ -> notifyError stderr
