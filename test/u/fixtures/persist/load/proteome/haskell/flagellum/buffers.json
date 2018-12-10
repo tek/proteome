@@ -1,7 +1,1 @@
-{
-  "current": 3,
-  "buffers": [
-    "path": "/tmp/1",
-    "path": "/tmp/2"
-  ]
-}
+{"current":"/home/tek/code/tek/haskell/proteome-hs/test/u/fixtures/persist/store/file2","buffers":["/home/tek/code/tek/haskell/proteome-hs/test/u/fixtures/persist/store/file1","/home/tek/code/tek/haskell/proteome-hs/test/u/fixtures/persist/store/file2","/home/tek/code/tek/haskell/proteome-hs/test/u/fixtures/persist/store/file3"]}

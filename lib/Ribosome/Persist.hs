@@ -7,8 +7,8 @@ module Ribosome.Persist(
 ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (ToJSON, FromJSON, encode)
-import qualified Data.ByteString.Lazy as B (writeFile)
+import Data.Aeson (ToJSON, FromJSON, encode, eitherDecode)
+import qualified Data.ByteString.Lazy as B (writeFile, readFile)
 import System.FilePath (takeDirectory, (</>))
 import System.Directory (getXdgDirectory, XdgDirectory(XdgCache), createDirectoryIfMissing)
 import Ribosome.Data.Ribo (Ribo)
@@ -25,7 +25,7 @@ persistencePath path = do
   name <- Ribo.name
   let prefixed = name </> path
   custom <- settingE S.persistenceDir
-  either (\_ -> liftIO $ defaultPersistencePath prefixed) (\c -> return $ c </> prefixed) custom
+  either (const $ liftIO $ defaultPersistencePath prefixed) (\c -> return $ c </> prefixed) custom
 
 persistenceFile :: FilePath -> Ribo e FilePath
 persistenceFile path = do
@@ -38,5 +38,8 @@ persistStore path a = do
   file <- persistenceFile path
   liftIO $ B.writeFile file (encode a)
 
-persistLoad :: FromJSON a => FilePath -> Ribo e a
-persistLoad _ = undefined
+persistLoad :: FromJSON a => FilePath -> Ribo e (Either String a)
+persistLoad path = do
+  file <- persistenceFile path
+  json <- liftIO $ B.readFile file
+  return $ eitherDecode json

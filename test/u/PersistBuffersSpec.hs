@@ -10,7 +10,7 @@ import Data.Aeson (decode)
 import qualified Data.ByteString.Lazy as B (readFile)
 import System.FilePath ((</>))
 import Test.Framework
-import Neovim (vim_get_buffers')
+import Neovim (vim_get_buffers', vim_get_current_buffer', buffer_get_name')
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
@@ -29,20 +29,24 @@ import Proteome.PersistBuffers (loadBuffers, storeBuffers, PersistBuffers(Persis
 import Proteome.Test.Unit (specWithDef)
 import Config (vars)
 
+main :: ProjectMetadata
+main = DirProject (ProjectName "flagellum") (ProjectRoot "") (Just (ProjectType "haskell"))
+
 loadBuffersSpec :: Proteome ()
 loadBuffersSpec = do
+  Ribo.modify $ set (_mainProject._meta) main
   persistDir <- fixture "persist/load"
+  fixDir <- fixture "persist/store"
   updateSetting persistenceDir persistDir
   loadBuffers
   buffers <- vim_get_buffers'
-  liftIO $ assertEqual (length buffers) 3
+  liftIO $ assertEqual (length buffers) 4
+  active <- buffer_get_name' =<< vim_get_current_buffer'
+  liftIO $ assertEqual active (fixDir </> "file2")
 
 test_loadBuffers :: IO ()
 test_loadBuffers =
   vars >>= specWithDef loadBuffersSpec
-
-main :: ProjectMetadata
-main = DirProject (ProjectName "flagellum") (ProjectRoot "") (Just (ProjectType "haskell"))
 
 storeTarget :: FilePath -> FilePath -> FilePath -> PersistBuffers
 storeTarget f1 f2 f3 = PersistBuffers (Just f2) [f1, f2, f3]
