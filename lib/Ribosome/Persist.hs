@@ -6,10 +6,12 @@ module Ribosome.Persist(
   persistLoad,
 ) where
 
+import GHC.IO.Exception (IOException)
+import Control.Exception (try)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), catchE, mapExceptT)
 import Data.Aeson (ToJSON, FromJSON, encode, eitherDecode)
-import qualified Data.ByteString.Lazy as B (writeFile, readFile)
+import qualified Data.ByteString.Lazy as B (writeFile, readFile, ByteString)
 import System.FilePath (takeDirectory, (</>))
 import System.Directory (getXdgDirectory, XdgDirectory(XdgCache), createDirectoryIfMissing)
 import Ribosome.Data.Ribo (Ribo)
@@ -48,8 +50,11 @@ persistStore path a = do
 noSuchFile :: Monad m => FilePath -> ExceptT String m a
 noSuchFile file = ExceptT $ return $ Left $ "persistence file " ++ file ++ " doesn't exist"
 
-persistLoad :: FromJSON a => FilePath -> (ExceptT String (Ribo e) a)
+safeReadFile :: MonadIO m => FilePath -> m (Either IOException B.ByteString)
+safeReadFile file = liftIO $ try $ B.readFile file
+
+persistLoad :: FromJSON a => FilePath -> ExceptT String (Ribo e) a
 persistLoad path = do
   file <- liftExceptT $ persistenceFile path
-  json <- catchE (liftExceptTIO $ B.readFile file) (const $ noSuchFile file)
+  json <- catchE (ExceptT $ safeReadFile file) (const $ noSuchFile file)
   ExceptT $ return $ eitherDecode json
