@@ -9,6 +9,7 @@ module Proteome.PersistBuffers(
 import GHC.Generics
 import Control.Monad (filterM)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Except (runExceptT)
 import Data.Aeson (ToJSON(toEncoding), FromJSON, genericToEncoding, defaultOptions)
 import Data.Foldable (traverse_)
 import System.Directory (doesFileExist)
@@ -55,7 +56,7 @@ storeBuffers' path = do
   persistStore (path </> "buffers") (PersistBuffers current' files)
 
 decodePersistBuffers :: FilePath -> Proteome (Either String PersistBuffers)
-decodePersistBuffers path = persistLoad (path </> "buffers")
+decodePersistBuffers path = runExceptT $ persistLoad (path </> "buffers")
 
 restoreBuffers :: PersistBuffers -> Proteome ()
 restoreBuffers (PersistBuffers current' buffers') = do

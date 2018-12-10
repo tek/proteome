@@ -41,6 +41,7 @@ dependencies:
 - MissingH
 - aeson
 - bytestring
+- transformers
 
 library:
   source-dirs: lib
