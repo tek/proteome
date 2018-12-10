@@ -60,8 +60,8 @@ decodePersistBuffers path = runExceptT $ persistLoad (path </> "buffers")
 
 restoreBuffers :: PersistBuffers -> Proteome ()
 restoreBuffers (PersistBuffers current' buffers') = do
-  traverse_ (\a -> vim_command' ("badd " ++ a)) buffers'
   mapM_ edit current'
+  traverse_ (\a -> vim_command' ("silent! badd " ++ a)) buffers'
 
 loadBuffers' :: FilePath -> Proteome ()
 loadBuffers' path = do
