@@ -2,6 +2,7 @@ module Proteome.Init(
   initialize,
   proteomeStage2,
   proteomeStage4,
+  proteomeStage1,
 ) where
 
 import Control.Monad.Reader

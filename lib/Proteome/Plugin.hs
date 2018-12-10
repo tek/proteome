@@ -21,6 +21,7 @@ plugin' env =
     environment = Ribosome "proteome" env,
     exports = [
       $(function' 'proteomePoll) Sync,
+      $(function' 'proteomeStage1) Async,
       $(function' 'proteomeStage2) Async,
       $(function' 'proteomeStage4) Async,
       $(function' 'proAdd) Async,
