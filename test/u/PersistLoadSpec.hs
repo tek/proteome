@@ -37,7 +37,7 @@ loadBuffersSpec = do
   updateSetting persistenceDir persistDir
   loadBuffers
   buffers <- vim_get_buffers'
-  liftIO $ assertEqual (length buffers) 4
+  liftIO $ assertEqual 3 (length buffers)
   active <- buffer_get_name' =<< vim_get_current_buffer'
   liftIO $ assertEqual active (fixDir </> "file2")
 
