@@ -4,6 +4,7 @@ module Main where
 
 import {-@ HTF_TESTS @-} ConfigSpec
 import {-@ HTF_TESTS @-} InitSpec
+import {-@ HTF_TESTS @-} AddSpec
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 

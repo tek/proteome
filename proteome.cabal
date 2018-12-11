@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 253f2bcd45ce64013d00eab5a362bd7ee5f082fc4a94e243968dcce3c3369c0d
+-- hash: 6c64cc0b4e51cdb30bc940e5df736d1e30386a926a2b15d5997d0e180bed1c5f
 
 name:           proteome
 version:        0.3.4.0
@@ -30,6 +30,7 @@ library
   exposed-modules:
       Proteome.Add
       Proteome.Config
+      Proteome.Data.AddOptions
       Proteome.Data.Env
       Proteome.Data.Project
       Proteome.Data.ProjectSpec
@@ -59,12 +60,14 @@ library
       Ribosome.Internal.IO
       Ribosome.Internal.NvimObject
       Ribosome.Log
+      Ribosome.Monad
       Ribosome.Persist
       Ribosome.Test.Embed
       Ribosome.Test.Exists
       Ribosome.Test.File
       Ribosome.Test.Functional
       Ribosome.Test.Unit
+      Ribosome.Unsafe
   other-modules:
       Paths_proteome
   hs-source-dirs:
@@ -141,6 +144,7 @@ test-suite proteome-functional
   type: exitcode-stdio-1.0
   main-is: SpecMain.hs
   other-modules:
+      AddSpec
       Config
       ConfigSpec
       InitSpec

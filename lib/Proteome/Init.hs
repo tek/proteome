@@ -6,19 +6,17 @@ module Proteome.Init(
   proteomeStage1,
 ) where
 
-import Control.Monad.Reader
 import Data.Default.Class (Default(def))
 import System.Directory (getCurrentDirectory, makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Neovim (Neovim)
 import UnliftIO.STM (TVar, newTVarIO)
-import Ribosome.Config.Setting (setting, settingE, updateSetting)
+import Ribosome.Config.Setting (settingE, updateSetting)
 import Ribosome.Data.Ribo (Ribo)
 import qualified Ribosome.Data.Ribo as Ribo (inspect)
 import Ribosome.Data.Ribosome (Ribosome(Ribosome))
-import Ribosome.File (canonicalPaths)
 import Ribosome.Internal.IO (retypeNeovim)
 import Proteome.Data.Env (Env(Env))
 import qualified Proteome.Data.Env as Env (mainProject)
@@ -30,7 +28,7 @@ import Proteome.Data.Project (
   ProjectType(..),
   ProjectMetadata(DirProject),
   )
-import Proteome.Project.Resolve (resolveProject)
+import Proteome.Project.Resolve (resolveProjectFromConfig)
 import Proteome.Config (readConfig)
 import Proteome.PersistBuffers (loadBuffers)
 import Proteome.Log
@@ -50,11 +48,7 @@ mainProject :: Ribo e Project
 mainProject = do
   mainDir <- settingE S.mainProjectDir
   (root, name, tpe) <- pathData mainDir
-  baseDirs <- (canonicalPaths <=< setting) S.projectBaseDirs
-  -- typeDirs <- setting S.projectTypeDirs
-  explicit <- setting S.projects
-  config <- setting S.projectConfig
-  return $ resolveProject baseDirs explicit config root name (Just tpe)
+  resolveProjectFromConfig (Just root) name (Just tpe)
 
 loadPersistedBuffers :: Project -> Neovim e ()
 loadPersistedBuffers _ = return ()

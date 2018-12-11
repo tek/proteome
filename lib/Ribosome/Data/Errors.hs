@@ -10,16 +10,18 @@ import Data.Map.Strict (Map)
 
 newtype ComponentName =
   ComponentName String
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 data Error =
   Error {
     errorTimestamp :: Int,
     errorMessage :: [String]
   }
+  deriving Show
 
 newtype Errors =
   Errors (Map ComponentName [Error])
+  deriving Show
 
 instance Default Errors where
   def = Errors Map.empty

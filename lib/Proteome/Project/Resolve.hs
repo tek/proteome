@@ -2,15 +2,23 @@
 
 module Proteome.Project.Resolve(
   resolveProject,
+  resolveProjectFromConfig,
 ) where
 
+import Control.Monad (foldM, join)
+import Control.Monad.Reader ((<=<))
+import Control.Monad.IO.Class (liftIO)
 import Data.List (find)
 import Data.List.Utils (uniq)
 import Data.Maybe (fromMaybe)
 import Data.Map.Strict ((!?), Map)
-import System.FilePath (takeDirectory)
-import Ribosome.Data.Maybe (orElse)
+import System.Directory (doesDirectoryExist)
+import System.FilePath (takeDirectory, (</>))
+import Ribosome.File (canonicalPaths)
 import Proteome.Config (ProjectConfig(ProjectConfig))
+import Ribosome.Config.Setting (setting)
+import Ribosome.Data.Maybe (orElse)
+import Ribosome.Data.Ribo (Ribo)
 import Proteome.Data.Project (
   Project(Project),
   ProjectName(..),
@@ -21,6 +29,7 @@ import Proteome.Data.Project (
   )
 import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
+import qualified Proteome.Settings as S
 
 projectFromSegments :: ProjectType -> ProjectName -> ProjectRoot -> Project
 projectFromSegments tpe name root =
@@ -41,18 +50,36 @@ hasProjectTypeName _ _ _ = False
 byProjectTypeName :: [ProjectSpec] -> ProjectName -> ProjectType -> Maybe ProjectSpec
 byProjectTypeName specs name tpe = find (hasProjectTypeName tpe name) specs
 
-byProjectBases :: [FilePath] -> ProjectRoot -> Bool
-byProjectBases baseDirs (ProjectRoot root) = (takeDirectory . takeDirectory) root `elem` baseDirs
+matchProjectBases :: [FilePath] -> ProjectRoot -> Bool
+matchProjectBases baseDirs (ProjectRoot root) = (takeDirectory . takeDirectory) root `elem` baseDirs
+
+byProjectBaseSubpath :: ProjectName -> ProjectType -> FilePath -> IO (Maybe Project)
+byProjectBaseSubpath n@(ProjectName name) t@(ProjectType tpe) base = do
+  exists <- doesDirectoryExist root
+  return $ if exists then Just $ projectFromSegments t n (ProjectRoot root) else Nothing
+  where root = base </> tpe </> name
+
+byProjectBasesSubpath :: [FilePath] -> ProjectName -> ProjectType -> IO (Maybe Project)
+byProjectBasesSubpath baseDirs name tpe =
+  foldM subpath Nothing baseDirs
+  where
+    subpath (Just p) _ = return (Just p)
+    subpath Nothing a = byProjectBaseSubpath name tpe a
 
 virtualProject :: ProjectName -> Project
 virtualProject name = Project (VirtualProject name) [] Nothing []
 
-resolveByType :: [FilePath] -> [ProjectSpec] -> ProjectRoot -> ProjectName -> ProjectType -> Maybe Project
-resolveByType baseDirs explicit root name tpe =
-  orElse (if byPath then Just (projectFromSegments tpe name root) else Nothing) (fmap projectFromSpec byTypeName)
+resolveByTypeAndPath :: [FilePath] -> ProjectName -> ProjectType -> ProjectRoot -> Maybe Project
+resolveByTypeAndPath baseDirs name tpe root =
+  if matchProjectBases baseDirs root then Just (projectFromSegments tpe name root) else Nothing
+
+resolveByType :: [FilePath] -> [ProjectSpec] -> Maybe ProjectRoot -> ProjectName -> ProjectType -> IO (Maybe Project)
+resolveByType baseDirs explicit root name tpe = do
+  byBaseSubpath <- byProjectBasesSubpath baseDirs name tpe
+  return $ orElse (orElse byPath byBaseSubpath) (fmap projectFromSpec byTypeName)
   where
     byTypeName = byProjectTypeName explicit name tpe
-    byPath = byProjectBases baseDirs root
+    byPath = root >>= resolveByTypeAndPath baseDirs name tpe
 
 resolveByRoot :: [ProjectSpec] -> ProjectRoot -> Maybe Project
 resolveByRoot explicit root =
@@ -83,14 +110,21 @@ resolveProject ::
   [FilePath] ->
   [ProjectSpec] ->
   ProjectConfig ->
-  ProjectRoot ->
+  Maybe ProjectRoot ->
   ProjectName ->
   Maybe ProjectType ->
-  Project
-resolveProject baseDirs explicit config root name tpe =
-  augmentFromConfig config project
-  where
-    project = fromMaybe byTypeOrVirtual byRoot
-    byTypeOrVirtual = fromMaybe (virtualProject name) byType
-    byType = tpe >>= resolveByType baseDirs explicit root name
-    byRoot = resolveByRoot explicit root
+  IO Project
+resolveProject baseDirs explicit config root name tpe = do
+  byType <- traverse (resolveByType baseDirs explicit root name) tpe
+  let byTypeOrVirtual = fromMaybe (virtualProject name) (join byType)
+  let byRoot = root >>= resolveByRoot explicit
+  let project = fromMaybe byTypeOrVirtual byRoot
+  return $ augmentFromConfig config project
+
+resolveProjectFromConfig :: Maybe ProjectRoot -> ProjectName -> Maybe ProjectType -> Ribo e Project
+resolveProjectFromConfig root name tpe = do
+  baseDirs <- (canonicalPaths <=< setting) S.projectBaseDirs
+  -- typeDirs <- setting S.projectTypeDirs
+  explicit <- setting S.projects
+  config <- setting S.projectConfig
+  liftIO $ resolveProject baseDirs explicit config root name tpe

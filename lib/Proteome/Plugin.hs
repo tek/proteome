@@ -6,11 +6,11 @@ module Proteome.Plugin(
 where
 
 import UnliftIO.STM (TVar)
-import Neovim
+import Neovim (Plugin(..), function', Neovim, StartupConfig, NeovimConfig, NeovimPlugin, Synchronous(..), wrapPlugin)
 import Ribosome.Data.Ribosome (Ribosome(Ribosome))
 import Proteome.Init
 import Proteome.Data.Env
-import Proteome.Add (proAdd, proteomePoll)
+import Proteome.Add (proAdd)
 import Proteome.Config (proReadConfig)
 import Proteome.Tags (proTags)
 import Proteome.Save (proSave)

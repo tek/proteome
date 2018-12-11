@@ -62,5 +62,5 @@ targetProject = Project (DirProject name root (Just tpe)) [tpe1, tpe2] (Just lan
 
 test_typeMap :: IO ()
 test_typeMap = do
-  let project = resolveProject ["/projects"] [] config root name (Just tpe)
+  project <- resolveProject ["/projects"] [] config (Just root) name (Just tpe)
   assertEqual targetProject project

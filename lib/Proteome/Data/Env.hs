@@ -12,11 +12,13 @@ import Data.Default.Class (Default(def))
 import Ribosome.Data.Errors (Errors)
 import Proteome.Data.Project(Project)
 
-data Env = Env {
-  mainProject :: Project,
-  projects :: [Project],
-  errors :: Errors
-}
+data Env =
+  Env {
+    mainProject :: Project,
+    projects :: [Project],
+    errors :: Errors
+  }
+  deriving Show
 
 makeClassy_ ''Env
 
