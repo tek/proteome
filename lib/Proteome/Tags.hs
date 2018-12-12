@@ -8,6 +8,7 @@ import GHC.IO.Exception (ExitCode(..))
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Lens (over)
+import Data.Foldable (traverse_)
 import Data.List (intercalate)
 import qualified Data.Map.Strict as Map (adjust)
 import Data.Maybe (maybeToList)
@@ -20,7 +21,7 @@ import Ribosome.Config.Setting (setting)
 import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
 import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
 import Ribosome.Internal.IO (forkNeovim)
-import Proteome.Data.Env (Env(mainProject))
+import Proteome.Data.Env (Env(mainProject, projects))
 import qualified Proteome.Data.Env as Env (_errors)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
@@ -31,6 +32,7 @@ import Proteome.Data.Project (
   langOrType,
   )
 import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork, tagsFileName)
+import Proteome.Log
 
 replaceFormatItem :: String -> (String, String) -> String
 replaceFormatItem original (placeholder, replacement) =
@@ -42,7 +44,7 @@ formatTagsArgs langs (ProjectRoot root) fileName formatString =
   where
     formats = [
       ("langsComma", intercalate "," $ fmap (\(ProjectLang l) -> l) langs),
-      ("tagFile", fileName),
+      ("tagFile", root </> fileName),
       ("root", root)
       ]
 
@@ -61,13 +63,19 @@ storeError name msg (Errors errors) =
     time = 0
 
 notifyError :: String -> Proteome ()
-notifyError e =
+notifyError e = do
+  infoS $ "tags failed: " ++ e
   Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") [e])
 
+tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
+tagsProcess (ProjectRoot root) cmd args =
+  readCreateProcessWithExitCode (Proc.proc cmd (words args)) { Proc.cwd = Just root } ""
+
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
-executeTags (ProjectRoot root) cmd args = do
-  deleteTags (ProjectRoot root)
-  (exitcode, _, stderr) <- liftIO $ readCreateProcessWithExitCode ((Proc.proc cmd [args]) { Proc.cwd = (Just root) }) ""
+executeTags root@(ProjectRoot rootS) cmd args = do
+  deleteTags root
+  debugS $ "executing tags: `" ++ cmd ++ " " ++ args ++ "` in directory " ++ rootS
+  (exitcode, _, stderr) <- liftIO $ tagsProcess root cmd args
   case exitcode of
     ExitSuccess -> return ()
     ExitFailure _ -> notifyError stderr
@@ -82,10 +90,13 @@ regenerateTags root langs = do
   _ <- if fork then forkNeovim thunk else thunk
   return ()
 
+projectTags :: Project -> Proteome ()
+projectTags (Project (DirProject _ root tpe) _ lang langs ) =
+  regenerateTags root (maybeToList (langOrType lang tpe) ++ langs)
+projectTags _ = return ()
+
 proTags :: Proteome ()
 proTags = do
   main <- Ribo.inspect mainProject
-  case main of
-    Project (DirProject _ root tpe) _ lang langs ->
-      regenerateTags root (maybeToList (langOrType lang tpe) ++ langs)
-    _ -> return ()
+  extra <- Ribo.inspect projects
+  traverse_ projectTags (main : extra)
