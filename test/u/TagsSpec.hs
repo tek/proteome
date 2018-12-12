@@ -37,10 +37,10 @@ tagsSpec = do
   Ribo.modify $ set (_mainProject._meta) (main root)
   Ribo.modify $ set (_mainProject._lang) (Just (ProjectLang "idris"))
   updateSetting S.tagsCommand "touch"
-  updateSetting S.tagsArgs "tags-{langsComma}-{tagFile}"
+  updateSetting S.tagsArgs "tags-{langsComma}"
   updateSetting S.tagsFork False
   proTags
-  let tagsFile = root </> "tags-idris-.tags"
+  let tagsFile = root </> "tags-idris"
   exists <- liftIO $ doesFileExist tagsFile
   liftIO $ assertBool exists
 
