@@ -71,6 +71,8 @@ tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
 tagsProcess (ProjectRoot root) cmd args =
   readCreateProcessWithExitCode (Proc.proc cmd (words args)) { Proc.cwd = Just root } ""
 
+-- TODO write to temp file, move to actual file after
+-- TODO lock process in state to avoid multiple processes trying to access the file
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags root@(ProjectRoot rootS) cmd args = do
   deleteTags root

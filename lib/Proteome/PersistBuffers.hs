@@ -17,6 +17,7 @@ import System.FilePath ((</>))
 import Neovim (vim_get_current_buffer', vim_get_buffers', buffer_get_name', vim_command')
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Persist (persistStore, persistLoad)
+import Ribosome.Data.Ribo (lockOrSkip)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project(Project),
@@ -45,6 +46,7 @@ projectSubPath = do
     Project (DirProject (ProjectName name) _ (Just (ProjectType tpe))) _ _ _ -> Just $ tpe </> name
     _ -> Nothing
 
+-- TODO lock process in state to avoid multiple processes trying to access the file
 storeBuffers' :: FilePath -> Proteome ()
 storeBuffers' path = do
   active <- vim_get_current_buffer'
@@ -58,15 +60,20 @@ storeBuffers' path = do
 decodePersistBuffers :: FilePath -> Proteome (Either String PersistBuffers)
 decodePersistBuffers path = runExceptT $ persistLoad (path </> "buffers")
 
+-- TODO only restore current buffer when none is active
 restoreBuffers :: PersistBuffers -> Proteome ()
 restoreBuffers (PersistBuffers current' buffers') = do
   mapM_ edit current'
   traverse_ (\a -> vim_command' ("silent! badd " ++ a)) buffers'
 
-loadBuffers' :: FilePath -> Proteome ()
-loadBuffers' path = do
+unsafeLoadBuffers :: FilePath -> Proteome ()
+unsafeLoadBuffers path = do
   pb <- decodePersistBuffers path
   mapM_ restoreBuffers pb
+
+safeLoadBuffers :: FilePath -> Proteome ()
+safeLoadBuffers path =
+  lockOrSkip "load-buffers" $ unsafeLoadBuffers path
 
 storeBuffers :: Proteome ()
 storeBuffers = do
@@ -76,4 +83,4 @@ storeBuffers = do
 loadBuffers :: Proteome ()
 loadBuffers = do
   sub <- projectSubPath
-  mapM_ loadBuffers' sub
+  mapM_ safeLoadBuffers sub
