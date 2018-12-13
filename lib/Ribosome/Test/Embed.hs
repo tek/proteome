@@ -12,7 +12,7 @@ import Data.Foldable (traverse_)
 import Neovim (Neovim, Object, vim_set_var')
 import Neovim.Test (testWithEmbeddedNeovim, Seconds(..))
 import Ribosome.Data.Ribo (Ribo)
-import Ribosome.Data.Ribosome (Ribosome(Ribosome))
+import Ribosome.Data.Ribosome (Ribosome(Ribosome), newInternalTVar)
 import Ribosome.Api.Option (rtpCat)
 
 type Runner env = TestConfig -> Neovim env () -> Neovim env ()
@@ -43,5 +43,6 @@ setupPluginEnv (TestConfig _ rtp _ vars) = do
   setVars vars
 
 unsafeEmbeddedSpec :: Runner (Ribosome e) -> TestConfig -> e -> Ribo e () -> IO ()
-unsafeEmbeddedSpec runner conf env spec =
-  testWithEmbeddedNeovim Nothing (Seconds 5) (Ribosome (pluginName conf) env) $ runner conf spec
+unsafeEmbeddedSpec runner conf env spec = do
+  internal <- newInternalTVar
+  testWithEmbeddedNeovim Nothing (Seconds 5) (Ribosome (pluginName conf) internal env) $ runner conf spec

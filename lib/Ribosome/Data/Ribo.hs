@@ -4,18 +4,23 @@ module Ribosome.Data.Ribo(
   inspect,
   modify,
   name,
+  lockOrSkip,
 ) where
 
 import Control.Concurrent.STM.TVar (modifyTVar)
+import qualified Control.Lens as Lens (view, over, at)
+import qualified Data.Map.Strict as Map (insert, delete)
+import UnliftIO (finally)
 import UnliftIO.STM (TVar, atomically, readTVarIO)
 import Neovim (Neovim, ask)
-import Ribosome.Data.Ribosome (Ribosome(Ribosome))
+import Ribosome.Data.Ribosome (Ribosome(Ribosome), Locks)
+import qualified Ribosome.Data.Ribosome as Ribosome (_locks, locks)
 
 type Ribo e = Neovim (Ribosome e)
 
 state :: Ribo (TVar e) e
 state = do
-  Ribosome _ t <- ask
+  Ribosome _ _ t <- ask
   readTVarIO t
 
 inspect :: (e -> a) -> Ribo (TVar e) a
@@ -23,10 +28,42 @@ inspect f = fmap f state
 
 modify :: (e -> e) -> Ribo (TVar e) ()
 modify f = do
-  Ribosome _ t <- ask
+  Ribosome _ _ t <- ask
   atomically $ modifyTVar t f
 
 name :: Ribo e String
 name = do
-  Ribosome n _ <- ask
+  Ribosome n _ _ <- ask
   return n
+
+getLocks :: Ribo e Locks
+getLocks = do
+  Ribosome _ intTv _ <- ask
+  int <- readTVarIO intTv
+  return $ Ribosome.locks int
+
+inspectLocks :: (Locks -> a) -> Ribo e a
+inspectLocks f = fmap f getLocks
+
+modifyLocks :: (Locks -> Locks) -> Ribo e ()
+modifyLocks f = do
+  Ribosome _ intTv _ <- ask
+  atomically $ modifyTVar intTv $ Lens.over Ribosome._locks f
+
+unlock :: String -> Ribo e ()
+unlock key =
+  modifyLocks $ Map.delete key
+
+lock :: String -> Ribo e Bool
+lock key = do
+  currentLock <- inspectLocks $ Lens.view $ Lens.at key
+  case currentLock of
+    Just _ -> return True
+    Nothing -> do
+      modifyLocks $ Map.insert key ()
+      return False
+
+lockOrSkip :: String -> Ribo e () -> Ribo e ()
+lockOrSkip key thunk = do
+  running <- lock key
+  if running then return () else finally thunk $ unlock key

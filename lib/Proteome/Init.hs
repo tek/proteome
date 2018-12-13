@@ -12,11 +12,10 @@ import System.FilePath (takeFileName, takeDirectory)
 import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Neovim (Neovim)
-import UnliftIO.STM (TVar, newTVarIO)
 import Ribosome.Config.Setting (settingE, updateSetting)
 import Ribosome.Data.Ribo (Ribo)
 import qualified Ribosome.Data.Ribo as Ribo (inspect)
-import Ribosome.Data.Ribosome (Ribosome(Ribosome))
+import Ribosome.Data.Ribosome (Ribosome(Ribosome), newInternalTVar)
 import Ribosome.Internal.IO (retypeNeovim)
 import Proteome.Data.Env (Env(Env))
 import qualified Proteome.Data.Env as Env (mainProject)
@@ -75,11 +74,11 @@ initialize' = do
   main <- mainProject
   initWithMain main
 
-initialize :: Neovim e (TVar Env)
+initialize :: Neovim e Env
 initialize = do
   liftIO $ updateGlobalLogger "Neovim.Plugin" (setLevel ERROR)
-  env <- retypeNeovim (Ribosome "proteome") initialize'
-  newTVarIO env
+  internal <- newInternalTVar
+  retypeNeovim (Ribosome "proteome" internal) initialize'
 
 proteomeStage1 :: Proteome ()
 proteomeStage1 = loadBuffers

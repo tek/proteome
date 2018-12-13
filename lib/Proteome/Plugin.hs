@@ -7,18 +7,18 @@ where
 
 import UnliftIO.STM (TVar)
 import Neovim (Plugin(..), function', Neovim, StartupConfig, NeovimConfig, NeovimPlugin, Synchronous(..), wrapPlugin)
-import Ribosome.Data.Ribosome (Ribosome(Ribosome))
-import Proteome.Init
-import Proteome.Data.Env
+import Ribosome.Data.Ribosome (Ribosome, newRibosome)
+import Proteome.Init (proteomePoll, proteomeStage1, proteomeStage2, proteomeStage4, initialize)
+import Proteome.Data.Env (Env)
 import Proteome.Add (proAdd)
 import Proteome.Config (proReadConfig)
 import Proteome.Tags (proTags)
 import Proteome.Save (proSave)
 
-plugin' :: TVar Env -> Plugin (Ribosome (TVar Env))
+plugin' :: Ribosome (TVar Env) -> Plugin (Ribosome (TVar Env))
 plugin' env =
   Plugin {
-    environment = Ribosome "proteome" env,
+    environment = env,
     exports = [
       $(function' 'proteomePoll) Sync,
       $(function' 'proteomeStage1) Async,
@@ -34,4 +34,5 @@ plugin' env =
 plugin :: Neovim (StartupConfig NeovimConfig) NeovimPlugin
 plugin = do
   env <- initialize
-  wrapPlugin $ plugin' env
+  env' <- newRibosome "proteome" env
+  wrapPlugin $ plugin' env'
