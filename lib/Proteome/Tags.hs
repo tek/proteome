@@ -18,6 +18,7 @@ import qualified System.Process as Proc (proc, CreateProcess(cwd))
 import System.FilePath ((</>))
 import System.Directory (doesFileExist, removePathForcibly)
 import Ribosome.Config.Setting (setting)
+import Ribosome.Data.Ribo (lockOrSkip)
 import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
 import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
 import Ribosome.Internal.IO (forkNeovim)
@@ -72,7 +73,6 @@ tagsProcess (ProjectRoot root) cmd args =
   readCreateProcessWithExitCode (Proc.proc cmd (words args)) { Proc.cwd = Just root } ""
 
 -- TODO write to temp file, move to actual file after
--- TODO lock process in state to avoid multiple processes trying to access the file
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags root@(ProjectRoot rootS) cmd args = do
   deleteTags root
@@ -101,4 +101,4 @@ proTags :: Proteome ()
 proTags = do
   main <- Ribo.inspect mainProject
   extra <- Ribo.inspect projects
-  traverse_ projectTags (main : extra)
+  lockOrSkip "tags" $ traverse_ projectTags (main : extra)
