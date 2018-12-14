@@ -9,9 +9,9 @@ module Ribosome.Data.Ribo(
 
 import Control.Concurrent.STM.TVar (modifyTVar)
 import qualified Control.Lens as Lens (view, over, at)
-import qualified Data.Map.Strict as Map (insert, delete)
+import qualified Data.Map.Strict as Map (insert)
 import UnliftIO (finally)
-import UnliftIO.STM (TVar, atomically, readTVarIO)
+import UnliftIO.STM (TVar, TMVar, atomically, readTVarIO, newTMVarIO, tryTakeTMVar, tryPutTMVar)
 import Neovim (Neovim, ask)
 import Ribosome.Data.Ribosome (Ribosome(Ribosome), Locks)
 import qualified Ribosome.Data.Ribosome as Ribosome (_locks, locks)
@@ -50,20 +50,20 @@ modifyLocks f = do
   Ribosome _ intTv _ <- ask
   atomically $ modifyTVar intTv $ Lens.over Ribosome._locks f
 
-unlock :: String -> Ribo e ()
-unlock key =
-  modifyLocks $ Map.delete key
-
-lock :: String -> Ribo e Bool
-lock key = do
+getOrCreateLock :: String -> Ribo e (TMVar ())
+getOrCreateLock key = do
   currentLock <- inspectLocks $ Lens.view $ Lens.at key
   case currentLock of
-    Just _ -> return True
+    Just tv -> return tv
     Nothing -> do
-      modifyLocks $ Map.insert key ()
-      return False
+      tv <- newTMVarIO ()
+      modifyLocks $ Map.insert key tv
+      getOrCreateLock key
 
 lockOrSkip :: String -> Ribo e () -> Ribo e ()
 lockOrSkip key thunk = do
-  running <- lock key
-  if running then return () else finally thunk $ unlock key
+  currentLock <- getOrCreateLock key
+  currentState <- atomically $ tryTakeTMVar currentLock
+  case currentState of
+    Just _ -> finally thunk $ atomically $ tryPutTMVar currentLock ()
+    Nothing -> return ()

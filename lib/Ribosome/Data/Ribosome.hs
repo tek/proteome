@@ -14,12 +14,12 @@ module Ribosome.Data.Ribosome(
 ) where
 
 import Control.Lens (makeClassy_)
-import UnliftIO.STM (TVar, newTVarIO)
+import UnliftIO.STM (TVar, newTVarIO, TMVar)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map (empty)
 
-type Locks = Map String ()
+type Locks = Map String (TMVar ())
 
 newtype RibosomeInternal =
   RibosomeInternal {
