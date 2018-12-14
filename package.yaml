@@ -1,5 +1,5 @@
 name: proteome
-version: 0.3.7.0
+version: 0.3.8.0
 synopsis: neovim project manager
 description: Please see the README on GitHub at <https://github.com/tek/proteome-hs>
 github: "tek/proteome-hs"
