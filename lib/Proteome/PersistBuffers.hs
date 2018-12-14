@@ -15,7 +15,7 @@ import Data.Foldable (traverse_)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
 import Neovim (vim_get_current_buffer', vim_get_buffers', buffer_get_name', vim_command')
-import Ribosome.Api.Buffer (edit)
+import Ribosome.Api.Buffer (edit, buflisted)
 import Ribosome.Persist (persistStore, persistLoad)
 import Ribosome.Data.Ribo (lockOrSkip)
 import Proteome.Data.Proteome (Proteome)
@@ -52,7 +52,7 @@ unsafeStoreBuffers path = do
   activeName <- buffer_get_name' active
   activeIsFile <- liftIO $ doesFileExist activeName
   let current' = if activeIsFile then Just activeName else Nothing
-  all' <- vim_get_buffers' >>= traverse buffer_get_name'
+  all' <- vim_get_buffers' >>= filterM buflisted >>= traverse buffer_get_name'
   files <- liftIO $ filterM doesFileExist all'
   persistStore (path </> "buffers") (PersistBuffers current' files)
 
