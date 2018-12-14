@@ -46,9 +46,8 @@ projectSubPath = do
     Project (DirProject (ProjectName name) _ (Just (ProjectType tpe))) _ _ _ -> Just $ tpe </> name
     _ -> Nothing
 
--- TODO lock process in state to avoid multiple processes trying to access the file
-storeBuffers' :: FilePath -> Proteome ()
-storeBuffers' path = do
+unsafeStoreBuffers :: FilePath -> Proteome ()
+unsafeStoreBuffers path = do
   active <- vim_get_current_buffer'
   activeName <- buffer_get_name' active
   activeIsFile <- liftIO $ doesFileExist activeName
@@ -56,6 +55,10 @@ storeBuffers' path = do
   all' <- vim_get_buffers' >>= traverse buffer_get_name'
   files <- liftIO $ filterM doesFileExist all'
   persistStore (path </> "buffers") (PersistBuffers current' files)
+
+safeStoreBuffers :: FilePath -> Proteome ()
+safeStoreBuffers path =
+  lockOrSkip "store-buffers" $ unsafeStoreBuffers path
 
 decodePersistBuffers :: FilePath -> Proteome (Either String PersistBuffers)
 decodePersistBuffers path = runExceptT $ persistLoad (path </> "buffers")
@@ -78,7 +81,7 @@ safeLoadBuffers path =
 storeBuffers :: Proteome ()
 storeBuffers = do
   sub <- projectSubPath
-  mapM_ storeBuffers' sub
+  mapM_ safeStoreBuffers sub
 
 loadBuffers :: Proteome ()
 loadBuffers = do
