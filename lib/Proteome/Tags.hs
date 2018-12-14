@@ -16,7 +16,8 @@ import Data.String.Utils (replace)
 import System.Process (readCreateProcessWithExitCode)
 import qualified System.Process as Proc (proc, CreateProcess(cwd))
 import System.FilePath ((</>))
-import System.Directory (doesFileExist, removePathForcibly)
+import System.Directory (doesFileExist, removePathForcibly, renameFile)
+import UnliftIO (tryIO)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Data.Ribo (lockOrSkip)
 import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
@@ -49,12 +50,23 @@ formatTagsArgs langs (ProjectRoot root) fileName formatString =
       ("root", root)
       ]
 
+tempname :: String -> String
+tempname name = name ++ ".tmp"
+
 deleteTags :: ProjectRoot -> Proteome ()
 deleteTags (ProjectRoot root) = do
   name <- setting S.tagsFileName
-  let path = root </> name
+  let path = root </> tempname name
   exists <- liftIO $ doesFileExist path
   when exists $ liftIO $ removePathForcibly path
+
+replaceTags :: ProjectRoot -> Proteome ()
+replaceTags (ProjectRoot root) = do
+  name <- setting S.tagsFileName
+  let temppath = root </> tempname name
+  let path = root </> name
+  _ <- liftIO $ tryIO $ renameFile temppath path
+  return ()
 
 storeError :: ComponentName -> [String] -> Errors -> Errors
 storeError name msg (Errors errors) =
@@ -72,14 +84,13 @@ tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
 tagsProcess (ProjectRoot root) cmd args =
   readCreateProcessWithExitCode (Proc.proc cmd (words args)) { Proc.cwd = Just root } ""
 
--- TODO write to temp file, move to actual file after
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags root@(ProjectRoot rootS) cmd args = do
   deleteTags root
   debugS $ "executing tags: `" ++ cmd ++ " " ++ args ++ "` in directory " ++ rootS
   (exitcode, _, stderr) <- liftIO $ tagsProcess root cmd args
   case exitcode of
-    ExitSuccess -> return ()
+    ExitSuccess -> replaceTags root
     ExitFailure _ -> notifyError stderr
 
 regenerateTags :: ProjectRoot -> [ProjectLang] -> Proteome ()
@@ -87,7 +98,7 @@ regenerateTags root langs = do
   cmd <- setting S.tagsCommand
   args <- setting S.tagsArgs
   fileName <- setting S.tagsFileName
-  let thunk = executeTags root cmd (formatTagsArgs langs root fileName args)
+  let thunk = executeTags root cmd (formatTagsArgs langs root (tempname fileName) args)
   fork <- setting S.tagsFork
   _ <- if fork then forkNeovim thunk else thunk
   return ()
