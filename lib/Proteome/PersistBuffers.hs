@@ -7,7 +7,7 @@ module Proteome.PersistBuffers(
 ) where
 
 import GHC.Generics
-import Control.Monad (filterM)
+import Control.Monad (filterM, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Aeson (ToJSON(toEncoding), FromJSON, genericToEncoding, defaultOptions)
@@ -63,10 +63,11 @@ safeStoreBuffers path =
 decodePersistBuffers :: FilePath -> Proteome (Either String PersistBuffers)
 decodePersistBuffers path = runExceptT $ persistLoad (path </> "buffers")
 
--- TODO only restore current buffer when none is active
 restoreBuffers :: PersistBuffers -> Proteome ()
 restoreBuffers (PersistBuffers current' buffers') = do
-  mapM_ edit current'
+  active <- vim_get_current_buffer'
+  name <- buffer_get_name' active
+  when (null name) $ mapM_ edit current'
   traverse_ (\a -> vim_command' ("silent! badd " ++ a)) buffers'
 
 unsafeLoadBuffers :: FilePath -> Proteome ()
