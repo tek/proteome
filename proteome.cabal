@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 05d2c297b17f627b0030b04867868a511cf1e456da2db1166b615b4d49b9fd66
+-- hash: c3e7f6db57fad18e70d0da04208bd17251306cc48e211187ce7e297bf9bf8016
 
 name:           proteome
-version:        0.3.13.0
+version:        0.3.14.0
 synopsis:       neovim project manager
 description:    Please see the README on GitHub at <https://github.com/tek/proteome-hs>
 category:       Neovim
@@ -38,7 +38,6 @@ library
       Proteome.Data.ProjectSpec
       Proteome.Data.Proteome
       Proteome.Env
-      Proteome.Event
       Proteome.Init
       Proteome.Log
       Proteome.PersistBuffers
@@ -204,7 +203,6 @@ test-suite proteome-unit
       AddSpec
       Config
       CycleSpec
-      EventSpec
       MultiTagsSpec
       PersistLoadSpec
       PersistStoreSpec
