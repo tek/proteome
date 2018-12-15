@@ -10,7 +10,7 @@ import Control.Monad.Reader ((<=<))
 import Control.Monad.IO.Class (liftIO)
 import Data.List (find)
 import Data.List.Utils (uniq)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Map.Strict ((!?), Map)
 import Safe (headMay)
 import System.Directory (doesDirectoryExist)
@@ -134,7 +134,7 @@ resolveProject ::
   IO Project
 resolveProject baseDirs explicit config root name tpe = do
   byType <- traverse (resolveByType baseDirs explicit root name) tpe
-  byName <- resolveByName baseDirs name
+  byName <- if isJust root then return Nothing else resolveByName baseDirs name
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
   let byTypeOrName = fromMaybe byNameOrVirtual (join byType)
   let byRoot = root >>= resolveByRoot explicit
