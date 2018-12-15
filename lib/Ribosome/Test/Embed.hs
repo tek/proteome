@@ -8,7 +8,9 @@ module Ribosome.Test.Embed(
   setupPluginEnv,
 ) where
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (traverse_)
+import System.Directory (makeAbsolute)
 import Neovim (Neovim, Object, vim_set_var')
 import Neovim.Test (testWithEmbeddedNeovim, Seconds(..))
 import Ribosome.Data.Ribo (Ribo)
@@ -39,7 +41,8 @@ setVars (Vars vars) =
 
 setupPluginEnv :: TestConfig -> Neovim e ()
 setupPluginEnv (TestConfig _ rtp _ vars) = do
-  rtpCat rtp
+  absRtp <- liftIO $ makeAbsolute rtp
+  rtpCat absRtp
   setVars vars
 
 unsafeEmbeddedSpec :: Runner (Ribosome e) -> TestConfig -> e -> Ribo e () -> IO ()

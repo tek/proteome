@@ -28,7 +28,7 @@ addSpec :: Proteome ()
 addSpec = do
   projectsDir <- fixture "projects"
   updateSetting S.projectBaseDirs [projectsDir]
-  proAdd $ AddOptions fn tp
+  proAdd $ AddOptions fn tp False
   ps <- Ribo.inspect projects
   let root = projectsDir </> hask </> flag
   liftIO $ assertEqual [Project (DirProject fn (ProjectRoot root) (Just tp)) [] (Just l) []] ps

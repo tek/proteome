@@ -1,32 +1,45 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
 module AddSpec(
-  htf_thisModulesTests
+  htf_thisModulesTests,
 ) where
 
+import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map as Map (fromList)
+import System.FilePath ((</>))
 import Test.Framework
 import Neovim (vim_call_function', vim_command', toObject)
+import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Data.Ribo (Ribo)
-import Proteome.Test.Functional (specWith)
+import qualified Proteome.Settings as S (projectBaseDirs)
+import Proteome.Test.Functional (specWith, fixture)
 import Config (vars)
 
 addSpec :: Ribo env ()
 addSpec = do
-  _ <- vim_call_function' "ProAdd" [toObject $ Map.fromList [("name", "bar"), ("tpe", "foo")]]
-  return ()
+  projectsDir <- fixture "projects"
+  updateSetting S.projectBaseDirs [projectsDir]
+  _ <- vim_call_function' "ProAddProject" [toObject $ Map.fromList [
+    ("name", toObject "cilia"),
+    ("tpe", toObject "haskell"),
+    ("activate", toObject True)
+    ]]
+  cwd <- nvimCwd
+  liftIO $ assertEqual (projectsDir </> "haskell" </> "cilia") cwd
 
-test_add :: IO ()
-test_add = do
-  v <- vars
-  specWith v addSpec
+test_addFunction :: IO ()
+test_addFunction =
+  vars >>= specWith addSpec
 
 addCommandSpec :: Ribo env ()
 addCommandSpec = do
-  _ <- vim_command' "ProAdd! foo/bar"
-  return ()
+  projectsDir <- fixture "projects"
+  updateSetting S.projectBaseDirs [projectsDir]
+  _ <- vim_command' "ProAdd! haskell/cilia"
+  cwd <- nvimCwd
+  liftIO $ assertEqual (projectsDir </> "haskell" </> "cilia") cwd
 
 test_addCommand :: IO ()
-test_addCommand = do
-  v <- vars
-  specWith v addCommandSpec
+test_addCommand =
+  vars >>= specWith addCommandSpec

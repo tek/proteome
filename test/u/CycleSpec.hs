@@ -34,8 +34,8 @@ cycleSpec = do
   updateSetting S.projectBaseDirs [projectsDir]
   updateSetting S.mainProjectDir mainDir
   resolveAndInitMain
-  proAdd $ AddOptions fn tp
-  proAdd $ AddOptions cn tp
+  proAdd $ AddOptions fn tp False
+  proAdd $ AddOptions cn tp False
   assertDir prot
   proNext
   assertDir flag

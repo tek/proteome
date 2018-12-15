@@ -1,6 +1,7 @@
 module Ribosome.Internal.NvimObject(
   deriveString,
   extractObject,
+  extractObjectOr,
 ) where
 
 import qualified Data.ByteString.UTF8 as UTF8 (fromString)
@@ -19,3 +20,9 @@ extractObject :: NvimObject o => String -> Map Object Object -> Either (Doc Ansi
 extractObject key data' = do
   value <- objectKeyMissing key $ data' !? (ObjectString . UTF8.fromString) key
   fromObject value
+
+extractObjectOr :: NvimObject o => String -> o -> Map Object Object -> o
+extractObjectOr key default' data' =
+  case extractObject key data' of
+    Right a -> a
+    Left _ -> default'

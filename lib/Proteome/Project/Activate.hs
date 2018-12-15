@@ -3,9 +3,10 @@ module Proteome.Project.Activate(
   activateCurrentProject,
   proPrev,
   proNext,
+  selectProject,
 ) where
 
-import Control.Lens (over)
+import qualified Control.Lens as Lens (over, set)
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
@@ -46,13 +47,21 @@ activateCurrentProject = do
   pro <- currentProject
   mapM_ activateProject pro
 
+setProjectIndex :: Int -> Proteome ()
+setProjectIndex index = do
+  pros <- allProjects
+  Ribo.modify $ Lens.set Env._currentProjectIndex $ index `mod` length pros
+
 cycleProjectIndex :: (Int -> Int) -> Proteome ()
 cycleProjectIndex f = do
   pros <- allProjects
-  let
-    trans:: Int -> Int
-    trans a = f a `rem` length pros
-  Ribo.modify $ over Env._currentProjectIndex trans
+  let trans a = f a `rem` length pros
+  Ribo.modify $ Lens.over Env._currentProjectIndex trans
+
+selectProject :: Int -> Proteome ()
+selectProject index = do
+  setProjectIndex index
+  activateCurrentProject
 
 proPrev :: Proteome ()
 proPrev = do

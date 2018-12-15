@@ -10,6 +10,7 @@ import Data.Default.Class (Default(def))
 import UnliftIO.STM (TVar)
 import Neovim (
   Plugin(..),
+  function,
   function',
   command,
   autocmd,
@@ -39,7 +40,7 @@ plugin' env =
       $(function' 'proteomeStage1) Async,
       $(function' 'proteomeStage2) Async,
       $(function' 'proteomeStage4) Async,
-      $(function' 'proAdd) Async,
+      $(function "ProAddProject" 'proAdd) Sync,
       $(command "ProAdd" 'proAddCmd) [CmdBang],
       $(function' 'proSave) Async,
       $(function' 'proTags) Async,

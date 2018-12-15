@@ -21,6 +21,5 @@ initSpec = do
   liftIO $ assertEqual tpe (ProjectType "haskell")
 
 test_init :: IO ()
-test_init = do
-  v <- vars
-  specWith v initSpec
+test_init =
+  vars >>= specWith initSpec

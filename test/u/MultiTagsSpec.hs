@@ -30,8 +30,8 @@ multiSpec = do
   updateSetting S.tagsCommand "touch"
   updateSetting S.tagsArgs ".tags"
   updateSetting S.tagsFork False
-  proAdd $ AddOptions fn tp
-  proAdd $ AddOptions cn tp
+  proAdd $ AddOptions fn tp False
+  proAdd $ AddOptions cn tp False
   proTags
   bufEnter
   let ftags = projectsDir </> hask </> flag </> ".tags"

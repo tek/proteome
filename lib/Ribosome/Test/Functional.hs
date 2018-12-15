@@ -2,34 +2,40 @@ module Ribosome.Test.Functional(
   startPlugin,
   fSpec,
   functionalSpec,
+  tempDir,
+  tempFile,
+  fixture,
 ) where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class
 import Control.Exception (finally)
 import Data.Foldable (traverse_)
-import System.Directory (getCurrentDirectory, createDirectoryIfMissing, removePathForcibly, doesFileExist)
-import System.FilePath (takeDirectory)
+import System.Directory (getCurrentDirectory, createDirectoryIfMissing, removePathForcibly, doesFileExist, makeAbsolute)
+import System.FilePath (takeDirectory, (</>), takeFileName)
 import System.Console.ANSI (setSGR, SGR(SetColor, Reset), ConsoleLayer(Foreground), ColorIntensity(Dull), Color(Green))
 import Neovim (Neovim, vim_command')
 import Ribosome.Data.Ribo (Ribo)
 import Ribosome.Test.Exists (waitForPlugin)
 import Ribosome.Test.Embed (TestConfig(..), unsafeEmbeddedSpec, setupPluginEnv)
+import qualified Ribosome.Test.File as F (tempDir, fixture)
 
 jobstart :: MonadIO f => String -> f String
 jobstart cmd = do
   dir <- liftIO getCurrentDirectory
   return $ "call jobstart('" ++ cmd ++ "', { 'rpc': v:true, 'cwd': '" ++ dir ++ "' })"
 
-logFile :: TestConfig -> FilePath
-logFile conf = logPath conf ++ "-spec"
+logFile :: TestConfig -> IO FilePath
+logFile conf = makeAbsolute $ logPath conf ++ "-spec"
 
 startPlugin :: TestConfig -> Neovim env ()
 startPlugin conf = do
-  liftIO $ createDirectoryIfMissing True (takeDirectory (logPath conf))
-  liftIO $ removePathForcibly (logFile conf)
+  absLogPath <- liftIO $ makeAbsolute (logPath conf)
+  absLogFile <- liftIO $ logFile conf
+  liftIO $ createDirectoryIfMissing True (takeDirectory absLogPath)
+  liftIO $ removePathForcibly absLogFile
   setupPluginEnv conf
-  cmd <- jobstart $ "stack run -- -l " ++ logFile conf ++ " -v INFO"
+  cmd <- jobstart $ "stack run -- -l " ++ absLogFile ++ " -v INFO"
   vim_command' cmd
   waitForPlugin (pluginName conf) 0.1 3
 
@@ -47,7 +53,7 @@ showLog' output = do
 
 showLog :: TestConfig -> IO ()
 showLog conf = do
-  let file = logFile conf
+  file <- logFile conf
   exists <- doesFileExist file
   when exists $ do
     output <- readFile file
@@ -58,3 +64,17 @@ showLog conf = do
 functionalSpec :: TestConfig -> Ribo () () -> IO ()
 functionalSpec conf spec =
   finally (unsafeEmbeddedSpec fSpec conf () spec) (showLog conf)
+
+fPrefix :: String
+fPrefix = "f"
+
+tempDir :: FilePath -> Neovim e FilePath
+tempDir = F.tempDir fPrefix
+
+tempFile :: FilePath -> Neovim e FilePath
+tempFile file = do
+  absDir <- tempDir $ takeDirectory file
+  return $ absDir </> takeFileName file
+
+fixture :: MonadIO m => FilePath -> m FilePath
+fixture = F.fixture fPrefix
