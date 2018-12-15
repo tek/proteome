@@ -11,7 +11,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
 import System.Directory (doesDirectoryExist)
-import Neovim (vim_command')
+import Neovim (vim_command', CommandArguments)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Data.Ribo (Ribo)
 import qualified Ribosome.Data.Ribo as Ribo (modify)
@@ -63,12 +63,12 @@ selectProject index = do
   setProjectIndex index
   activateCurrentProject
 
-proPrev :: Proteome ()
-proPrev = do
+proPrev :: CommandArguments -> Proteome ()
+proPrev _ = do
   cycleProjectIndex (subtract 1)
   activateCurrentProject
 
-proNext :: Proteome ()
-proNext = do
+proNext :: CommandArguments -> Proteome ()
+proNext _ = do
   cycleProjectIndex (+1)
   activateCurrentProject

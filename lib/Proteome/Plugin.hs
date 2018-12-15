@@ -13,6 +13,7 @@ import Neovim (
   function,
   function',
   command,
+  command',
   autocmd,
   Neovim,
   StartupConfig,
@@ -30,6 +31,7 @@ import Proteome.Config (proReadConfig)
 import Proteome.Tags (proTags)
 import Proteome.Save (proSave)
 import Proteome.BufEnter (bufEnter)
+import Proteome.Project.Activate (proNext, proPrev)
 
 plugin' :: Ribosome (TVar Env) -> Plugin (Ribosome (TVar Env))
 plugin' env =
@@ -44,6 +46,8 @@ plugin' env =
       $(command "ProAdd" 'proAddCmd) [CmdBang],
       $(function' 'proSave) Async,
       $(function' 'proTags) Async,
+      $(command' 'proNext) [],
+      $(command' 'proPrev) [],
       $(function' 'proReadConfig) Sync,
       $(autocmd 'bufEnter) "BufEnter" def
     ]

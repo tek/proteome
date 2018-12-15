@@ -5,6 +5,8 @@ module CycleSpec(
 ) where
 
 import Control.Monad.IO.Class (liftIO)
+import Data.Default.Class (Default(def))
+import Data.Foldable (traverse_)
 import System.FilePath ((</>))
 import Neovim (Neovim)
 import Test.Framework
@@ -37,15 +39,9 @@ cycleSpec = do
   proAdd $ AddOptions fn tp False
   proAdd $ AddOptions cn tp False
   assertDir prot
-  proNext
-  assertDir flag
-  proNext
-  assertDir cil
-  proNext
-  assertDir prot
-  proNext
-  assertDir flag
-  proPrev
+  let checkNext n = proNext def >> assertDir n
+  traverse_ checkNext [flag, cil, prot, flag]
+  proPrev def
   assertDir prot
 
 test_next :: IO ()
