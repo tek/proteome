@@ -7,6 +7,7 @@ import {-@ HTF_TESTS @-} ResolveSpec
 import {-@ HTF_TESTS @-} PersistLoadSpec
 import {-@ HTF_TESTS @-} PersistStoreSpec
 import {-@ HTF_TESTS @-} AddSpec
+import {-@ HTF_TESTS @-} MultiSpec
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 

@@ -15,9 +15,6 @@ import Proteome.Add (proAdd)
 import Proteome.Data.Env (projects)
 import Proteome.Data.AddOptions (AddOptions(AddOptions))
 import Proteome.Data.Project (
-  ProjectName(ProjectName),
-  ProjectType(ProjectType),
-  ProjectLang(ProjectLang),
   ProjectRoot(ProjectRoot),
   ProjectMetadata(DirProject),
   Project(Project),
@@ -25,30 +22,16 @@ import Proteome.Data.Project (
 import qualified Proteome.Settings as S (projectBaseDirs)
 import Proteome.Test.Unit (specWithDef)
 import Config (vars)
-
-flag :: String
-flag = "flagellum"
-
-hask :: String
-hask = "haskell"
-
-n :: ProjectName
-n = ProjectName flag
-
-tp :: ProjectType
-tp = ProjectType hask
-
-l :: ProjectLang
-l = ProjectLang hask
+import Project (flag, hask, fn, tp, l)
 
 addSpec :: Proteome ()
 addSpec = do
   projectsDir <- fixture "projects"
   updateSetting S.projectBaseDirs [projectsDir]
-  proAdd $ AddOptions n tp
+  proAdd $ AddOptions fn tp
   ps <- Ribo.inspect projects
   let root = projectsDir </> hask </> flag
-  liftIO $ assertEqual [Project (DirProject n (ProjectRoot root) (Just tp)) [] (Just l) []] ps
+  liftIO $ assertEqual [Project (DirProject fn (ProjectRoot root) (Just tp)) [] (Just l) []] ps
 
 test_add :: IO ()
 test_add = vars >>= specWithDef addSpec

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5fba2c152bddc90f0d4e9642ee33b0cd2b1591db5f4aec89a3d3558ef9c00e17
+-- hash: c1cb5669b84e643072e4213d4a1f3bdff0df2874735333c1d12f828240cf38da
 
 name:           proteome
 version:        0.3.10.0
@@ -29,6 +29,7 @@ source-repository head
 library
   exposed-modules:
       Proteome.Add
+      Proteome.BufEnter
       Proteome.Config
       Proteome.Data.AddOptions
       Proteome.Data.Env
@@ -40,6 +41,7 @@ library
       Proteome.Log
       Proteome.PersistBuffers
       Proteome.Plugin
+      Proteome.Project
       Proteome.Project.Resolve
       Proteome.Save
       Proteome.Settings
@@ -190,8 +192,10 @@ test-suite proteome-unit
   other-modules:
       AddSpec
       Config
+      MultiSpec
       PersistLoadSpec
       PersistStoreSpec
+      Project
       ResolveSpec
       TagsSpec
       Paths_proteome
