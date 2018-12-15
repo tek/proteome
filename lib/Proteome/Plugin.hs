@@ -11,6 +11,7 @@ import UnliftIO.STM (TVar)
 import Neovim (
   Plugin(..),
   function',
+  command,
   autocmd,
   Neovim,
   StartupConfig,
@@ -18,12 +19,12 @@ import Neovim (
   NeovimPlugin,
   Synchronous(..),
   wrapPlugin,
-  acmdGroup
+  CommandOption(CmdBang),
   )
-import Ribosome.Data.Ribosome (Ribosome, newRibosome)
+import Ribosome.Data.Ribosome (Ribosome)
 import Proteome.Init (proteomePoll, proteomeStage1, proteomeStage2, proteomeStage4, initialize)
 import Proteome.Data.Env (Env)
-import Proteome.Add (proAdd)
+import Proteome.Add (proAdd, proAddCmd)
 import Proteome.Config (proReadConfig)
 import Proteome.Tags (proTags)
 import Proteome.Save (proSave)
@@ -39,15 +40,15 @@ plugin' env =
       $(function' 'proteomeStage2) Async,
       $(function' 'proteomeStage4) Async,
       $(function' 'proAdd) Async,
+      $(command "ProAdd" 'proAddCmd) [CmdBang],
       $(function' 'proSave) Async,
       $(function' 'proTags) Async,
       $(function' 'proReadConfig) Sync,
-      $(autocmd 'bufEnter) "BufEnter" def { acmdGroup = Just "proteome" }
+      $(autocmd 'bufEnter) "BufEnter" def
     ]
   }
 
 plugin :: Neovim (StartupConfig NeovimConfig) NeovimPlugin
 plugin = do
   env <- initialize
-  env' <- newRibosome "proteome" env
-  wrapPlugin $ plugin' env'
+  wrapPlugin $ plugin' env

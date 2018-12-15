@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module MultiSpec(
+module MultiTagsSpec(
   htf_thisModulesTests
 ) where
 
@@ -14,11 +14,10 @@ import Ribosome.Test.Unit (tempDir)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Add (proAdd)
 import Proteome.Data.AddOptions (AddOptions(AddOptions))
-import qualified Proteome.Settings as S (projectBaseDirs)
+import qualified Proteome.Settings as S (projectBaseDirs, tagsCommand, tagsArgs, tagsFork)
 import Proteome.Tags (proTags)
 import Proteome.Test.Unit (specWithDef)
 import Proteome.BufEnter (bufEnter)
-import qualified Proteome.Settings as PS (tagsCommand, tagsArgs, tagsFork)
 import Config (vars)
 import Project (flag, cil, hask, cn, fn, tp, createTestProject)
 
@@ -28,9 +27,9 @@ multiSpec = do
   updateSetting S.projectBaseDirs [projectsDir]
   createTestProject tp fn
   createTestProject tp cn
-  updateSetting PS.tagsCommand "touch"
-  updateSetting PS.tagsArgs ".tags"
-  updateSetting PS.tagsFork False
+  updateSetting S.tagsCommand "touch"
+  updateSetting S.tagsArgs ".tags"
+  updateSetting S.tagsFork False
   proAdd $ AddOptions fn tp
   proAdd $ AddOptions cn tp
   proTags

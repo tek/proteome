@@ -1,14 +1,17 @@
 module Ribosome.Log(
   debug,
   info,
+  p,
 ) where
 
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Neovim.Log (debugM, infoM)
-import Ribosome.Data.Ribo (Ribo)
 
-debug :: Show a => String -> a -> Ribo e ()
+debug :: (MonadIO m, Show a) => String -> a -> m ()
 debug name message = liftIO $ debugM name $ show message
 
-info :: Show a => String -> a -> Ribo e ()
+info :: (MonadIO m, Show a) => String -> a -> m ()
 info name message = liftIO $ infoM name $ show message
+
+p :: (MonadIO m, Show a) => a -> m ()
+p = liftIO . print

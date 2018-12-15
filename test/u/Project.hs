@@ -7,6 +7,7 @@ module Project(
   fn,
   cil,
   createTestProject,
+  prot,
 ) where
 
 import Control.Monad.IO.Class (liftIO)
@@ -29,6 +30,9 @@ hask = "haskell"
 
 cil :: String
 cil = "cilia"
+
+prot :: String
+prot = "proteome"
 
 fn :: ProjectName
 fn = ProjectName flag

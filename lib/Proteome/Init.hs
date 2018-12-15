@@ -4,81 +4,84 @@ module Proteome.Init(
   proteomeStage4,
   proteomePoll,
   proteomeStage1,
+  resolveMainProject,
+  initWithMain,
+  resolveAndInitMain,
 ) where
 
 import Data.Default.Class (Default(def))
-import System.Directory (getCurrentDirectory, makeAbsolute)
-import System.FilePath (takeFileName, takeDirectory)
+import qualified Control.Lens as Lens (set)
+import Data.Maybe (fromMaybe)
+import Data.Either.Combinators (rightToMaybe)
 import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (liftIO)
+import UnliftIO.STM (TVar)
 import Neovim (Neovim)
+import Neovim.Context.Internal (Config(customConfig), asks')
 import Ribosome.Config.Setting (settingE, updateSetting)
 import Ribosome.Data.Ribo (Ribo)
-import qualified Ribosome.Data.Ribo as Ribo (inspect)
-import Ribosome.Data.Ribosome (Ribosome(Ribosome), newInternalTVar)
+import qualified Ribosome.Data.Ribo as Ribo (inspect, modify)
+import Ribosome.Data.Ribosome (newRibosome, Ribosome)
 import Ribosome.Internal.IO (retypeNeovim)
-import Proteome.Data.Env (Env(Env))
-import qualified Proteome.Data.Env as Env (mainProject)
-import Proteome.Data.Proteome
+import qualified Proteome.Data.Env as Env (mainProject, _mainProject)
+import Proteome.Data.Env (Env)
+import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project(meta),
-  ProjectName(..),
-  ProjectRoot(..),
   ProjectType(..),
-  ProjectMetadata(DirProject),
+  ProjectMetadata(DirProject, VirtualProject),
   )
+import Proteome.Project (pathData)
 import Proteome.Project.Resolve (resolveProjectFromConfig)
+import Proteome.Project.Activate (activateProject)
 import Proteome.Config (readConfig)
 import Proteome.PersistBuffers (loadBuffers)
-import Proteome.Log
+import qualified Proteome.Log as Log
 import qualified Proteome.Settings as S
 
-pathData :: MonadIO m => Either String FilePath -> m (ProjectRoot, ProjectName, ProjectType)
-pathData override = do
-  cwd <- liftIO $ either (const getCurrentDirectory) pure override
-  absMainDir <- liftIO $ makeAbsolute cwd
-  return (
-    ProjectRoot absMainDir,
-    ProjectName $ takeFileName absMainDir,
-    ProjectType $ (takeFileName . takeDirectory) absMainDir
-    )
-
-mainProject :: Ribo e Project
-mainProject = do
+resolveMainProject :: Ribo e Project
+resolveMainProject = do
   mainDir <- settingE S.mainProjectDir
-  (root, name, tpe) <- pathData mainDir
+  (root, name, tpe) <- pathData (rightToMaybe mainDir)
   resolveProjectFromConfig (Just root) name (Just tpe)
 
-loadPersistedBuffers :: Project -> Neovim e ()
-loadPersistedBuffers _ = return ()
+setMainProject :: Project -> Proteome ()
+setMainProject project =
+  Ribo.modify $ Lens.set Env._mainProject project
 
-updateMainType :: Maybe ProjectType -> Ribo e ()
-updateMainType (Just tpe) = updateSetting S.mainType tpe
-updateMainType Nothing = return ()
+updateMainType :: Maybe ProjectType -> Proteome ()
+updateMainType tpe = updateSetting S.mainType (fromMaybe (ProjectType "none") tpe)
 
-setProjectVars :: ProjectMetadata -> Ribo e ()
-setProjectVars (DirProject name _ tpe) = do
+setMainProjectVars :: ProjectMetadata -> Proteome ()
+setMainProjectVars (DirProject name _ tpe) = do
   updateSetting S.mainName name
   updateMainType tpe
-setProjectVars _ = return ()
+setMainProjectVars (VirtualProject name) = do
+  updateSetting S.mainName name
+  updateMainType (Just (ProjectType "virtual"))
 
-initWithMain :: Project -> Ribo e Env
+initWithMain :: Project -> Proteome ()
 initWithMain main = do
-  debugS $ "initializing with main project: " ++ show main
-  loadPersistedBuffers main
-  setProjectVars (meta main)
-  return $ Env main [] def
+  Log.debugS $ "initializing with main project: " ++ show main
+  setMainProject main
+  setMainProjectVars (meta main)
+  activateProject main
 
-initialize' :: Ribo e Env
-initialize' = do
-  main <- mainProject
+resolveAndInitMain :: Proteome ()
+resolveAndInitMain = do
+  main <- resolveMainProject
   initWithMain main
 
-initialize :: Neovim e Env
+initialize' :: Proteome (Ribosome (TVar Env))
+initialize' = do
+  resolveAndInitMain
+  asks' customConfig
+
+initialize :: Neovim e (Ribosome (TVar Env))
 initialize = do
   liftIO $ updateGlobalLogger "Neovim.Plugin" (setLevel ERROR)
-  internal <- newInternalTVar
-  retypeNeovim (Ribosome "proteome" internal) initialize'
+  ribo <- newRibosome "proteome" def
+  retypeNeovim (const ribo) initialize'
 
 proteomeStage1 :: Proteome ()
 proteomeStage1 = loadBuffers

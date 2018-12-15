@@ -42,6 +42,8 @@ dependencies:
 - aeson
 - bytestring
 - transformers
+- safe
+- either
 
 library:
   source-dirs: lib

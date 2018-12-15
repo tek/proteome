@@ -12,13 +12,16 @@ import Data.List (find)
 import Data.List.Utils (uniq)
 import Data.Maybe (fromMaybe)
 import Data.Map.Strict ((!?), Map)
+import Safe (headMay)
 import System.Directory (doesDirectoryExist)
 import System.FilePath (takeDirectory, (</>))
+import System.Path.Glob (glob)
 import Ribosome.File (canonicalPaths)
-import Proteome.Config (ProjectConfig(ProjectConfig))
 import Ribosome.Config.Setting (setting)
+import Ribosome.Data.Foldable (findMapMaybeM)
 import Ribosome.Data.Maybe (orElse)
 import Ribosome.Data.Ribo (Ribo)
+import Proteome.Config (ProjectConfig(ProjectConfig))
 import Proteome.Data.Project (
   Project(Project),
   ProjectName(..),
@@ -29,6 +32,7 @@ import Proteome.Data.Project (
   )
 import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
+import Proteome.Project (pathData)
 import qualified Proteome.Settings as S
 
 projectFromSegments :: ProjectType -> ProjectName -> ProjectRoot -> Project
@@ -81,6 +85,20 @@ resolveByType baseDirs explicit root name tpe = do
     byTypeName = byProjectTypeName explicit name tpe
     byPath = root >>= resolveByTypeAndPath baseDirs name tpe
 
+fromProjectRoot :: FilePath -> IO Project
+fromProjectRoot dir = do
+  (root, name, tpe) <- pathData (Just dir)
+  return $ projectFromSegments tpe name root
+
+projectFromNameIn :: ProjectName -> FilePath -> IO (Maybe Project)
+projectFromNameIn (ProjectName name) base = do
+  candidates <- glob $ base ++ "/*/" ++ name
+  mapM fromProjectRoot (headMay candidates)
+
+resolveByName :: [FilePath] -> ProjectName -> IO (Maybe Project)
+resolveByName baseDirs name =
+  findMapMaybeM (projectFromNameIn name) baseDirs
+
 resolveByRoot :: [ProjectSpec] -> ProjectRoot -> Maybe Project
 resolveByRoot explicit root =
   fmap projectFromSpec byRoot
@@ -116,9 +134,11 @@ resolveProject ::
   IO Project
 resolveProject baseDirs explicit config root name tpe = do
   byType <- traverse (resolveByType baseDirs explicit root name) tpe
-  let byTypeOrVirtual = fromMaybe (virtualProject name) (join byType)
+  byName <- resolveByName baseDirs name
+  let byNameOrVirtual = fromMaybe (virtualProject name) byName
+  let byTypeOrName = fromMaybe byNameOrVirtual (join byType)
   let byRoot = root >>= resolveByRoot explicit
-  let project = fromMaybe byTypeOrVirtual byRoot
+  let project = fromMaybe byTypeOrName byRoot
   return $ augmentFromConfig config project
 
 resolveProjectFromConfig :: Maybe ProjectRoot -> ProjectName -> Maybe ProjectType -> Ribo e Project

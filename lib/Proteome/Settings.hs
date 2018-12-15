@@ -10,11 +10,13 @@ module Proteome.Settings(
   tagsArgs,
   tagsFork,
   tagsFileName,
+  active,
 ) where
 
 import Data.Default.Class (Default(def))
 import Ribosome.Config.Setting
 import Proteome.Data.Project (ProjectName, ProjectType)
+import Proteome.Data.ActiveProject (ActiveProject)
 import Proteome.Data.ProjectSpec (ProjectSpec)
 import Proteome.Config
 
@@ -38,6 +40,9 @@ mainName = Setting "main_name" True Nothing
 
 mainType :: Setting ProjectType
 mainType = Setting "main_type" True Nothing
+
+active :: Setting ActiveProject
+active = Setting "active" True Nothing
 
 tagsCommand :: Setting String
 tagsCommand = Setting "tags_command" True (Just "ctags")

@@ -5,6 +5,7 @@ module Proteome.Data.Env (
   _mainProject,
   _projects,
   _errors,
+  _currentProjectIndex,
 ) where
 
 import Control.Lens (makeClassy_)
@@ -16,11 +17,12 @@ data Env =
   Env {
     mainProject :: Project,
     projects :: [Project],
-    errors :: Errors
+    errors :: Errors,
+    currentProjectIndex :: Int
   }
   deriving Show
 
 makeClassy_ ''Env
 
 instance Default Env where
-  def = Env def def def
+  def = Env def def def def

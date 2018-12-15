@@ -3,10 +3,11 @@ module Proteome.Log(
   info,
   debugS,
   infoS,
+  R.p,
 ) where
 
 import Ribosome.Data.Ribo (Ribo)
-import qualified Ribosome.Log as R (debug, info)
+import qualified Ribosome.Log as R (debug, info, p)
 
 debug :: String -> Ribo e ()
 debug = R.debug "proteome"

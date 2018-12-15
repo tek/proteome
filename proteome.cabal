@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d351a462fd991c12f14990526d369c7f0c7e0497ef67def82fa7175b6b2a1f82
+-- hash: 8362d5285700d1640c9713b88a368898ba63cf71f97aa79129cb7213d5bf8928
 
 name:           proteome
 version:        0.3.11.0
@@ -31,6 +31,7 @@ library
       Proteome.Add
       Proteome.BufEnter
       Proteome.Config
+      Proteome.Data.ActiveProject
       Proteome.Data.AddOptions
       Proteome.Data.Env
       Proteome.Data.Project
@@ -42,6 +43,7 @@ library
       Proteome.PersistBuffers
       Proteome.Plugin
       Proteome.Project
+      Proteome.Project.Activate
       Proteome.Project.Resolve
       Proteome.Save
       Proteome.Settings
@@ -51,10 +53,12 @@ library
       Proteome.Test.Unit
       Ribosome.Api.Buffer
       Ribosome.Api.Option
+      Ribosome.Api.Path
       Ribosome.Api.Response
       Ribosome.Config.Setting
       Ribosome.Config.Settings
       Ribosome.Data.Errors
+      Ribosome.Data.Foldable
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo
       Ribosome.Data.Ribosome
@@ -84,6 +88,7 @@ library
     , data-default-class
     , deepseq
     , directory
+    , either
     , filepath
     , hslogger
     , lens
@@ -94,6 +99,7 @@ library
     , prettyprinter
     , process
     , resourcet
+    , safe
     , split
     , stm
     , strings
@@ -121,6 +127,7 @@ executable proteome
     , data-default-class
     , deepseq
     , directory
+    , either
     , filepath
     , hslogger
     , lens
@@ -132,6 +139,7 @@ executable proteome
     , process
     , proteome
     , resourcet
+    , safe
     , split
     , stm
     , strings
@@ -165,6 +173,7 @@ test-suite proteome-functional
     , data-default-class
     , deepseq
     , directory
+    , either
     , filepath
     , hslogger
     , lens
@@ -176,6 +185,7 @@ test-suite proteome-functional
     , process
     , proteome
     , resourcet
+    , safe
     , split
     , stm
     , strings
@@ -192,7 +202,8 @@ test-suite proteome-unit
   other-modules:
       AddSpec
       Config
-      MultiSpec
+      CycleSpec
+      MultiTagsSpec
       PersistLoadSpec
       PersistStoreSpec
       Project
@@ -213,6 +224,7 @@ test-suite proteome-unit
     , data-default-class
     , deepseq
     , directory
+    , either
     , filepath
     , hslogger
     , lens
@@ -224,6 +236,7 @@ test-suite proteome-unit
     , process
     , proteome
     , resourcet
+    , safe
     , split
     , stm
     , strings

@@ -16,7 +16,7 @@ module Proteome.Data.Project(
 
 import GHC.Generics (Generic)
 import Control.Lens (makeClassy_)
-import Control.DeepSeq
+import Control.DeepSeq (NFData)
 import Data.Default.Class (Default(def))
 import Neovim.Classes (NvimObject(..))
 import Ribosome.Internal.NvimObject (deriveString)
