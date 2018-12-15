@@ -11,7 +11,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
 import System.Directory (doesDirectoryExist)
-import Neovim (vim_command', CommandArguments)
+import Neovim (vim_command', CommandArguments, Neovim)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Data.Ribo (Ribo)
 import qualified Ribosome.Data.Ribo as Ribo (modify)
@@ -20,6 +20,7 @@ import Proteome.Data.Project (
   ProjectMetadata(DirProject, VirtualProject),
   ProjectType(ProjectType),
   ProjectRoot(ProjectRoot),
+  ProjectName(ProjectName),
   )
 import Proteome.Data.ActiveProject (ActiveProject(ActiveProject))
 import Proteome.Data.Proteome (Proteome)
@@ -42,10 +43,20 @@ activateProject project = do
   updateSetting S.active $ activeProject project
   activateDirProject (meta project)
 
+describeProject :: ProjectMetadata -> String
+describeProject (DirProject (ProjectName name) _ (Just (ProjectType tpe))) = tpe ++ "/" ++ name
+describeProject (DirProject (ProjectName name) _ Nothing) = name
+describeProject (VirtualProject (ProjectName name)) = name
+
+echoProjectActivation :: Project -> Neovim e ()
+echoProjectActivation pro =
+  vim_command' $ "echo 'activated project " ++ describeProject (meta pro) ++ "'"
+
 activateCurrentProject :: Proteome ()
 activateCurrentProject = do
   pro <- currentProject
   mapM_ activateProject pro
+  mapM_ echoProjectActivation pro
 
 setProjectIndex :: Int -> Proteome ()
 setProjectIndex index = do

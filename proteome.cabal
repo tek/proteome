@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e9f2d71e222d4ffaa6e98b7cfdc7739cb4d796152685b6e2b1374b3c4124f5f2
+-- hash: 05d2c297b17f627b0030b04867868a511cf1e456da2db1166b615b4d49b9fd66
 
 name:           proteome
 version:        0.3.13.0
@@ -38,6 +38,7 @@ library
       Proteome.Data.ProjectSpec
       Proteome.Data.Proteome
       Proteome.Env
+      Proteome.Event
       Proteome.Init
       Proteome.Log
       Proteome.PersistBuffers
@@ -203,6 +204,7 @@ test-suite proteome-unit
       AddSpec
       Config
       CycleSpec
+      EventSpec
       MultiTagsSpec
       PersistLoadSpec
       PersistStoreSpec
