@@ -28,8 +28,8 @@ import qualified Proteome.Data.Env as Env (_currentProjectIndex)
 import qualified Proteome.Settings as S (active)
 
 activeProject :: Project -> ActiveProject
-activeProject (Project (DirProject name _ tpe) _ _ _) = ActiveProject name (fromMaybe (ProjectType "none") tpe)
-activeProject (Project (VirtualProject name) _ _ _) = ActiveProject name (ProjectType "virtual")
+activeProject (Project (DirProject name _ tpe) _ lang _) = ActiveProject name (fromMaybe (ProjectType "none") tpe) lang
+activeProject (Project (VirtualProject name) _ lang _) = ActiveProject name (ProjectType "virtual") lang
 
 activateDirProject :: ProjectMetadata -> Ribo e ()
 activateDirProject (DirProject _ (ProjectRoot root) _) = do

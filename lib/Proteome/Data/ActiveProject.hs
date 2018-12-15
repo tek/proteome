@@ -15,13 +15,15 @@ import Neovim (Object)
 import Neovim.Classes (NvimObject(..), Dictionary)
 import Proteome.Data.Project(
   ProjectName,
-  ProjectType
+  ProjectType,
+  ProjectLang
   )
 
 data ActiveProject =
   ActiveProject {
     name :: ProjectName,
-    tpe :: ProjectType
+    tpe :: ProjectType,
+    lang :: Maybe ProjectLang
   }
   deriving (Eq, Show, Generic, NFData)
 
@@ -30,6 +32,7 @@ instance NvimObject ActiveProject where
     (toObject :: Dictionary -> Object) . Map.fromList $
     [
       ("name", toObject name),
-      ("tpe", toObject tpe)
+      ("tpe", toObject tpe),
+      ("lang", toObject lang)
     ]
   fromObject _ = Left "ActiveProject is write-only"
