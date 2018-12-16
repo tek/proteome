@@ -34,7 +34,7 @@ import Proteome.Data.Project (
   langOrType,
   )
 import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork, tagsFileName)
-import Proteome.Log
+import qualified Proteome.Log as Log
 
 replaceFormatItem :: String -> (String, String) -> String
 replaceFormatItem original (placeholder, replacement) =
@@ -77,7 +77,7 @@ storeError name msg (Errors errors) =
 
 notifyError :: String -> Proteome ()
 notifyError e = do
-  infoS $ "tags failed: " ++ e
+  Log.info $ "tags failed: " ++ e
   Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") [e])
 
 tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
@@ -87,7 +87,7 @@ tagsProcess (ProjectRoot root) cmd args =
 executeTags :: ProjectRoot -> String -> String -> Proteome ()
 executeTags root@(ProjectRoot rootS) cmd args = do
   deleteTags root
-  debugS $ "executing tags: `" ++ cmd ++ " " ++ args ++ "` in directory " ++ rootS
+  Log.debugS $ "executing tags: `" ++ cmd ++ " " ++ args ++ "` in directory " ++ rootS
   (exitcode, _, stderr) <- liftIO $ tagsProcess root cmd args
   case exitcode of
     ExitSuccess -> replaceTags root
@@ -104,7 +104,7 @@ regenerateTags root langs = do
   return ()
 
 projectTags :: Project -> Proteome ()
-projectTags (Project (DirProject _ root tpe) _ lang langs ) =
+projectTags (Project (DirProject _ root tpe) _ lang langs) =
   regenerateTags root (maybeToList (langOrType lang tpe) ++ langs)
 projectTags _ = return ()
 
