@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c3e7f6db57fad18e70d0da04208bd17251306cc48e211187ce7e297bf9bf8016
+-- hash: 56c929b3204b22694424dfaa4c2067a38ae316ffb493cf024495746cb60626ff
 
 name:           proteome
 version:        0.3.14.0
@@ -55,6 +55,7 @@ library
       Ribosome.Api.Option
       Ribosome.Api.Path
       Ribosome.Api.Response
+      Ribosome.Api.Window
       Ribosome.Config.Setting
       Ribosome.Config.Settings
       Ribosome.Data.Errors
@@ -62,12 +63,15 @@ library
       Ribosome.Data.Maybe
       Ribosome.Data.Ribo
       Ribosome.Data.Ribosome
+      Ribosome.Data.Scratch
+      Ribosome.Data.ScratchOptions
       Ribosome.File
       Ribosome.Internal.IO
       Ribosome.Internal.NvimObject
       Ribosome.Log
       Ribosome.Monad
       Ribosome.Persist
+      Ribosome.Scratch
       Ribosome.Test.Embed
       Ribosome.Test.Exists
       Ribosome.Test.File
@@ -208,6 +212,7 @@ test-suite proteome-unit
       PersistStoreSpec
       Project
       ResolveSpec
+      ScratchSpec
       TagsSpec
       Paths_proteome
   hs-source-dirs:

@@ -9,6 +9,7 @@ import {-@ HTF_TESTS @-} PersistStoreSpec
 import {-@ HTF_TESTS @-} AddSpec
 import {-@ HTF_TESTS @-} MultiTagsSpec
 import {-@ HTF_TESTS @-} CycleSpec
+import {-@ HTF_TESTS @-} ScratchSpec
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 
