@@ -8,6 +8,12 @@ module Project(
   cil,
   createTestProject,
   prot,
+  idr,
+  ag,
+  ti,
+  ta,
+  li,
+  la,
 ) where
 
 import Control.Monad.IO.Class (liftIO)
@@ -28,6 +34,12 @@ flag = "flagellum"
 hask :: String
 hask = "haskell"
 
+idr :: String
+idr = "idris"
+
+ag :: String
+ag = "agda"
+
 cil :: String
 cil = "cilia"
 
@@ -43,8 +55,20 @@ cn = ProjectName cil
 tp :: ProjectType
 tp = ProjectType hask
 
+ti :: ProjectType
+ti = ProjectType idr
+
+ta :: ProjectType
+ta = ProjectType ag
+
 l :: ProjectLang
 l = ProjectLang hask
+
+li :: ProjectLang
+li = ProjectLang idr
+
+la :: ProjectLang
+la = ProjectLang ag
 
 createTestProject :: ProjectType -> ProjectName -> Ribo e ()
 createTestProject (ProjectType tpe) (ProjectName name) = do

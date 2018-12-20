@@ -38,9 +38,9 @@ formatMeta (DirProject (ProjectName name) (ProjectRoot root) tpe) =
 formatMain :: Project -> [String]
 formatMain (Project meta types lang langs) =
   formatMeta meta ++ [
-    "types: " ++ intercalate ", " (fmap (show . projectType) types),
+    "types: " ++ intercalate ", " (fmap projectType types),
     "main language: " ++ formatLang lang,
-    "languages: " ++ intercalate ", " (fmap (show . projectLang) langs)
+    "languages: " ++ intercalate ", " (fmap projectLang langs)
     ]
 
 diagnostics :: Proteome [String]
