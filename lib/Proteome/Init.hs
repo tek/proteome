@@ -34,7 +34,7 @@ import Proteome.Data.Project (
 import Proteome.Project (pathData)
 import Proteome.Project.Resolve (resolveProjectFromConfig)
 import Proteome.Project.Activate (activateProject)
-import Proteome.Config (readConfig)
+import Proteome.Config (readConfig, logConfig)
 import Proteome.PersistBuffers (loadBuffers)
 import qualified Proteome.Log as Log
 import qualified Proteome.Settings as S
@@ -89,12 +89,14 @@ proteomeStage1 = loadBuffers
 proteomeStage2 :: Proteome ()
 proteomeStage2 = do
   main <- Ribo.inspect Env.mainProject
-  readConfig "project" main
+  paths <- readConfig "project" main
+  logConfig paths
 
 proteomeStage4 :: Proteome ()
 proteomeStage4 = do
   main <- Ribo.inspect Env.mainProject
-  readConfig "project_after" main
+  paths <- readConfig "project_after" main
+  logConfig paths
 
 proteomePoll :: Neovim e Bool
 proteomePoll = return True

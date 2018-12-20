@@ -2,6 +2,7 @@
 
 module Proteome.Tags(
   proTags,
+  tagsCommand,
 ) where
 
 import GHC.IO.Exception (ExitCode(..))
@@ -93,12 +94,17 @@ executeTags root@(ProjectRoot rootS) cmd args = do
     ExitSuccess -> replaceTags root
     ExitFailure _ -> notifyError stderr
 
-regenerateTags :: ProjectRoot -> [ProjectLang] -> Proteome ()
-regenerateTags root langs = do
+tagsCommand :: ProjectRoot -> [ProjectLang] -> Proteome (String, String)
+tagsCommand root langs = do
   cmd <- setting S.tagsCommand
   args <- setting S.tagsArgs
   fileName <- setting S.tagsFileName
-  let thunk = executeTags root cmd (formatTagsArgs langs root (tempname fileName) args)
+  return (cmd, formatTagsArgs langs root (tempname fileName) args)
+
+regenerateTags :: ProjectRoot -> [ProjectLang] -> Proteome ()
+regenerateTags root langs = do
+  (cmd, args) <- tagsCommand root langs
+  let thunk = executeTags root cmd args
   fork <- setting S.tagsFork
   _ <- if fork then forkNeovim thunk else thunk
   return ()

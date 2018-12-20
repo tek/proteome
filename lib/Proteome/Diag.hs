@@ -7,7 +7,9 @@ import Data.List (intercalate)
 import Neovim (CommandArguments)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions)
 import Ribosome.Scratch (showInScratch)
+import qualified Ribosome.Data.Ribo as Ribo (inspect)
 import Proteome.Env (getMainProject)
+import Proteome.Data.Env(configLog)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project (Project),
@@ -17,6 +19,7 @@ import Proteome.Data.Project (
   ProjectType(..),
   ProjectMetadata (DirProject, VirtualProject),
   )
+import Proteome.Tags (tagsCommand)
 
 formatLang :: Maybe ProjectLang -> String
 formatLang (Just (ProjectLang lang)) = lang
@@ -26,18 +29,21 @@ formatType :: Maybe ProjectType -> String
 formatType (Just (ProjectType tpe)) = tpe
 formatType Nothing = "none"
 
-formatMeta :: ProjectMetadata -> [String]
-formatMeta (VirtualProject (ProjectName name)) = ["name: " ++ name]
-formatMeta (DirProject (ProjectName name) (ProjectRoot root) tpe) =
-  [
+formatMeta :: ProjectMetadata -> [ProjectLang] -> Proteome [String]
+formatMeta (VirtualProject (ProjectName name)) _ = return ["name: " ++ name]
+formatMeta (DirProject (ProjectName name) r@(ProjectRoot root) tpe) langs = do
+  (tagsCmd, tagsArgs) <- tagsCommand r langs
+  return [
     "name: " ++ name,
     "root: " ++ root,
-    "type: " ++ formatType tpe
-  ]
+    "type: " ++ formatType tpe,
+    "tags cmd: " ++ tagsCmd ++ " " ++ tagsArgs
+    ]
 
-formatMain :: Project -> [String]
-formatMain (Project meta types lang langs) =
-  formatMeta meta ++ [
+formatMain :: Project -> Proteome [String]
+formatMain (Project meta types lang langs) = do
+  metaContent <- formatMeta meta langs
+  return $ metaContent ++ [
     "types: " ++ intercalate ", " (fmap projectType types),
     "main language: " ++ formatLang lang,
     "languages: " ++ intercalate ", " (fmap projectLang langs)
@@ -45,8 +51,9 @@ formatMain (Project meta types lang langs) =
 
 diagnostics :: Proteome [String]
 diagnostics = do
-  main <- fmap formatMain getMainProject
-  return $ ["Diagnostics", "", "Main project:"] ++ main
+  main <- getMainProject >>= formatMain
+  confLog <- Ribo.inspect $ configLog
+  return $ ["Diagnostics", "", "Main project:"] ++ main ++ ["", "loaded config files:"] ++ confLog
 
 proDiag :: CommandArguments -> Proteome ()
 proDiag _ = do
