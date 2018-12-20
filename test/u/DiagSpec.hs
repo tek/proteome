@@ -13,11 +13,22 @@ import Proteome.Test.Unit (specWithDef)
 import Proteome.Diag (proDiag)
 import Config (vars)
 
+target :: [String]
+target = [
+  "Diagnostics",
+  "",
+  "Main project:",
+  "name: main",
+  "types: ",
+  "main language: none",
+  "languages: "
+  ]
+
 diagSpec :: Proteome ()
 diagSpec = do
   proDiag def
   content <- currentBufferContent
-  liftIO $ assertEqual ["Diagnostics"] content
+  liftIO $ assertEqual target content
 
 test_diag :: IO ()
 test_diag =
