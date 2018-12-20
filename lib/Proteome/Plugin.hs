@@ -32,6 +32,7 @@ import Proteome.Tags (proTags)
 import Proteome.Save (proSave)
 import Proteome.BufEnter (bufEnter)
 import Proteome.Project.Activate (proNext, proPrev)
+import Proteome.Diag (proDiag)
 
 plugin' :: Ribosome (TVar Env) -> Plugin (Ribosome (TVar Env))
 plugin' env =
@@ -49,6 +50,7 @@ plugin' env =
       $(command' 'proNext) [],
       $(command' 'proPrev) [],
       $(function' 'proReadConfig) Sync,
+      $(command' 'proDiag) [],
       $(autocmd 'bufEnter) "BufEnter" def
     ]
   }

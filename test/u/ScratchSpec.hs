@@ -9,7 +9,7 @@ import Test.Framework
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Data.ScratchOptions (ScratchOptions(ScratchOptions))
 import Ribosome.Scratch (showInScratch)
-import Proteome.Data.Proteome
+import Proteome.Data.Proteome (Proteome)
 import Proteome.Test.Unit (specWithDef)
 import Config (vars)
 

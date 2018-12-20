@@ -10,6 +10,7 @@ import {-@ HTF_TESTS @-} AddSpec
 import {-@ HTF_TESTS @-} MultiTagsSpec
 import {-@ HTF_TESTS @-} CycleSpec
 import {-@ HTF_TESTS @-} ScratchSpec
+import {-@ HTF_TESTS @-} DiagSpec
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 

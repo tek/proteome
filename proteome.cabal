@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 56c929b3204b22694424dfaa4c2067a38ae316ffb493cf024495746cb60626ff
+-- hash: 2f9d8d8552091dca51242efde2d889d647d829a926cd57b9308d0c8c089d4015
 
 name:           proteome
 version:        0.3.14.0
@@ -37,6 +37,7 @@ library
       Proteome.Data.Project
       Proteome.Data.ProjectSpec
       Proteome.Data.Proteome
+      Proteome.Diag
       Proteome.Env
       Proteome.Init
       Proteome.Log
@@ -207,6 +208,7 @@ test-suite proteome-unit
       AddSpec
       Config
       CycleSpec
+      DiagSpec
       MultiTagsSpec
       PersistLoadSpec
       PersistStoreSpec

@@ -1,5 +1,6 @@
 module Ribosome.Data.ScratchOptions(
   ScratchOptions(..),
+  defaultScratchOptions,
 ) where
 
 data ScratchOptions =
@@ -10,3 +11,6 @@ data ScratchOptions =
     wrap :: Bool,
     name :: String
   }
+
+defaultScratchOptions :: String -> ScratchOptions
+defaultScratchOptions = ScratchOptions False True Nothing False
