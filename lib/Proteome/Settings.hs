@@ -33,7 +33,7 @@ projectTypeDirs :: Setting [FilePath]
 projectTypeDirs = Setting "project_type_dirs" True (Just [])
 
 projectConfig :: Setting ProjectConfig
-projectConfig = Setting "project_config" True (Just (ProjectConfig def def def))
+projectConfig = Setting "project_config" True (Just (ProjectConfig def def def def))
 
 mainName :: Setting ProjectName
 mainName = Setting "main_name" True Nothing

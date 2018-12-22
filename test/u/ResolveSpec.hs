@@ -4,6 +4,7 @@ module ResolveSpec(
   htf_thisModulesTests
 ) where
 
+import Data.Map.Strict (Map)
 import qualified Data.Map as Map (fromList)
 import Data.Default.Class (Default(def))
 import Test.Framework
@@ -54,8 +55,11 @@ lang1 = ProjectLang "idris"
 lang2 :: ProjectLang
 lang2 = ProjectLang "agda"
 
+typeMap :: Map ProjectType [ProjectType]
+typeMap = Map.fromList [(tpe, [tpe1, tpe2])]
+
 config :: ProjectConfig
-config = ProjectConfig def (Map.fromList [(tpe, [tpe1, tpe2])]) (Map.fromList [(tpe, [lang1, lang2])])
+config = ProjectConfig def typeMap (Map.fromList [(tpe, lang)]) (Map.fromList [(lang, [lang1, lang2])])
 
 targetProject :: Project
 targetProject = Project (DirProject name root (Just tpe)) [tpe1, tpe2] (Just lang) [lang1, lang2]

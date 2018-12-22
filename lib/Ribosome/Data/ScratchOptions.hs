@@ -13,4 +13,4 @@ data ScratchOptions =
   }
 
 defaultScratchOptions :: String -> ScratchOptions
-defaultScratchOptions = ScratchOptions False True Nothing False
+defaultScratchOptions = ScratchOptions False False Nothing False

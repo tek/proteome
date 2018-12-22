@@ -52,7 +52,7 @@ formatMain (Project meta types lang langs) = do
 diagnostics :: Proteome [String]
 diagnostics = do
   main <- getMainProject >>= formatMain
-  confLog <- Ribo.inspect $ configLog
+  confLog <- Ribo.inspect configLog
   return $ ["Diagnostics", "", "Main project:"] ++ main ++ ["", "loaded config files:"] ++ confLog
 
 proDiag :: CommandArguments -> Proteome ()

@@ -43,7 +43,7 @@ newtype ProjectLang =
   {
     projectLang :: String
   }
-  deriving (Eq, Show, Generic, NFData)
+  deriving (Ord, Eq, Show, Generic, NFData)
 
 instance NvimObject ProjectLang where
   toObject (ProjectLang s) = toObject s

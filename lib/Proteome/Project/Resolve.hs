@@ -37,7 +37,7 @@ import qualified Proteome.Settings as S
 
 projectFromSegments :: ProjectType -> ProjectName -> ProjectRoot -> Project
 projectFromSegments tpe name root =
-  Project (DirProject name root (Just tpe)) [] (Just (ProjectLang (projectType tpe))) []
+  Project (DirProject name root (Just tpe)) [] Nothing []
 
 projectFromSpec :: ProjectSpec -> Project
 projectFromSpec (ProjectSpec name root tpe types lang langs) =
@@ -105,23 +105,31 @@ resolveByRoot explicit root =
   where
     byRoot = find (hasProjectRoot root) explicit
 
-augment :: Eq a => Map ProjectType [a] -> ProjectType -> [a] -> [a]
+augment :: (Eq a, Ord k) => Map k [a] -> k -> [a] -> [a]
 augment m tpe as =
   case m !? tpe of
     Just extra -> uniq $ as ++ extra
     Nothing -> as
 
 augmentTypes :: ProjectConfig -> ProjectType -> [ProjectType] -> [ProjectType]
-augmentTypes (ProjectConfig _ typeMap _) =
+augmentTypes (ProjectConfig _ typeMap _ _) =
   augment typeMap
 
-augmentLangs :: ProjectConfig -> ProjectType -> [ProjectLang] -> [ProjectLang]
-augmentLangs (ProjectConfig _ _ langMap) =
-  augment langMap
+realLang :: ProjectConfig -> ProjectType -> ProjectLang
+realLang (ProjectConfig _ _ langMap _) t@(ProjectType tpe) =
+  case langMap !? t of
+    Just real -> real
+    Nothing -> (ProjectLang tpe)
+
+augmentLangs :: ProjectConfig -> ProjectLang -> [ProjectLang] -> [ProjectLang]
+augmentLangs (ProjectConfig _ _ _ langsMap) =
+  augment langsMap
 
 augmentFromConfig :: ProjectConfig -> Project -> Project
 augmentFromConfig config (Project meta@(DirProject _ _ (Just tpe)) types lang langs) =
-  Project meta (augmentTypes config tpe types) lang (augmentLangs config tpe langs)
+  Project meta (augmentTypes config tpe types) (Just realLang') (augmentLangs config realLang' langs)
+  where
+    realLang' = fromMaybe (realLang config tpe) lang
 augmentFromConfig _ project = project
 
 resolveProject ::

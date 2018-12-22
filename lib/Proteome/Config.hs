@@ -40,7 +40,8 @@ data ProjectConfig =
   ProjectConfig {
     projectTypes :: Map ProjectType [FilePath],
     typeMap :: Map ProjectType [ProjectType],
-    langMap :: Map ProjectType [ProjectLang]
+    langMap :: Map ProjectType ProjectLang,
+    langsMap :: Map ProjectLang [ProjectLang]
   }
   deriving (Generic, NFData)
 
@@ -49,13 +50,16 @@ instance NvimObject ProjectConfig where
     (toObject :: Dictionary -> Object) . Map.fromList $
     [
       ("projectTypes", toObject projectTypes),
-      ("typeMap", toObject typeMap)
+      ("typeMap", toObject typeMap),
+      ("langMap", toObject langMap),
+      ("langsMap", toObject langsMap)
     ]
   fromObject (ObjectMap o) = do
     projectTypes' <- extractObject "projectTypes" o
     typeMap' <- extractObject "typeMap" o
     langMap' <- extractObject "langMap" o
-    return $ ProjectConfig projectTypes' typeMap' langMap'
+    langsMap' <- extractObject "langsMap" o
+    return $ ProjectConfig projectTypes' typeMap' langMap' langsMap'
   fromObject o = Left ("invalid type for ProjectConfig: " <+> viaShow o)
 
 globRtp :: FilePath -> Ribo a [FilePath]
