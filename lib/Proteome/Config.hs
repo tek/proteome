@@ -14,13 +14,16 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Control.Lens (over)
+import Control.Monad (join)
 import qualified Data.Map as Map
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Text.Prettyprint.Doc ((<+>), viaShow)
-import Neovim (NvimObject(..), Dictionary, Object(ObjectMap), vim_command', vim_call_function', vim_get_var')
+import Neovim (NvimObject(..), Dictionary, Object(ObjectMap), vim_command')
 import Ribosome.Data.Ribo (Ribo)
 import qualified Ribosome.Data.Ribo as Ribo (modify)
+import Ribosome.Api.Function (callFunction)
+import Ribosome.Api.Option (optionString)
 import Ribosome.Internal.NvimObject (extractObject)
 import Proteome.Data.Env (_configLog)
 import Proteome.Data.Project (
@@ -57,9 +60,8 @@ instance NvimObject ProjectConfig where
 
 globRtp :: FilePath -> Ribo a [FilePath]
 globRtp path = do
-  rtp <- vim_get_var' "runtimepath"
-  result <- vim_call_function' "globpath" [toObject rtp, toObject path]
-  fromObject' result
+  rtp <- optionString "runtimepath"
+  callFunction "globpath" [toObject rtp, toObject path, toObject False, toObject True]
 
 runtime :: FilePath -> Ribo a [FilePath]
 runtime path = do
@@ -86,7 +88,7 @@ readConfigProject :: String -> Project -> Ribo a [FilePath]
 readConfigProject confDir project = do
   paths <- traverse (runtimeConf confDir) (fmap projectType (types project))
   metaPaths <- readConfigMeta confDir project
-  return $ (paths >>= id) ++ metaPaths
+  return $ join paths ++ metaPaths
 
 readConfig :: String -> Project -> Ribo a [FilePath]
 readConfig confDir project = do
@@ -96,7 +98,7 @@ readConfig confDir project = do
 
 logConfig :: [FilePath] -> Proteome ()
 logConfig paths =
-  Ribo.modify $ over _configLog ((++) paths)
+  Ribo.modify $ over _configLog (paths ++)
 
 proReadConfig :: Proteome ()
 proReadConfig = do

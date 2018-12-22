@@ -26,7 +26,7 @@ import Project (cn, fn, tp, hask, prot, cil, flag)
 assertProject :: FilePath -> String -> Neovim e ()
 assertProject projectsDir n = do
   cwd <- nvimCwd
-  liftIO $ assertEqual cwd $ projectsDir </> hask </> n
+  liftIO $ assertEqual (projectsDir </> hask </> n) cwd
 
 cycleSpec :: Proteome ()
 cycleSpec = do
@@ -44,5 +44,5 @@ cycleSpec = do
   proPrev def
   assertDir prot
 
-test_next :: IO ()
-test_next = vars >>= specWithDef cycleSpec
+test_cycle :: IO ()
+test_cycle = vars >>= specWithDef cycleSpec
