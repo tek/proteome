@@ -35,7 +35,8 @@ target :: [String]
 target = [
   "Diagnostics",
   "",
-  "Main project:",
+  "Main project",
+  "",
   "name: " ++ flag,
   "root: " ++ root,
   "type: " ++ hask,
