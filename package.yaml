@@ -44,6 +44,7 @@ dependencies:
 - transformers
 - safe
 - either
+- ribosome
 
 library:
   source-dirs: lib

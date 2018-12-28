@@ -1,7 +1,8 @@
 resolver: lts-12.21
 packages:
 - .
+# - ribosome
 extra-deps:
-  - strings-1.1
-  - pretty-terminal-0.1.0.0
-  - text-format-heavy-0.1.5.2
+- strings-1.1
+- pretty-terminal-0.1.0.0
+- ribosome-0.1.0.0
