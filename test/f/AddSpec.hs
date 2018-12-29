@@ -11,7 +11,7 @@ import Test.Framework
 import Neovim (vim_call_function', vim_command', toObject)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import qualified Proteome.Settings as S (projectBaseDirs)
 import Proteome.Test.Functional (specWith, fixture)
 import Config (vars)

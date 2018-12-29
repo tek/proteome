@@ -6,7 +6,7 @@ module InitSpec(
 
 import Control.Monad.IO.Class (liftIO)
 import Test.Framework
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import Ribosome.Config.Setting (setting)
 import qualified Proteome.Settings as S
 import Proteome.Data.Project (ProjectName(ProjectName), ProjectType(ProjectType))

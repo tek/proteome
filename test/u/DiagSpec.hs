@@ -9,7 +9,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Default.Class (Default(def))
 import Test.Framework
 import Ribosome.Api.Buffer (currentBufferContent)
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Proteome.Data.Env (_mainProject, _configLog)
 import Proteome.Data.Project (
   Project (Project),

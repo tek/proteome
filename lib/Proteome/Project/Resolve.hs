@@ -20,7 +20,7 @@ import Ribosome.File (canonicalPaths)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Data.Foldable (findMapMaybeM)
 import Ribosome.Data.Maybe (orElse)
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import Proteome.Config (ProjectConfig(ProjectConfig))
 import Proteome.Data.Project (
   Project(Project),
@@ -117,9 +117,7 @@ augmentTypes (ProjectConfig _ typeMap _ _) =
 
 realLang :: ProjectConfig -> ProjectType -> ProjectLang
 realLang (ProjectConfig _ _ langMap _) t@(ProjectType tpe) =
-  case langMap !? t of
-    Just real -> real
-    Nothing -> (ProjectLang tpe)
+  fromMaybe (ProjectLang tpe) (langMap !? t)
 
 augmentLangs :: ProjectConfig -> ProjectLang -> [ProjectLang] -> [ProjectLang]
 augmentLangs (ProjectConfig _ _ _ langsMap) =

@@ -3,7 +3,7 @@ module Proteome.Data.Proteome(
 ) where
 
 import UnliftIO.STM (TVar)
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import Proteome.Data.Env (Env)
 
 type Proteome a = Ribo (TVar Env) a

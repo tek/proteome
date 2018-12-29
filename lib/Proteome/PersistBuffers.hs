@@ -17,7 +17,7 @@ import System.FilePath ((</>))
 import Neovim (vim_get_current_buffer', vim_get_buffers', buffer_get_name', vim_command')
 import Ribosome.Api.Buffer (edit, buflisted)
 import Ribosome.Persist (persistStore, persistLoad)
-import Ribosome.Data.Ribo (lockOrSkip)
+import Ribosome.Control.Ribo (lockOrSkip)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project(Project),

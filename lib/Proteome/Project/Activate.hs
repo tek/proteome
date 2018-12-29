@@ -13,8 +13,8 @@ import Data.Maybe (fromMaybe)
 import System.Directory (doesDirectoryExist)
 import Neovim (vim_command', CommandArguments, Neovim)
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Data.Ribo (Ribo)
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import Ribosome.Control.Ribo (Ribo)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Proteome.Data.Project (
   Project(Project, meta),
   ProjectMetadata(DirProject, VirtualProject),

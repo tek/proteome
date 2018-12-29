@@ -8,7 +8,7 @@ import Control.Monad.IO.Class (liftIO)
 import Test.Framework
 import Data.MessagePack (Object(ObjectInt))
 import Neovim (vim_call_function', vim_get_var')
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import Proteome.Test.Functional (specWith)
 import Config (vars)
 

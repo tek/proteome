@@ -13,7 +13,7 @@ import Test.Framework
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Ribosome.Test.Unit (fixture, tempDir)
 import Proteome.Data.Env (_mainProject)
 import Proteome.Data.Proteome (Proteome)

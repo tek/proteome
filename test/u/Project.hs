@@ -20,7 +20,7 @@ import Control.Monad.IO.Class (liftIO)
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing)
 import Ribosome.Config.Setting (setting)
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import qualified Proteome.Settings as S (projectBaseDirs)
 import Proteome.Data.Project (
   ProjectName(ProjectName),

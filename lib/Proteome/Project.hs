@@ -8,7 +8,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Safe (atMay)
 import System.Directory (getCurrentDirectory, makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
-import qualified Ribosome.Data.Ribo as Ribo (inspect)
+import qualified Ribosome.Control.Ribo as Ribo (inspect)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project,

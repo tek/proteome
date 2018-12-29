@@ -8,7 +8,7 @@ import Control.Monad.IO.Class (liftIO)
 import System.FilePath ((</>))
 import Test.Framework
 import Ribosome.Config.Setting (updateSetting)
-import qualified Ribosome.Data.Ribo as Ribo (inspect)
+import qualified Ribosome.Control.Ribo as Ribo (inspect)
 import Ribosome.Test.Unit (fixture)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Add (proAdd)

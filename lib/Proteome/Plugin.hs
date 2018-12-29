@@ -23,7 +23,7 @@ import Neovim (
   wrapPlugin,
   CommandOption(CmdBang),
   )
-import Ribosome.Data.Ribosome (Ribosome)
+import Ribosome.Control.Ribosome (Ribosome)
 import Proteome.Init (proteomePoll, proteomeStage1, proteomeStage2, proteomeStage4, initialize)
 import Proteome.Data.Env (Env)
 import Proteome.Add (proAdd, proAddCmd)

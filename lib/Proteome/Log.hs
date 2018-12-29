@@ -6,7 +6,7 @@ module Proteome.Log(
   R.p,
 ) where
 
-import Ribosome.Data.Ribo (Ribo)
+import Ribosome.Control.Ribo (Ribo)
 import qualified Ribosome.Log as R (debug, info, p)
 
 debug :: String -> Ribo e ()

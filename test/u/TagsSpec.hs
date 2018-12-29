@@ -10,7 +10,7 @@ import System.FilePath ((</>))
 import System.Directory (doesFileExist)
 import Test.Framework
 import Ribosome.Config.Setting (updateSetting)
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Ribosome.Test.Unit (tempDir)
 import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Env (_mainProject)

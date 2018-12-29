@@ -11,7 +11,7 @@ import Test.Framework
 import Neovim (vim_get_buffers', vim_get_current_buffer', buffer_get_name')
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Ribosome.Test.Unit (fixture)
 import Proteome.Data.Env (_mainProject)
 import Proteome.Data.Proteome (Proteome)

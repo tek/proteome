@@ -10,7 +10,7 @@ import Control.Monad (when)
 import Control.Lens (over)
 import Data.List.Utils (split)
 import Neovim (nvim_err_writeln', CommandArguments(CommandArguments, bang))
-import qualified Ribosome.Data.Ribo as Ribo (modify)
+import qualified Ribosome.Control.Ribo as Ribo (modify)
 import Proteome.Data.AddOptions (AddOptions(AddOptions))
 import Proteome.Data.Env (_projects)
 import Proteome.Data.Project (
