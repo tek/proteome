@@ -87,7 +87,7 @@ resolveByType baseDirs explicit root name tpe = do
 
 fromProjectRoot :: FilePath -> IO Project
 fromProjectRoot dir = do
-  (root, name, tpe) <- pathData (Just dir)
+  (root, name, tpe) <- pathData dir
   return $ projectFromSegments tpe name root
 
 projectFromNameIn :: ProjectName -> FilePath -> IO (Maybe Project)

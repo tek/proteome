@@ -12,11 +12,12 @@ module Proteome.Init(
 import Data.Default.Class (Default(def))
 import qualified Control.Lens as Lens (set)
 import Data.Maybe (fromMaybe)
-import Data.Either.Combinators (rightToMaybe)
+import Data.Either (fromRight)
 import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
 import Control.Monad.IO.Class (liftIO)
+import UnliftIO.Directory (getCurrentDirectory)
 import UnliftIO.STM (TVar)
-import Neovim (Neovim)
+import Neovim (Neovim, vim_call_function', fromObject)
 import Neovim.Context.Internal (Config(customConfig), asks')
 import Ribosome.Config.Setting (settingE, updateSetting)
 import Ribosome.Control.Ribo (Ribo)
@@ -42,7 +43,9 @@ import qualified Proteome.Settings as S
 resolveMainProject :: Ribo e Project
 resolveMainProject = do
   mainDir <- settingE S.mainProjectDir
-  (root, name, tpe) <- pathData (rightToMaybe mainDir)
+  vimCwd <- vim_call_function' "getcwd" []
+  cwd <- getCurrentDirectory
+  (root, name, tpe) <- pathData (fromRight (fromRight cwd (fromObject vimCwd)) mainDir)
   resolveProjectFromConfig (Just root) name (Just tpe)
 
 setMainProject :: Project -> Proteome ()

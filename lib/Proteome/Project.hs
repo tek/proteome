@@ -6,7 +6,7 @@ module Proteome.Project(
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Safe (atMay)
-import System.Directory (getCurrentDirectory, makeAbsolute)
+import System.Directory (makeAbsolute)
 import System.FilePath (takeFileName, takeDirectory)
 import qualified Ribosome.Control.Ribo as Ribo (inspect)
 import Proteome.Data.Proteome (Proteome)
@@ -30,10 +30,9 @@ currentProject = do
   pros <- allProjects
   return $ atMay pros index
 
-pathData :: MonadIO m => Maybe FilePath -> m (ProjectRoot, ProjectName, ProjectType)
-pathData override = do
-  cwd <- liftIO $ maybe getCurrentDirectory pure override
-  absMainDir <- liftIO $ makeAbsolute cwd
+pathData :: MonadIO m => FilePath -> m (ProjectRoot, ProjectName, ProjectType)
+pathData root = do
+  absMainDir <- liftIO $ makeAbsolute root
   return (
     ProjectRoot absMainDir,
     ProjectName $ takeFileName absMainDir,
