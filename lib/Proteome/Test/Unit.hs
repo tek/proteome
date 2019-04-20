@@ -23,5 +23,4 @@ specWith e s vars = do
   unitSpec (defaultTestConfigWith vars) t s
 
 specWithDef :: Proteome () -> Vars -> IO ()
-specWithDef s v = do
-  specWith def s v
+specWithDef = specWith def

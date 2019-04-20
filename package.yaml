@@ -16,8 +16,9 @@ extra-source-files:
 
 dependencies:
 - base >= 4.7 && < 5
-- unliftio
+- ribosome
 - nvim-hs
+- unliftio
 - utf8-string
 - split
 - time
@@ -28,7 +29,6 @@ dependencies:
 - mtl
 - deepseq
 - messagepack
-- strings
 - text
 - pretty-terminal
 - ansi-terminal
@@ -44,7 +44,6 @@ dependencies:
 - transformers
 - safe
 - either
-- ribosome
 
 library:
   source-dirs: lib

@@ -6,25 +6,26 @@ module Proteome.PersistBuffers(
   PersistBuffers(PersistBuffers),
 ) where
 
-import GHC.Generics
 import Control.Monad (filterM, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Except (runExceptT)
 import Data.Aeson (ToJSON(toEncoding), FromJSON, genericToEncoding, defaultOptions)
 import Data.Foldable (traverse_)
-import System.Directory (doesFileExist)
-import System.FilePath ((</>))
+import GHC.Generics
 import Neovim (vim_get_current_buffer', vim_get_buffers', buffer_get_name', vim_command')
 import Ribosome.Api.Buffer (edit, buflisted)
+import Ribosome.Control.Lock (lockOrSkip)
 import Ribosome.Persist (persistStore, persistLoad)
-import Ribosome.Control.Ribo (lockOrSkip)
-import Proteome.Data.Proteome (Proteome)
+import System.Directory (doesFileExist)
+import System.FilePath ((</>))
+
 import Proteome.Data.Project (
   Project(Project),
   ProjectMetadata(DirProject),
   ProjectName(ProjectName),
   ProjectType(ProjectType)
   )
+import Proteome.Data.Proteome (Proteome)
 import Proteome.Env (getMainProject)
 
 data PersistBuffers =

@@ -1,5 +1,4 @@
-import Neovim
-
+import Neovim (neovim, plugins, defaultConfig)
 import Proteome.Plugin (plugin)
 
 main :: IO ()
