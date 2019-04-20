@@ -6,22 +6,24 @@ import Data.Functor (void)
 import Data.List (intercalate)
 import Data.Map (foldMapWithKey)
 import Neovim (CommandArguments)
+import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
+import Ribosome.Data.Errors (ComponentName(ComponentName), Error(Error), Errors(Errors))
 import Ribosome.Data.ScratchOptions (defaultScratchOptions)
-import Ribosome.Data.Errors (Error(Error), Errors(Errors), ComponentName(ComponentName))
 import Ribosome.Scratch (showInScratch)
-import qualified Ribosome.Control.Ribo as Ribo (inspect)
-import Proteome.Env (getMainProject)
-import qualified Proteome.Data.Env as Env (configLog, projects, errors)
-import Proteome.Data.Proteome (Proteome)
+
+import qualified Proteome.Data.Env as Env (configLog, errors, projects)
 import Proteome.Data.Project (
   Project (Project),
   ProjectLang(..),
-  ProjectRoot(ProjectRoot),
-  ProjectName(ProjectName),
-  ProjectType(..),
   ProjectMetadata (DirProject, VirtualProject),
+  ProjectName(ProjectName),
+  ProjectRoot(ProjectRoot),
+  ProjectType(..),
   )
+import Proteome.Data.Proteome (Proteome)
+import Proteome.Env (getMainProject)
 import Proteome.Tags (tagsCommand)
+import qualified Ribosome.Control.Ribo as Ribo (inspect)
 
 formatLang :: Maybe ProjectLang -> String
 formatLang (Just (ProjectLang lang)) = lang
@@ -64,14 +66,13 @@ formatExtraProjectsIfNonempty = do
     _ -> return []
 
 formatError :: Error -> [String]
-formatError (Error stamp (first:message)) = (show stamp ++ " | " ++ first) : message
+formatError (Error stamp (ErrorReport _ (first:message) _)) = (show stamp ++ " | " ++ first) : message
 formatError _ = []
 
 formatComponentErrors :: ComponentName -> [Error] -> [String]
 formatComponentErrors (ComponentName name) errors@(_ : _) =
   [name ++ "", ""] ++ (errors >>= formatError)
 formatComponentErrors _ _ = []
-
 
 formatErrorLog :: Errors -> [String]
 formatErrorLog (Errors errors) =

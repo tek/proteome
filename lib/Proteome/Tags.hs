@@ -5,28 +5,30 @@ module Proteome.Tags(
   tagsCommand,
 ) where
 
-import GHC.IO.Exception (ExitCode(..))
+import Control.Lens (over)
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
-import Control.Lens (over)
 import Data.Foldable (traverse_)
 import Data.List (intercalate)
 import qualified Data.Map.Strict as Map (adjust)
 import Data.Maybe (maybeToList)
 import Data.String.Utils (replace)
-import System.Process (readCreateProcessWithExitCode)
-import qualified System.Process as Proc (proc, CreateProcess(cwd))
-import System.FilePath ((</>))
-import System.Directory (doesFileExist, removePathForcibly, renameFile)
-import UnliftIO (tryIO)
+import GHC.IO.Exception (ExitCode(..))
 import Ribosome.Config.Setting (setting)
-import Ribosome.Control.Ribo (lockOrSkip)
+import Ribosome.Control.Lock (lockOrSkip)
 import qualified Ribosome.Control.Ribo as Ribo (inspect, modify)
+import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
 import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
 import Ribosome.Internal.IO (forkNeovim)
+import System.Directory (doesFileExist, removePathForcibly, renameFile)
+import System.FilePath ((</>))
+import System.Log (Priority(ERROR))
+import System.Process (readCreateProcessWithExitCode)
+import qualified System.Process as Proc (proc, CreateProcess(cwd))
+import UnliftIO (tryIO)
+
 import Proteome.Data.Env (Env(mainProject, projects))
 import qualified Proteome.Data.Env as Env (_errors)
-import Proteome.Data.Proteome (Proteome)
 import Proteome.Data.Project (
   Project (Project),
   ProjectLang(ProjectLang),
@@ -34,8 +36,9 @@ import Proteome.Data.Project (
   ProjectMetadata (DirProject),
   langOrType,
   )
-import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork, tagsFileName)
+import Proteome.Data.Proteome (Proteome)
 import qualified Proteome.Log as Log
+import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork, tagsFileName)
 
 replaceFormatItem :: String -> (String, String) -> String
 replaceFormatItem original (placeholder, replacement) =
@@ -69,17 +72,17 @@ replaceTags (ProjectRoot root) = do
   _ <- liftIO $ tryIO $ renameFile temppath path
   return ()
 
-storeError :: ComponentName -> [String] -> Errors -> Errors
-storeError name msg (Errors errors) =
+storeError :: ComponentName -> String -> [String] -> Errors -> Errors
+storeError name user log' (Errors errors) =
   Errors (Map.adjust (err:) name errors)
   where
-    err = Error time msg
+    err = Error time (ErrorReport user log' ERROR)
     time = 0
 
 notifyError :: String -> Proteome ()
 notifyError e = do
   Log.info $ "tags failed: " ++ e
-  Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") [e])
+  Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") e [e])
 
 tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
 tagsProcess (ProjectRoot root) cmd args =
