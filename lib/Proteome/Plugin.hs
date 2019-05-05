@@ -44,7 +44,7 @@ plugin' env =
       $(function' 'proteomeStage1) Sync,
       $(function' 'proteomeStage2) Sync,
       $(function' 'proteomeStage4) Sync,
-      $(function "ProAddProject" 'proAdd) Sync,
+      $(function "ProAddProject" 'proAdd) Async,
       $(command "ProAdd" 'proAddCmd) [CmdBang],
       $(function' 'proSave) Async,
       $(function' 'proTags) Async,
