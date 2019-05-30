@@ -1,34 +1,35 @@
-{-# LANGUAGE NamedFieldPuns #-}
+module Proteome.Project.Resolve where
 
-module Proteome.Project.Resolve(
-  resolveProject,
-  resolveProjectFromConfig,
-) where
-
+import Control.Exception (SomeException, catch)
 import Control.Monad (foldM, join)
-import Control.Monad.Reader ((<=<))
+import Control.Monad.Extra (firstJustM)
 import Control.Monad.IO.Class (liftIO)
-import Data.List (find)
+import Control.Monad.Reader ((<=<))
+import Data.Functor.Syntax ((<$$>))
+import Data.List (find, null)
 import Data.List.Utils (uniq)
-import Data.Maybe (fromMaybe, isJust)
-import Data.Map.Strict ((!?), Map)
-import Safe (headMay)
-import System.Directory (doesDirectoryExist)
-import System.FilePath (takeDirectory, (</>))
-import System.Path.Glob (glob)
-import Ribosome.File (canonicalPaths)
+import Data.Map.Strict (Map, (!?))
+import qualified Data.Map.Strict as Map (toList, union)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Ribosome.Config.Setting (setting)
+import Ribosome.Control.Ribo (Ribo)
 import Ribosome.Data.Foldable (findMapMaybeM)
 import Ribosome.Data.Maybe (orElse)
-import Ribosome.Control.Ribo (Ribo)
-import Proteome.Config (ProjectConfig(ProjectConfig))
+import Ribosome.File (canonicalPaths)
+import System.Directory (doesDirectoryExist)
+import System.FilePath (takeDirectory, (</>))
+import System.FilePattern.Directory (getDirectoryFiles)
+import System.Path.Glob (glob)
+
+import Proteome.Config (ProjectConfig(ProjectConfig), defaultTypeMarkers)
+import qualified Proteome.Config as ProjectConfig (ProjectConfig(typeMarkers))
 import Proteome.Data.Project (
   Project(Project),
+  ProjectLang(..),
+  ProjectMetadata(DirProject, VirtualProject),
   ProjectName(..),
   ProjectRoot(..),
   ProjectType(..),
-  ProjectLang(..),
-  ProjectMetadata(DirProject, VirtualProject),
   )
 import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
@@ -93,17 +94,26 @@ fromProjectRoot dir = do
 projectFromNameIn :: ProjectName -> FilePath -> IO (Maybe Project)
 projectFromNameIn (ProjectName name) base = do
   candidates <- glob $ base ++ "/*/" ++ name
-  mapM fromProjectRoot (headMay candidates)
+  traverse fromProjectRoot (listToMaybe candidates)
 
 resolveByName :: [FilePath] -> ProjectName -> IO (Maybe Project)
 resolveByName baseDirs name =
   findMapMaybeM (projectFromNameIn name) baseDirs
 
-resolveByRoot :: [ProjectSpec] -> ProjectRoot -> Maybe Project
-resolveByRoot explicit root =
-  fmap projectFromSpec byRoot
+resolveFromDirContents :: Map ProjectType [FilePath] -> ProjectName -> ProjectRoot -> IO (Maybe Project)
+resolveFromDirContents typeMarkers name projectRoot@(ProjectRoot root) =
+  cons <$$> firstJustM match (Map.toList typeMarkers)
   where
-    byRoot = find (hasProjectRoot root) explicit
+    cons projectType =
+      projectFromSegments projectType name projectRoot
+    match (tpe, patterns) =
+      (tpe <$) . listToMaybe <$> catch @SomeException (getDirectoryFiles root patterns) (const $ return [])
+
+resolveByRoot :: ProjectConfig -> ProjectName -> [ProjectSpec] -> ProjectRoot -> IO (Maybe Project)
+resolveByRoot (ProjectConfig _ _ typeMarkers _ _) name explicit root =
+  maybe (resolveFromDirContents typeMarkers name root) (return . Just . projectFromSpec) fromExplicit
+  where
+    fromExplicit = find (hasProjectRoot root) explicit
 
 augment :: (Eq a, Ord k) => Map k [a] -> k -> [a] -> [a]
 augment m tpe as =
@@ -112,15 +122,15 @@ augment m tpe as =
     Nothing -> as
 
 augmentTypes :: ProjectConfig -> ProjectType -> [ProjectType] -> [ProjectType]
-augmentTypes (ProjectConfig _ typeMap _ _) =
+augmentTypes (ProjectConfig _ typeMap _ _ _) =
   augment typeMap
 
 realLang :: ProjectConfig -> ProjectType -> ProjectLang
-realLang (ProjectConfig _ _ langMap _) t@(ProjectType tpe) =
+realLang (ProjectConfig _ _ _ langMap _) t@(ProjectType tpe) =
   fromMaybe (ProjectLang tpe) (langMap !? t)
 
 augmentLangs :: ProjectConfig -> ProjectLang -> [ProjectLang] -> [ProjectLang]
-augmentLangs (ProjectConfig _ _ _ langsMap) =
+augmentLangs (ProjectConfig _ _ _ _ langsMap) =
   augment langsMap
 
 augmentFromConfig :: ProjectConfig -> Project -> Project
@@ -141,16 +151,21 @@ resolveProject ::
 resolveProject baseDirs explicit config root name tpe = do
   byType <- traverse (resolveByType baseDirs explicit root name) tpe
   byName <- if isJust root then return Nothing else resolveByName baseDirs name
+  byRoot <- join <$> traverse (resolveByRoot config name explicit) root
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
   let byTypeOrName = fromMaybe byNameOrVirtual (join byType)
-  let byRoot = root >>= resolveByRoot explicit
   let project = fromMaybe byTypeOrName byRoot
   return $ augmentFromConfig config project
+
+projectConfig :: Ribo e ProjectConfig
+projectConfig = do
+  config <- setting S.projectConfig
+  return config { ProjectConfig.typeMarkers = Map.union (ProjectConfig.typeMarkers config) defaultTypeMarkers }
 
 resolveProjectFromConfig :: Maybe ProjectRoot -> ProjectName -> Maybe ProjectType -> Ribo e Project
 resolveProjectFromConfig root name tpe = do
   baseDirs <- (canonicalPaths <=< setting) S.projectBaseDirs
   -- typeDirs <- setting S.projectTypeDirs
   explicit <- setting S.projects
-  config <- setting S.projectConfig
+  config <- projectConfig
   liftIO $ resolveProject baseDirs explicit config root name tpe

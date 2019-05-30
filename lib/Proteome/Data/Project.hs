@@ -1,6 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
 module Proteome.Data.Project(
   ProjectMetadata (..),
@@ -14,10 +13,11 @@ module Proteome.Data.Project(
   langOrType,
 ) where
 
-import GHC.Generics (Generic)
-import Control.Lens (makeClassy_)
 import Control.DeepSeq (NFData)
+import Control.Lens (makeClassy_)
 import Data.Default.Class (Default(def))
+import Data.String (IsString(..))
+import GHC.Generics (Generic)
 import Neovim.Classes (NvimObject(..))
 import Ribosome.Internal.NvimObject (deriveString)
 
@@ -27,6 +27,9 @@ newtype ProjectName = ProjectName String
 instance NvimObject ProjectName where
   toObject (ProjectName s) = toObject s
   fromObject = deriveString ProjectName
+
+instance IsString ProjectName where
+  fromString = ProjectName
 
 newtype ProjectType =
   ProjectType {
@@ -38,6 +41,9 @@ instance NvimObject ProjectType where
   toObject (ProjectType s) = toObject s
   fromObject = deriveString ProjectType
 
+instance IsString ProjectType where
+  fromString = ProjectType
+
 newtype ProjectLang =
   ProjectLang
   {
@@ -48,6 +54,9 @@ newtype ProjectLang =
 instance NvimObject ProjectLang where
   toObject (ProjectLang s) = toObject s
   fromObject = deriveString ProjectLang
+
+instance IsString ProjectLang where
+  fromString = ProjectLang
 
 newtype ProjectRoot = ProjectRoot FilePath
   deriving (Eq, Show, Generic, NFData)

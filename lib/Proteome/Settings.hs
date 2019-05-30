@@ -14,11 +14,11 @@ module Proteome.Settings(
 ) where
 
 import Data.Default.Class (Default(def))
-import Ribosome.Config.Setting
-import Proteome.Data.Project (ProjectName, ProjectType)
-import Proteome.Data.ActiveProject (ActiveProject)
-import Proteome.Data.ProjectSpec (ProjectSpec)
 import Proteome.Config
+import Proteome.Data.ActiveProject (ActiveProject)
+import Proteome.Data.Project (ProjectName, ProjectType)
+import Proteome.Data.ProjectSpec (ProjectSpec)
+import Ribosome.Config.Setting
 
 mainProjectDir :: Setting String
 mainProjectDir = Setting "main_project_dir" True Nothing
@@ -33,7 +33,7 @@ projectTypeDirs :: Setting [FilePath]
 projectTypeDirs = Setting "project_type_dirs" True (Just [])
 
 projectConfig :: Setting ProjectConfig
-projectConfig = Setting "project_config" True (Just (ProjectConfig def def def def))
+projectConfig = Setting "project_config" True (Just (ProjectConfig def def def def def))
 
 mainName :: Setting ProjectName
 mainName = Setting "main_name" True Nothing

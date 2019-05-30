@@ -53,6 +53,7 @@ plugin' env =
       $(function' 'proReadConfig) Sync,
       $(command' 'proDiag) [],
       $(autocmd 'bufEnter) "BufEnter" def
+      -- $(autocmd 'proQuit) "VimLeave" def
     ]
   }
 

@@ -5,3 +5,4 @@ packages:
 extra-deps:
 - pretty-terminal-0.1.0.0
 - ribosome-0.2.2.0
+- filepattern-0.1.1

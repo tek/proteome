@@ -9,36 +9,36 @@ module Proteome.Init(
   resolveAndInitMain,
 ) where
 
-import Data.Default.Class (Default(def))
 import qualified Control.Lens as Lens (set)
-import Data.Maybe (fromMaybe)
-import Data.Either (fromRight)
-import System.Log.Logger (updateGlobalLogger, setLevel, Priority(ERROR))
 import Control.Monad.IO.Class (liftIO)
-import UnliftIO.Directory (getCurrentDirectory)
-import UnliftIO.STM (TVar)
-import Neovim (Neovim, vim_call_function', fromObject)
+import Data.Default.Class (Default(def))
+import Data.Either (fromRight)
+import Data.Maybe (fromMaybe)
+import Neovim (Neovim, fromObject, vim_call_function')
 import Neovim.Context.Internal (Config(customConfig), asks')
+import Proteome.Config (logConfig, readConfig)
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.Env as Env (_mainProject, mainProject)
+import Proteome.Data.Project (
+  Project(meta),
+  ProjectMetadata(DirProject, VirtualProject),
+  ProjectType(..),
+  )
+import Proteome.Data.Proteome (Proteome)
+import qualified Proteome.Log as Log
+import Proteome.PersistBuffers (loadBuffers)
+import Proteome.Project (pathData)
+import Proteome.Project.Activate (activateProject)
+import Proteome.Project.Resolve (resolveProjectFromConfig)
+import qualified Proteome.Settings as S
 import Ribosome.Config.Setting (settingE, updateSetting)
 import Ribosome.Control.Ribo (Ribo)
 import qualified Ribosome.Control.Ribo as Ribo (inspect, modify)
-import Ribosome.Control.Ribosome (newRibosome, Ribosome)
+import Ribosome.Control.Ribosome (Ribosome, newRibosome)
 import Ribosome.Internal.IO (retypeNeovim)
-import qualified Proteome.Data.Env as Env (mainProject, _mainProject)
-import Proteome.Data.Env (Env)
-import Proteome.Data.Proteome (Proteome)
-import Proteome.Data.Project (
-  Project(meta),
-  ProjectType(..),
-  ProjectMetadata(DirProject, VirtualProject),
-  )
-import Proteome.Project (pathData)
-import Proteome.Project.Resolve (resolveProjectFromConfig)
-import Proteome.Project.Activate (activateProject)
-import Proteome.Config (readConfig, logConfig)
-import Proteome.PersistBuffers (loadBuffers)
-import qualified Proteome.Log as Log
-import qualified Proteome.Settings as S
+import System.Log.Logger (Priority(ERROR), setLevel, updateGlobalLogger)
+import UnliftIO.Directory (getCurrentDirectory)
+import UnliftIO.STM (TVar)
 
 resolveMainProject :: Ribo e Project
 resolveMainProject = do

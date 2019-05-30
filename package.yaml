@@ -15,35 +15,38 @@ extra-source-files:
 - README.md
 
 dependencies:
-- base >= 4.7 && < 5
-- ribosome
-- nvim-hs
-- unliftio
-- utf8-string
-- split
-- time
-- prettyprinter
-- containers
-- filepath
-- resourcet
-- mtl
-- deepseq
-- messagepack
-- text
-- pretty-terminal
-- ansi-terminal
-- hslogger
-- directory
-- process
-- stm
-- lens
-- data-default-class
 - MissingH
 - aeson
+- ansi-terminal
+- base >= 4.7 && < 5
 - bytestring
-- transformers
-- safe
+- composition-extra
+- containers
+- data-default-class
+- deepseq
+- directory
 - either
+- extra
+- filepath
+- filepattern
+- hslogger
+- lens
+- messagepack
+- mtl
+- nvim-hs
+- pretty-terminal
+- prettyprinter
+- process
+- resourcet
+- ribosome
+- safe
+- split
+- stm
+- text
+- time
+- transformers
+- unliftio
+- utf8-string
 
 library:
   source-dirs: lib
@@ -70,13 +73,47 @@ tests:
     dependencies:
     - proteome
     - HTF
-  proteome-functional:
-    main: SpecMain.hs
-    source-dirs: test/f
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - proteome
-    - HTF
+
+default-extensions:
+- AutoDeriveTypeable
+- BangPatterns
+- BinaryLiterals
+- ConstraintKinds
+- DataKinds
+- DefaultSignatures
+- DeriveDataTypeable
+- DeriveFoldable
+- DeriveFunctor
+- DeriveGeneric
+- DeriveTraversable
+- DoAndIfThenElse
+- EmptyDataDecls
+- ExistentialQuantification
+- FlexibleContexts
+- FlexibleInstances
+- FunctionalDependencies
+- GADTs
+- GeneralizedNewtypeDeriving
+- InstanceSigs
+- KindSignatures
+- LambdaCase
+- MonadFailDesugaring
+- MultiParamTypeClasses
+- MultiWayIf
+- NamedFieldPuns
+- OverloadedStrings
+- PartialTypeSignatures
+- PatternGuards
+- PolyKinds
+- QuasiQuotes
+- RankNTypes
+- RecordWildCards
+- ScopedTypeVariables
+- StandaloneDeriving
+- TemplateHaskell
+- TupleSections
+- TypeApplications
+- TypeFamilies
+- TypeSynonymInstances
+- UnicodeSyntax
+- ViewPatterns

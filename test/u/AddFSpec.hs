@@ -1,28 +1,26 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module AddSpec(
-  htf_thisModulesTests,
-) where
+module AddFSpec(htf_thisModulesTests) where
 
+import Config (vars)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.Map as Map (fromList)
-import System.FilePath ((</>))
-import Test.Framework
-import Neovim (vim_call_function', vim_command', toObject)
+import Neovim (toObject, vim_call_function', vim_command')
+import qualified Proteome.Settings as S (projectBaseDirs)
+import Proteome.Test.Functional (fixture, specWith)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Control.Ribo (Ribo)
-import qualified Proteome.Settings as S (projectBaseDirs)
-import Proteome.Test.Functional (specWith, fixture)
-import Config (vars)
+import System.FilePath ((</>))
+import Test.Framework
 
 addSpec :: Ribo env ()
 addSpec = do
   projectsDir <- fixture "projects"
   updateSetting S.projectBaseDirs [projectsDir]
   _ <- vim_call_function' "ProAddProject" [toObject $ Map.fromList [
-    ("name", toObject "cilia"),
-    ("tpe", toObject "haskell"),
+    ("name" :: String, toObject ("cilia" :: String)),
+    ("tpe", toObject ("haskell" :: String)),
     ("activate", toObject True)
     ]]
   cwd <- nvimCwd

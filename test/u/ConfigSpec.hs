@@ -4,13 +4,13 @@ module ConfigSpec(
   htf_thisModulesTests
 ) where
 
+import Config (vars)
 import Control.Monad.IO.Class (liftIO)
-import Test.Framework
 import Data.MessagePack (Object(ObjectInt))
 import Neovim (vim_call_function', vim_get_var')
-import Ribosome.Control.Ribo (Ribo)
 import Proteome.Test.Functional (specWith)
-import Config (vars)
+import Ribosome.Control.Ribo (Ribo)
+import Test.Framework
 
 configSpec :: Ribo env ()
 configSpec = do

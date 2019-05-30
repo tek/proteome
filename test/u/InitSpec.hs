@@ -1,17 +1,15 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module InitSpec(
-  htf_thisModulesTests
-) where
+module InitSpec(htf_thisModulesTests) where
 
-import Control.Monad.IO.Class (liftIO)
-import Test.Framework
-import Ribosome.Control.Ribo (Ribo)
-import Ribosome.Config.Setting (setting)
-import qualified Proteome.Settings as S
-import Proteome.Data.Project (ProjectName(ProjectName), ProjectType(ProjectType))
-import Proteome.Test.Functional (specWith)
 import Config (vars)
+import Control.Monad.IO.Class (liftIO)
+import Proteome.Data.Project (ProjectName(ProjectName), ProjectType(ProjectType))
+import qualified Proteome.Settings as S
+import Proteome.Test.Functional (specWith)
+import Ribosome.Config.Setting (setting)
+import Ribosome.Control.Ribo (Ribo)
+import Test.Framework
 
 initSpec :: Ribo env ()
 initSpec = do
