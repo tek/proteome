@@ -1,94 +1,21 @@
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE NoGeneralizedNewtypeDeriving #-}
 
-module Proteome.Data.Project(
-  ProjectMetadata (..),
-  Project (..),
-  ProjectType (..),
-  ProjectLang (..),
-  ProjectRoot (..),
-  ProjectName (..),
-  _meta,
-  _lang,
-  langOrType,
-) where
+module Proteome.Data.Project where
 
-import Control.DeepSeq (NFData)
-import Control.Lens (makeClassy_)
-import Data.Default.Class (Default(def))
-import Data.String (IsString(..))
-import GHC.Generics (Generic)
-import Neovim.Classes (NvimObject(..))
-import Ribosome.Internal.NvimObject (deriveString)
-
-newtype ProjectName = ProjectName String
-  deriving (Eq, Show, Generic, NFData)
-
-instance NvimObject ProjectName where
-  toObject (ProjectName s) = toObject s
-  fromObject = deriveString ProjectName
-
-instance IsString ProjectName where
-  fromString = ProjectName
-
-newtype ProjectType =
-  ProjectType {
-    projectType :: String
-  }
-  deriving (Ord, Eq, Show, Generic, NFData)
-
-instance NvimObject ProjectType where
-  toObject (ProjectType s) = toObject s
-  fromObject = deriveString ProjectType
-
-instance IsString ProjectType where
-  fromString = ProjectType
-
-newtype ProjectLang =
-  ProjectLang
-  {
-    projectLang :: String
-  }
-  deriving (Ord, Eq, Show, Generic, NFData)
-
-instance NvimObject ProjectLang where
-  toObject (ProjectLang s) = toObject s
-  fromObject = deriveString ProjectLang
-
-instance IsString ProjectLang where
-  fromString = ProjectLang
-
-newtype ProjectRoot = ProjectRoot FilePath
-  deriving (Eq, Show, Generic, NFData)
-
-instance NvimObject ProjectRoot where
-  toObject (ProjectRoot s) = toObject s
-  fromObject = deriveString ProjectRoot
-
-data ProjectMetadata =
-  DirProject {
-    name :: ProjectName,
-    root :: ProjectRoot,
-    tpe :: Maybe ProjectType
-  }
-  | VirtualProject {
-    name :: ProjectName
-  }
-  deriving (Eq, Show)
-
-instance Default ProjectMetadata where
-  def = VirtualProject (ProjectName "main")
+import Proteome.Data.ProjectLang (ProjectLang(ProjectLang))
+import Proteome.Data.ProjectMetadata (ProjectMetadata)
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
 
 data Project =
   Project {
-    meta :: ProjectMetadata,
-    types :: [ProjectType],
-    lang :: Maybe ProjectLang,
-    langs :: [ProjectLang]
+    _meta :: ProjectMetadata,
+    _types :: [ProjectType],
+    _lang :: Maybe ProjectLang,
+    _langs :: [ProjectLang]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, MsgpackDecode, MsgpackEncode)
 
-makeClassy_ ''Project
+makeClassy ''Project
 
 instance Default Project where
   def = Project def def def def

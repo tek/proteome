@@ -1,40 +1,35 @@
-module Proteome.Project(
-  allProjects,
-  currentProject,
-  pathData,
-) where
+module Proteome.Project where
 
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Safe (atMay)
-import System.Directory (makeAbsolute)
-import System.FilePath (takeFileName, takeDirectory)
-import qualified Ribosome.Control.Ribo as Ribo (inspect)
-import Proteome.Data.Proteome (Proteome)
-import Proteome.Data.Project (
-  Project,
-  ProjectName(..),
-  ProjectRoot(..),
-  ProjectType(..),
-  )
-import Proteome.Data.Env (Env(mainProject, projects, currentProjectIndex))
+import qualified Control.Lens as Lens (element, firstOf)
+import Path (Abs, Dir, Path, dirname, parent, toFilePath)
+import System.FilePath (dropTrailingPathSeparator)
 
-allProjects :: Proteome [Project]
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.Env as Env (currentProjectIndex, mainProject, projects)
+import Proteome.Data.Project (Project)
+import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
+
+allProjects ::
+  MonadDeepState s Env m =>
+  m [Project]
 allProjects = do
-  main <- Ribo.inspect mainProject
-  extra <- Ribo.inspect projects
+  main <- getL @Env Env.mainProject
+  extra <- getL @Env Env.projects
   return $ main : extra
 
-currentProject :: Proteome (Maybe Project)
+currentProject ::
+  MonadDeepState s Env m =>
+  m (Maybe Project)
 currentProject = do
-  index <- Ribo.inspect currentProjectIndex
-  pros <- allProjects
-  return $ atMay pros index
+  index <- getL @Env Env.currentProjectIndex
+  Lens.firstOf (Lens.element index) <$> allProjects
 
-pathData :: MonadIO m => FilePath -> m (ProjectRoot, ProjectName, ProjectType)
-pathData root = do
-  absMainDir <- liftIO $ makeAbsolute root
-  return (
-    ProjectRoot absMainDir,
-    ProjectName $ takeFileName absMainDir,
-    ProjectType $ (takeFileName . takeDirectory) absMainDir
+pathData :: Path Abs Dir -> (ProjectRoot, ProjectName, ProjectType)
+pathData root =
+  (
+    ProjectRoot root,
+    ProjectName . toText . dropTrailingPathSeparator . toFilePath . dirname $ root,
+    ProjectType . toText . toFilePath . dirname . parent $ root
     )

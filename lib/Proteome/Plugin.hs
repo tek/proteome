@@ -1,63 +1,51 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-module Proteome.Plugin(
-  plugin,
-)
-where
+module Proteome.Plugin where
 
 import Data.Default.Class (Default(def))
-import Neovim (
-  CommandOption(CmdBang),
-  Neovim,
-  NeovimConfig,
-  NeovimPlugin,
-  Plugin(..),
-  StartupConfig,
-  Synchronous(..),
-  autocmd,
-  command,
-  command',
-  function,
-  function',
-  wrapPlugin,
-  )
+import Neovim (CommandOption(CmdBang), Neovim, NeovimPlugin, Plugin, wrapPlugin)
+import Ribosome.Control.Monad.Ribo (Ribo)
 import Ribosome.Control.Ribosome (Ribosome)
-import UnliftIO.STM (TVar)
+import Ribosome.Error.Report (reportError)
+import Ribosome.Plugin (RpcDef, autocmd, cmd, name, riboPlugin, rpcHandler, rpcHandlerDef, sync)
 
 import Proteome.Add (proAdd, proAddCmd)
 import Proteome.BufEnter (bufEnter)
 import Proteome.Config (proReadConfig)
-import Proteome.Data.Env (Env)
+import Proteome.Data.Env (Env, Proteome)
+import Proteome.Data.Error (Error)
 import Proteome.Diag (proDiag)
-import Proteome.Init (initialize, proteomePoll, proteomeStage1, proteomeStage2, proteomeStage4)
+import Proteome.Init (initialize, proteomeStage1, proteomeStage2, proteomeStage4)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Save (proSave)
 import Proteome.Tags (proTags)
 
-plugin' :: Ribosome (TVar Env) -> Plugin (Ribosome (TVar Env))
-plugin' env =
-  Plugin {
-    environment = env,
-    exports = [
-      $(function' 'proteomePoll) Sync,
-      $(function' 'proteomeStage1) Sync,
-      $(function' 'proteomeStage2) Sync,
-      $(function' 'proteomeStage4) Sync,
-      $(function "ProAddProject" 'proAdd) Async,
-      $(command "ProAdd" 'proAddCmd) [CmdBang],
-      $(function' 'proSave) Async,
-      $(function' 'proTags) Async,
-      $(command' 'proNext) [],
-      $(command' 'proPrev) [],
-      $(function' 'proReadConfig) Sync,
-      $(command' 'proDiag) [],
-      $(autocmd 'bufEnter) "BufEnter" def
-      -- $(autocmd 'proQuit) "VimLeave" def
-    ]
-  }
+handleError :: Error -> Proteome ()
+handleError =
+  reportError "proteome"
 
-plugin :: Neovim (StartupConfig NeovimConfig) NeovimPlugin
-plugin = do
-  env <- initialize
-  wrapPlugin $ plugin' env
+rpcHandlers :: [[RpcDef (Ribo Env Error)]]
+rpcHandlers =
+  [
+    $(rpcHandler sync 'proteomeStage1),
+    $(rpcHandler sync 'proteomeStage2),
+    $(rpcHandler sync 'proteomeStage4),
+    $(rpcHandler (name "ProAddProject") 'proAdd),
+    $(rpcHandler (cmd [CmdBang] . name "ProAdd") 'proAddCmd),
+    $(rpcHandlerDef 'proSave),
+    $(rpcHandlerDef 'proTags),
+    $(rpcHandler (cmd []) 'proNext),
+    $(rpcHandler (cmd []) 'proPrev),
+    $(rpcHandlerDef 'proReadConfig),
+    $(rpcHandler (cmd []) 'proDiag),
+    $(rpcHandler (autocmd "BufEnter") 'bufEnter),
+    $(rpcHandler (autocmd "BufWritePost") 'proSave)
+    -- $(rpcHandler (autocmd "VimLeave") 'proQuit)
+  ]
+
+
+plugin' :: Ribosome Env -> Plugin (Ribosome Env)
+plugin' env =
+  riboPlugin "proteome" env rpcHandlers def handleError def
+
+plugin :: Neovim e NeovimPlugin
+plugin =
+  wrapPlugin . plugin' =<< initialize

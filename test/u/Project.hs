@@ -1,49 +1,33 @@
-module Project(
-  flag,
-  hask,
-  cn,
-  tp,
-  l,
-  fn,
-  cil,
-  createTestProject,
-  prot,
-  idr,
-  ag,
-  ti,
-  ta,
-  li,
-  la,
-) where
+module Project where
 
-import Control.Monad.IO.Class (liftIO)
-import System.FilePath ((</>))
-import System.Directory (createDirectoryIfMissing)
+import Control.Monad.Catch (MonadThrow)
+import Path (parseRelDir, (</>))
+import Path.IO (ensureDir)
 import Ribosome.Config.Setting (setting)
-import Ribosome.Control.Ribo (Ribo)
-import qualified Proteome.Settings as S (projectBaseDirs)
-import Proteome.Data.Project (
-  ProjectName(ProjectName),
-  ProjectType(ProjectType),
-  ProjectLang(ProjectLang),
-  )
+import Ribosome.Data.SettingError (SettingError)
 
-flag :: String
+import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Data.ProjectLang (ProjectLang(ProjectLang))
+import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import qualified Proteome.Settings as Settings (projectConfig)
+
+flag :: Text
 flag = "flagellum"
 
-hask :: String
+hask :: Text
 hask = "haskell"
 
-idr :: String
+idr :: Text
 idr = "idris"
 
-ag :: String
+ag :: Text
 ag = "agda"
 
-cil :: String
+cil :: Text
 cil = "cilia"
 
-prot :: String
+prot :: Text
 prot = "proteome"
 
 fn :: ProjectName
@@ -70,7 +54,17 @@ li = ProjectLang idr
 la :: ProjectLang
 la = ProjectLang ag
 
-createTestProject :: ProjectType -> ProjectName -> Ribo e ()
+createTestProject ::
+  NvimE e m =>
+  MonadFail m =>
+  MonadRibo m =>
+  MonadThrow m =>
+  MonadDeepError e SettingError m =>
+  ProjectType ->
+  ProjectName ->
+  m ()
 createTestProject (ProjectType tpe) (ProjectName name) = do
-  bases <- setting S.projectBaseDirs
-  liftIO $ createDirectoryIfMissing True (head bases </> tpe </> name)
+  (ProjectConfig (base : _) _ _ _ _ _ _) <- setting Settings.projectConfig
+  typePath <- parseRelDir (toString tpe)
+  namePath <- parseRelDir (toString name)
+  ensureDir (base </> typePath </> namePath)

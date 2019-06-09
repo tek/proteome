@@ -1,124 +1,175 @@
-{-# LANGUAGE OverloadedStrings #-}
+module Proteome.Tags where
 
-module Proteome.Tags(
-  proTags,
-  tagsCommand,
-) where
-
-import Control.Lens (over)
-import Control.Monad (when)
-import Control.Monad.IO.Class (liftIO)
-import Data.Foldable (traverse_)
-import Data.List (intercalate)
-import qualified Data.Map.Strict as Map (adjust)
-import Data.Maybe (maybeToList)
-import Data.String.Utils (replace)
+import Control.Concurrent.Lifted (fork)
+import qualified Control.Lens as Lens (view)
+import qualified Data.Text as Text (intercalate, replace, words)
 import GHC.IO.Exception (ExitCode(..))
+import Path (File, Path, Rel, toFilePath, (<.>), (</>))
+import Path.IO (doesFileExist, removeFile, renameFile)
 import Ribosome.Config.Setting (setting)
+import Ribosome.Control.Exception (catchAnyAs)
 import Ribosome.Control.Lock (lockOrSkip)
-import qualified Ribosome.Control.Ribo as Ribo (inspect, modify)
 import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Data.Errors (Errors(Errors), Error(Error), ComponentName(ComponentName))
-import Ribosome.Internal.IO (forkNeovim)
-import System.Directory (doesFileExist, removePathForcibly, renameFile)
-import System.FilePath ((</>))
-import System.Log (Priority(ERROR))
-import System.Process (readCreateProcessWithExitCode)
-import qualified System.Process as Proc (proc, CreateProcess(cwd))
-import UnliftIO (tryIO)
+import Ribosome.Data.SettingError (SettingError)
+import Ribosome.Error.Report (processErrorReport)
+import System.Log (Priority(NOTICE))
+import System.Process.Typed (proc, readProcessStderr, setWorkingDir)
 
-import Proteome.Data.Env (Env(mainProject, projects))
-import qualified Proteome.Data.Env as Env (_errors)
-import Proteome.Data.Project (
-  Project (Project),
-  ProjectLang(ProjectLang),
-  ProjectRoot(ProjectRoot),
-  ProjectMetadata (DirProject),
-  langOrType,
-  )
-import Proteome.Data.Proteome (Proteome)
-import qualified Proteome.Log as Log
-import qualified Proteome.Settings as S (tagsCommand, tagsArgs, tagsFork, tagsFileName)
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.Env as Env (mainProject, projects)
+import Proteome.Data.Project (Project (Project), langOrType)
+import Proteome.Data.ProjectLang (ProjectLang())
+import qualified Proteome.Data.ProjectLang as ProjectLang (lang)
+import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
+import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.TagsError (TagsError)
+import qualified Proteome.Data.TagsError as TagsError (TagsError(Path))
+import qualified Proteome.Settings as Settings (tagsArgs, tagsCommand, tagsFileName, tagsFork)
 
-replaceFormatItem :: String -> (String, String) -> String
+replaceFormatItem :: Text -> (Text, Text) -> Text
 replaceFormatItem original (placeholder, replacement) =
-  replace ("{" ++ placeholder ++ "}") replacement original
+  Text.replace ("{" <> placeholder <> "}") replacement original
 
-formatTagsArgs :: [ProjectLang] -> ProjectRoot -> FilePath -> String -> String
+formatTagsArgs ::
+  [ProjectLang] ->
+  ProjectRoot ->
+  Path Rel File ->
+  Text ->
+  Text
 formatTagsArgs langs (ProjectRoot root) fileName formatString =
   foldl replaceFormatItem formatString formats
   where
     formats = [
-      ("langsComma", intercalate "," $ fmap (\(ProjectLang l) -> l) langs),
-      ("tagFile", root </> fileName),
-      ("root", root)
+      ("langsComma", Text.intercalate "," $ fmap (Lens.view ProjectLang.lang) langs),
+      ("tagFile", toText . toFilePath $ root </> fileName),
+      ("root", toText . toFilePath $ root)
       ]
 
-tempname :: String -> String
-tempname name = name ++ ".tmp"
-
-deleteTags :: ProjectRoot -> Proteome ()
-deleteTags (ProjectRoot root) = do
-  name <- setting S.tagsFileName
-  let path = root </> tempname name
-  exists <- liftIO $ doesFileExist path
-  when exists $ liftIO $ removePathForcibly path
-
-replaceTags :: ProjectRoot -> Proteome ()
-replaceTags (ProjectRoot root) = do
-  name <- setting S.tagsFileName
-  let temppath = root </> tempname name
-  let path = root </> name
-  _ <- liftIO $ tryIO $ renameFile temppath path
-  return ()
-
-storeError :: ComponentName -> String -> [String] -> Errors -> Errors
-storeError name user log' (Errors errors) =
-  Errors (Map.adjust (err:) name errors)
+tempname ::
+  MonadDeepError e TagsError m =>
+  Path Rel File ->
+  m (Path Rel File)
+tempname name =
+  hoistEitherAs err (name <.> "tmp")
   where
-    err = Error time (ErrorReport user log' ERROR)
-    time = 0
+    err =
+      TagsError.Path "appending tempname suffix"
 
-notifyError :: String -> Proteome ()
-notifyError e = do
-  Log.info $ "tags failed: " ++ e
-  Ribo.modify $ over Env._errors (storeError (ComponentName "ctags") e [e])
+deleteTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  ProjectRoot ->
+  m ()
+deleteTags (ProjectRoot root) = do
+  name <- setting Settings.tagsFileName
+  path <- (root </>) <$> tempname name
+  exists <- doesFileExist path
+  when exists $ catchAnyAs () (removeFile path)
 
-tagsProcess :: ProjectRoot -> String -> String -> IO (ExitCode, String, String)
+replaceTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  ProjectRoot ->
+  m ()
+replaceTags (ProjectRoot root) = do
+  name <- setting Settings.tagsFileName
+  temppath <- (root </>) <$> tempname name
+  catchAnyAs () $ renameFile temppath (root </> name)
+
+notifyError ::
+  NvimE e m =>
+  MonadRibo m =>
+  Text ->
+  m ()
+notifyError e =
+  processErrorReport "tags" $ ErrorReport "tag generation failed" ["tag subprocess failed: " <> e] NOTICE
+
+tagsProcess ::
+  ProjectRoot ->
+  Text ->
+  Text ->
+  IO (ExitCode, Text)
 tagsProcess (ProjectRoot root) cmd args =
-  readCreateProcessWithExitCode (Proc.proc cmd (words args)) { Proc.cwd = Just root } ""
+  second decodeUtf8 <$> readProcessStderr prc
+  where
+    prc =
+      setWorkingDir (toFilePath root) $ proc (toString cmd) (toString <$> Text.words args)
 
-executeTags :: ProjectRoot -> String -> String -> Proteome ()
-executeTags root@(ProjectRoot rootS) cmd args = do
-  deleteTags root
-  Log.debugS $ "executing tags: `" ++ cmd ++ " " ++ args ++ "` in directory " ++ rootS
-  (exitcode, _, stderr) <- liftIO $ tagsProcess root cmd args
+executeTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  ProjectRoot ->
+  Text ->
+  Text ->
+  m ()
+executeTags projectRoot@(ProjectRoot root) cmd args = do
+  deleteTags projectRoot
+  logDebug $ "executing tags: `" <> cmd <> " " <> args <> "` in directory " <> show root
+  (exitcode, errorOutput) <- liftIO $ tagsProcess projectRoot cmd args
   case exitcode of
-    ExitSuccess -> replaceTags root
-    ExitFailure _ -> notifyError stderr
+    ExitSuccess -> replaceTags projectRoot
+    ExitFailure _ -> notifyError errorOutput
 
-tagsCommand :: ProjectRoot -> [ProjectLang] -> Proteome (String, String)
+tagsCommand ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  ProjectRoot ->
+  [ProjectLang] ->
+  m (Text, Text)
 tagsCommand root langs = do
-  cmd <- setting S.tagsCommand
-  args <- setting S.tagsArgs
-  fileName <- setting S.tagsFileName
-  return (cmd, formatTagsArgs langs root (tempname fileName) args)
+  cmd <- setting Settings.tagsCommand
+  args <- setting Settings.tagsArgs
+  fileName <- setting Settings.tagsFileName
+  tmp <- tempname fileName
+  return (cmd, formatTagsArgs langs root tmp args)
 
-regenerateTags :: ProjectRoot -> [ProjectLang] -> Proteome ()
+regenerateTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  ProjectRoot ->
+  [ProjectLang] ->
+  m ()
 regenerateTags root langs = do
   (cmd, args) <- tagsCommand root langs
   let thunk = executeTags root cmd args
-  fork <- setting S.tagsFork
-  _ <- if fork then forkNeovim thunk else thunk
-  return ()
+  wantFork <- setting Settings.tagsFork
+  if wantFork then void $ fork thunk else thunk
 
-projectTags :: Project -> Proteome ()
+projectTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  Project ->
+  m ()
 projectTags (Project (DirProject _ root tpe) _ lang langs) =
-  regenerateTags root (maybeToList (langOrType lang tpe) ++ langs)
+  regenerateTags root (maybeToList (langOrType lang tpe) <> langs)
 projectTags _ = return ()
 
-proTags :: Proteome ()
+proTags ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
+  MonadDeepError e TagsError m =>
+  MonadDeepError e SettingError m =>
+  m ()
 proTags = do
-  main <- Ribo.inspect mainProject
-  extra <- Ribo.inspect projects
+  main <- getL @Env Env.mainProject
+  extra <- getL @Env Env.projects
   lockOrSkip "tags" $ traverse_ projectTags (main : extra)

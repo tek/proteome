@@ -1,25 +1,24 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
+{-# LANGUAGE QuasiQuotes #-}
 
-module ResolveSpec(htf_thisModulesTests) where
+module ResolveSpec (htf_thisModulesTests) where
 
-import Data.Default.Class (def)
+import Data.Map (Map)
 import qualified Data.Map as Map (fromList)
-import Data.Map.Strict (Map)
+import Path (absdir, parseAbsDir)
 import Ribosome.File (canonicalPaths)
 import Ribosome.Test.Unit (fixture)
-import System.Directory (withCurrentDirectory)
 import Test.Framework
 
-import Proteome.Config (ProjectConfig(ProjectConfig), defaultTypeMarkers)
-import Proteome.Data.Project (
-  Project(Project),
-  ProjectLang(ProjectLang),
-  ProjectMetadata(DirProject),
-  ProjectName(ProjectName),
-  ProjectRoot(ProjectRoot),
-  ProjectType(ProjectType),
-  )
+import Project (fn, l, la, li, ta, ti, tp)
+import Proteome.Config (defaultTypeMarkers)
+import Proteome.Data.Project (Project(Project))
+import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
+import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.ProjectType (ProjectType)
 import Proteome.Project.Resolve (resolveProject)
+
 
 paths :: [FilePath]
 paths = [
@@ -33,53 +32,33 @@ test_canonicalPaths = do
   assertNotEqual canon paths
 
 root :: ProjectRoot
-root = ProjectRoot "/projects/haskell/flagellum"
-
-name :: ProjectName
-name = ProjectName "flagellum"
-
-tpe :: ProjectType
-tpe = ProjectType "haskell"
-
-tpe1 :: ProjectType
-tpe1 = ProjectType "idris"
-
-tpe2 :: ProjectType
-tpe2 = ProjectType "agda"
-
-lang :: ProjectLang
-lang = ProjectLang "haskell"
-
-lang1 :: ProjectLang
-lang1 = ProjectLang "idris"
-
-lang2 :: ProjectLang
-lang2 = ProjectLang "agda"
+root = ProjectRoot [absdir|/projects/haskell/flagellum|]
 
 typeMap :: Map ProjectType [ProjectType]
-typeMap = Map.fromList [(tpe, [tpe1, tpe2])]
+typeMap = Map.fromList [(tp, [ti, ta])]
 
 config :: ProjectConfig
-config = ProjectConfig def typeMap def (Map.fromList [(tpe, lang)]) (Map.fromList [(lang, [lang1, lang2])])
+config =
+  ProjectConfig [[absdir|/projects|]] def def typeMap def (Map.fromList [(tp, l)]) (Map.fromList [(l, [li, la])])
 
 targetProject :: Project
 targetProject =
-  Project (DirProject name root (Just tpe)) [tpe1, tpe2] (Just lang) [lang1, lang2]
+  Project (DirProject fn root (Just tp)) [ti, ta] (Just l) [li, la]
 
 test_typeMap :: IO ()
 test_typeMap = do
-  project <- resolveProject ["/projects"] [] config (Just root) name (Just tpe)
+  project <- resolveProject [] config (Just root) fn (Just tp)
   assertEqual targetProject project
 
 markerConfig :: ProjectConfig
-markerConfig = ProjectConfig def def defaultTypeMarkers def def
+markerConfig = ProjectConfig def def def def defaultTypeMarkers def def
 
 markerTarget :: ProjectRoot -> Project
 markerTarget root' =
-  Project (DirProject name root' (Just tpe)) [] (Just lang) []
+  Project (DirProject fn root' (Just tp)) [] (Just l) []
 
 test_marker :: IO ()
 test_marker = do
-  dir <- fixture "projects/haskell/flagellum"
+  dir <- parseAbsDir =<< fixture "projects/haskell/flagellum"
   let root' = ProjectRoot dir
-  assertEqual (markerTarget root') =<< resolveProject [] [] markerConfig (Just root') name Nothing
+  assertEqual (markerTarget root') =<< resolveProject [] markerConfig (Just root') fn Nothing

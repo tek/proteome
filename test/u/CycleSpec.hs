@@ -1,47 +1,54 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module CycleSpec(
-  htf_thisModulesTests
-) where
+module CycleSpec (htf_thisModulesTests) where
 
-import Control.Monad.IO.Class (liftIO)
-import Data.Default.Class (Default(def))
-import Data.Foldable (traverse_)
-import System.FilePath ((</>))
-import Neovim (Neovim)
-import Test.Framework
+import Control.Monad.Catch (MonadThrow)
+import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Test.Unit (fixture)
-import Proteome.Add (proAdd)
-import Proteome.Project.Activate (proNext, proPrev)
-import Proteome.Data.AddOptions (AddOptions(AddOptions))
-import Proteome.Data.Proteome (Proteome)
-import Proteome.Init (resolveAndInitMain)
-import qualified Proteome.Settings as S (projectBaseDirs, mainProjectDir)
-import Proteome.Test.Unit (specWithDef)
-import Config (vars)
-import Project (cn, fn, tp, hask, prot, cil, flag)
+import Test.Framework
 
-assertProject :: FilePath -> String -> Neovim e ()
+import Config (vars)
+import Project (cil, cn, flag, fn, hask, prot, tp)
+import Proteome.Add (proAdd)
+import Proteome.Data.AddOptions (AddOptions(AddOptions))
+import Proteome.Data.Env (Proteome)
+import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Init (resolveAndInitMain)
+import Proteome.Project.Activate (proNext, proPrev)
+import qualified Proteome.Settings as Settings (mainProjectDir, projectConfig)
+import Unit (specWithDef)
+
+assertProject ::
+  AssertM m =>
+  NvimE e m =>
+  MonadThrow m =>
+  Path Abs Dir ->
+  Text ->
+  m ()
 assertProject projectsDir n = do
-  cwd <- nvimCwd
-  liftIO $ assertEqual (projectsDir </> hask </> n) cwd
+  cwd <- parseAbsDir =<< nvimCwd
+  haskPath <- parseRelDir (toString hask)
+  nPath <- parseRelDir (toString n)
+  gassertEqual (projectsDir </> haskPath </> nPath) cwd
 
 cycleSpec :: Proteome ()
 cycleSpec = do
-  projectsDir <- fixture "projects"
+  projectsDir <- parseAbsDir =<< fixture "projects"
   let assertDir = assertProject projectsDir
-  let mainDir = projectsDir </> hask </> prot
-  updateSetting S.projectBaseDirs [projectsDir]
-  updateSetting S.mainProjectDir mainDir
+  haskPath <- parseRelDir (toString hask)
+  protPath <- parseRelDir (toString prot)
+  let mainDir = projectsDir </> haskPath </> protPath
+  updateSetting Settings.projectConfig (ProjectConfig [projectsDir] def def def def def def)
+  updateSetting Settings.mainProjectDir mainDir
   resolveAndInitMain
-  proAdd $ AddOptions fn tp False
-  proAdd $ AddOptions cn tp False
+  proAdd $ AddOptions fn tp (Just False)
+  proAdd $ AddOptions cn tp (Just False)
   assertDir prot
-  let checkNext n = proNext def >> assertDir n
+  let checkNext n = proNext *> assertDir n
   traverse_ checkNext [flag, cil, prot, flag]
-  proPrev def
+  proPrev
   assertDir prot
 
 test_cycle :: IO ()

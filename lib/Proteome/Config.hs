@@ -1,115 +1,107 @@
-{-# LANGUAGE DeriveAnyClass #-}
+module Proteome.Config where
 
-module Proteome.Config
-where
-
-import Control.DeepSeq (NFData)
-import Control.Lens (over)
+import qualified Control.Lens as Lens (each, toListOf)
 import Control.Monad (join)
-import qualified Data.Map as Map
+import Data.Map (Map)
 import qualified Data.Map as Map (fromList)
-import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
-import Data.Text.Prettyprint.Doc (viaShow, (<+>))
-import GHC.Generics (Generic)
-import Neovim (Dictionary, NvimObject(..), Object(ObjectMap), vim_command')
-import Ribosome.Api.Function (callFunction)
 import Ribosome.Api.Option (optionString)
-import Ribosome.Control.Ribo (Ribo)
-import qualified Ribosome.Control.Ribo as Ribo (modify)
-import Ribosome.Internal.NvimObject (extractObject)
+import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
-import Proteome.Data.Env (_configLog)
-import Proteome.Data.Project (
-  Project(Project, types),
-  ProjectLang,
-  ProjectMetadata(DirProject),
-  ProjectName(ProjectName),
-  ProjectType(ProjectType, projectType),
-  )
-import Proteome.Data.Proteome
-import Proteome.Env (getMainProject)
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.Env as Env (configLog, mainProject)
+import Proteome.Data.Project (Project(Project))
+import qualified Proteome.Data.Project as Project (types)
+import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
+import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import qualified Proteome.Data.ProjectType as ProjectType (tpe)
 
-data ProjectConfig =
-  ProjectConfig {
-    projectTypes :: Map ProjectType [FilePath],
-    typeMap :: Map ProjectType [ProjectType],
-    typeMarkers :: Map ProjectType [FilePath],
-    langMap :: Map ProjectType ProjectLang,
-    langsMap :: Map ProjectLang [ProjectLang]
-  }
-  deriving (Generic, NFData)
-
-instance NvimObject ProjectConfig where
-  toObject ProjectConfig {..} =
-    (toObject :: Dictionary -> Object) . Map.fromList $
-    [
-      ("projectTypes", toObject projectTypes),
-      ("typeMap", toObject typeMap),
-      ("typeMarkers", toObject typeMarkers),
-      ("langMap", toObject langMap),
-      ("langsMap", toObject langsMap)
-    ]
-  fromObject (ObjectMap o) = do
-    projectTypes' <- extractObject "projectTypes" o
-    typeMap' <- extractObject "typeMap" o
-    typeMarkers' <- extractObject "typeMarkers" o
-    langMap' <- extractObject "langMap" o
-    langsMap' <- extractObject "langsMap" o
-    return $ ProjectConfig projectTypes' typeMap' typeMarkers' langMap' langsMap'
-  fromObject o = Left ("invalid type for ProjectConfig: " <+> viaShow o)
-
-globRtp :: FilePath -> Ribo a [FilePath]
+globRtp ::
+  NvimE e m =>
+  Text ->
+  m [Text]
 globRtp path = do
   rtp <- optionString "runtimepath"
-  callFunction "globpath" [toObject rtp, toObject path, toObject False, toObject True]
+  vimCallFunction "globpath" [toMsgpack rtp, toMsgpack path, toMsgpack False, toMsgpack True]
 
-runtime :: FilePath -> Ribo a [FilePath]
+runtime ::
+  NvimE e m =>
+  Text ->
+  m [Text]
 runtime path = do
-  vim_command' $ "runtime! " ++ fpath
+  vimCommand $ "runtime! " <> toText fpath
   globRtp fpath
-  where fpath = path ++ ".vim"
+  where fpath = path <> ".vim"
 
-runtimeConf :: FilePath -> String -> Ribo a [FilePath]
-runtimeConf confDir path = runtime (confDir ++ "/" ++ path)
+runtimeConf ::
+  NvimE e m =>
+  Text ->
+  Text ->
+  m [Text]
+runtimeConf confDir path =
+  runtime (confDir <> "/" <> path)
 
-typeProjectConf :: FilePath -> ProjectName -> ProjectType -> Ribo a [FilePath]
+typeProjectConf ::
+  NvimE e m =>
+  Text ->
+  ProjectName ->
+  ProjectType ->
+  m [Text]
 typeProjectConf confDir (ProjectName name') (ProjectType tpe') = do
   tpePaths <- runtimeConf confDir tpe'
-  namePaths <- runtimeConf confDir $ tpe' ++ "/" ++ name'
-  return $ tpePaths ++ namePaths
+  namePaths <- runtimeConf confDir $ tpe' <> "/" <> name'
+  return $ tpePaths <> namePaths
 
-readConfigMeta :: String -> Project -> Ribo a [FilePath]
+readConfigMeta ::
+  NvimE e m =>
+  Text ->
+  Project ->
+  m [Text]
 readConfigMeta confDir (Project (DirProject name' _ tpe') _ _ _) = do
   paths <- traverse (typeProjectConf confDir name') tpe'
   return $ fromMaybe [] paths
 readConfigMeta _ _ = return []
 
-readConfigProject :: String -> Project -> Ribo a [FilePath]
+readConfigProject ::
+  NvimE e m =>
+  Text ->
+  Project ->
+  m [Text]
 readConfigProject confDir project = do
-  paths <- traverse (runtimeConf confDir) (fmap projectType (types project))
+  paths <- traverse (runtimeConf confDir) $ Lens.toListOf (Project.types . Lens.each . ProjectType.tpe) project
   metaPaths <- readConfigMeta confDir project
-  return $ join paths ++ metaPaths
+  return $ join paths <> metaPaths
 
-readConfig :: String -> Project -> Ribo a [FilePath]
+readConfig ::
+  NvimE e m =>
+  Text ->
+  Project ->
+  m [Text]
 readConfig confDir project = do
   allPaths <- runtimeConf confDir "all/*"
   projectPaths <- readConfigProject confDir project
-  return $ allPaths ++ projectPaths
+  return $ allPaths <> projectPaths
 
-logConfig :: [FilePath] -> Proteome ()
+logConfig ::
+  MonadDeepState s Env m =>
+  [Text] ->
+  m ()
 logConfig paths =
-  Ribo.modify $ over _configLog (paths ++)
+  modifyL @Env Env.configLog (paths <>)
 
-proReadConfig :: Proteome ()
+proReadConfig ::
+  NvimE e m =>
+  MonadDeepState s Env m =>
+  m ()
 proReadConfig = do
-  main <- getMainProject
+  main <- getL @Env Env.mainProject
   configs <- readConfig "project" main
   logConfig configs
   afterConfigs <- readConfig "project_after" main
   logConfig afterConfigs
 
-defaultTypeMarkers :: Map ProjectType [String]
+defaultTypeMarkers :: Map ProjectType [Text]
 defaultTypeMarkers =
   Map.fromList [
     (ProjectType "haskell", ["stack.yaml", "*.cabal"]),

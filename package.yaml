@@ -15,37 +15,43 @@ extra-source-files:
 - README.md
 
 dependencies:
-- MissingH
+- Glob
 - aeson
 - ansi-terminal
-- base >= 4.7 && < 5
+- base-noprelude >= 4.7 && < 5
 - bytestring
+- chiasma
+- composition
 - composition-extra
 - containers
 - data-default-class
 - deepseq
 - directory
 - either
+- exceptions
 - extra
 - filepath
 - filepattern
 - hslogger
 - lens
+- lifted-base
 - messagepack
 - mtl
 - nvim-hs
+- path
+- path-io
 - pretty-terminal
 - prettyprinter
-- process
+- rawstring-qm
+- relude
 - resourcet
 - ribosome
-- safe
 - split
 - stm
 - text
 - time
 - transformers
-- unliftio
+- typed-process
 - utf8-string
 
 library:
@@ -72,6 +78,7 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - proteome
+    - ribosome-test
     - HTF
 
 default-extensions:

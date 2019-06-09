@@ -1,85 +1,110 @@
-module Proteome.Project.Activate(
-  activateProject,
-  activateCurrentProject,
-  proPrev,
-  proNext,
-  selectProject,
-) where
+module Proteome.Project.Activate where
 
-import qualified Control.Lens as Lens (over, set)
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromMaybe)
-import System.Directory (doesDirectoryExist)
-import Neovim (vim_command', CommandArguments, Neovim)
+import Path (toFilePath)
+import Path.IO (doesDirExist)
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Control.Ribo (Ribo)
-import qualified Ribosome.Control.Ribo as Ribo (modify)
-import Proteome.Data.Project (
-  Project(Project, meta),
-  ProjectMetadata(DirProject, VirtualProject),
-  ProjectType(ProjectType),
-  ProjectRoot(ProjectRoot),
-  ProjectName(ProjectName),
-  )
+import Ribosome.Nvim.Api.IO (vimCommand)
+
 import Proteome.Data.ActiveProject (ActiveProject(ActiveProject))
-import Proteome.Data.Proteome (Proteome)
-import Proteome.Project (currentProject, allProjects)
-import qualified Proteome.Data.Env as Env (_currentProjectIndex)
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.Env as Env (currentProjectIndex)
+import Proteome.Data.Project (Project(Project))
+import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject, VirtualProject))
+import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Project (allProjects, currentProject)
 import qualified Proteome.Settings as S (active)
 
 activeProject :: Project -> ActiveProject
 activeProject (Project (DirProject name _ tpe) _ lang _) = ActiveProject name (fromMaybe (ProjectType "none") tpe) lang
 activeProject (Project (VirtualProject name) _ lang _) = ActiveProject name (ProjectType "virtual") lang
 
-activateDirProject :: ProjectMetadata -> Ribo e ()
+activateDirProject ::
+  NvimE e m =>
+  MonadIO m =>
+  ProjectMetadata ->
+  m ()
 activateDirProject (DirProject _ (ProjectRoot root) _) = do
-  exists <- liftIO $ doesDirectoryExist root
-  when exists $ vim_command' $ "chdir " ++ root
+  exists <- liftIO $ doesDirExist root
+  when exists $ vimCommand $ "chdir " <> toText (toFilePath root)
 activateDirProject _ = return ()
 
-activateProject :: Project -> Ribo e ()
-activateProject project = do
+activateProject ::
+  NvimE e m =>
+  MonadRibo m =>
+  Project ->
+  m ()
+activateProject project@(Project meta _ _ _) = do
   updateSetting S.active $ activeProject project
-  activateDirProject (meta project)
+  activateDirProject meta
 
-describeProject :: ProjectMetadata -> String
-describeProject (DirProject (ProjectName name) _ (Just (ProjectType tpe))) = tpe ++ "/" ++ name
+describeProject :: ProjectMetadata -> Text
+describeProject (DirProject (ProjectName name) _ (Just (ProjectType tpe))) = tpe <> "/" <> name
 describeProject (DirProject (ProjectName name) _ Nothing) = name
 describeProject (VirtualProject (ProjectName name)) = name
 
-echoProjectActivation :: Project -> Neovim e ()
-echoProjectActivation pro =
-  vim_command' $ "echo 'activated project " ++ describeProject (meta pro) ++ "'"
+echoProjectActivation ::
+  NvimE e m =>
+  Project ->
+  m ()
+echoProjectActivation (Project meta _ _ _) =
+  vimCommand $ "echo 'activated project " <> describeProject meta <> "'"
 
-activateCurrentProject :: Proteome ()
+activateCurrentProject ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepState s Env m =>
+  m ()
 activateCurrentProject = do
   pro <- currentProject
   mapM_ activateProject pro
   mapM_ echoProjectActivation pro
 
-setProjectIndex :: Int -> Proteome ()
+setProjectIndex ::
+  MonadDeepState s Env m =>
+  Int ->
+  m ()
 setProjectIndex index = do
   pros <- allProjects
-  Ribo.modify $ Lens.set Env._currentProjectIndex $ index `mod` length pros
+  setL @Env Env.currentProjectIndex $ index `mod` length pros
 
-cycleProjectIndex :: (Int -> Int) -> Proteome ()
+cycleProjectIndex ::
+  MonadDeepState s Env m =>
+  (Int -> Int) ->
+  m ()
 cycleProjectIndex f = do
   pros <- allProjects
   let trans a = f a `rem` length pros
-  Ribo.modify $ Lens.over Env._currentProjectIndex trans
+  modifyL @Env Env.currentProjectIndex trans
 
-selectProject :: Int -> Proteome ()
+selectProject ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepState s Env m =>
+  Int ->
+  m ()
 selectProject index = do
   setProjectIndex index
   activateCurrentProject
 
-proPrev :: CommandArguments -> Proteome ()
-proPrev _ = do
+proPrev ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepState s Env m =>
+  m ()
+proPrev = do
   cycleProjectIndex (subtract 1)
   activateCurrentProject
 
-proNext :: CommandArguments -> Proteome ()
-proNext _ = do
+proNext ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepState s Env m =>
+  m ()
+proNext = do
   cycleProjectIndex (+1)
   activateCurrentProject

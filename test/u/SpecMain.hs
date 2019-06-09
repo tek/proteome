@@ -14,7 +14,6 @@ import {-@ HTF_TESTS @-} MultiTagsSpec
 import {-@ HTF_TESTS @-} PersistLoadSpec
 import {-@ HTF_TESTS @-} PersistStoreSpec
 import {-@ HTF_TESTS @-} ResolveSpec
-import {-@ HTF_TESTS @-} ScratchSpec
 import {-@ HTF_TESTS @-} TagsSpec
 
 main :: IO ()

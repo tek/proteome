@@ -1,8 +1,22 @@
 resolver: lts-12.26
 packages:
 - .
-# - ribosome
+# - ../ribosome/modules/core
+# - ../ribosome/modules/test
 extra-deps:
+- base-noprelude-4.11.1.0
+- strings-1.1
 - pretty-terminal-0.1.0.0
-- ribosome-0.2.2.0
+- posix-pty-0.2.1.1
 - filepattern-0.1.1
+- github: neovimhaskell/nvim-hs
+  commit: 8b1a38c18f530f65a17a7fda2a14c168a2663821
+- github: tek/cornea
+  commit: fe735cb878e43ea2a257346f4f228cd04fa77b4c
+- github: tek/chiasma
+  commit: 3f224bb9cac08e0ca6b7a2bc75ba7a36b954b668
+- github: tek/ribosome
+  commit: 32fdc72f2344cf1ecb0d390a38d489b2b05bd967
+  subdirs:
+  - modules/core
+  - modules/test

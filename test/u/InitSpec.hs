@@ -1,23 +1,26 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module InitSpec(htf_thisModulesTests) where
+module InitSpec (htf_thisModulesTests) where
 
 import Config (vars)
-import Control.Monad.IO.Class (liftIO)
-import Proteome.Data.Project (ProjectName(ProjectName), ProjectType(ProjectType))
-import qualified Proteome.Settings as S
-import Proteome.Test.Functional (specWith)
+import qualified Proteome.Settings as Settings
 import Ribosome.Config.Setting (setting)
-import Ribosome.Control.Ribo (Ribo)
 import Test.Framework
 
-initSpec :: Ribo env ()
+import Proteome.Data.Env (Proteome)
+import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Init (resolveAndInitMain)
+import Unit (specWithDef)
+
+initSpec :: Proteome ()
 initSpec = do
-  tpe <- setting S.mainType
-  name <- setting S.mainName
-  liftIO $ assertEqual name (ProjectName "flagellum")
-  liftIO $ assertEqual tpe (ProjectType "haskell")
+  resolveAndInitMain
+  tpe <- setting Settings.mainType
+  name <- setting Settings.mainName
+  gassertEqual (ProjectName "flagellum") name
+  gassertEqual (ProjectType "haskell") tpe
 
 test_init :: IO ()
 test_init =
-  vars >>= specWith initSpec
+  vars >>= specWithDef initSpec

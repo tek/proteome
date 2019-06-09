@@ -1,30 +1,24 @@
-{-# LANGUAGE TemplateHaskell #-}
+module Proteome.Data.Env  where
 
-module Proteome.Data.Env (
-  Env(..),
-  _mainProject,
-  _projects,
-  _errors,
-  _currentProjectIndex,
-  _configLog,
-) where
-
-import Control.Lens (makeClassy_)
-import Data.Default.Class (Default(def))
-import Ribosome.Data.Errors (Errors)
 import Proteome.Data.Project(Project)
+import Ribosome.Control.Monad.Ribo (Ribo)
+import Ribosome.Data.Errors (Errors)
+
+import Proteome.Data.Error (Error)
 
 data Env =
   Env {
-    mainProject :: Project,
-    projects :: [Project],
-    errors :: Errors,
-    currentProjectIndex :: Int,
-    configLog :: [FilePath]
+    _mainProject :: Project,
+    _projects :: [Project],
+    _errors :: Errors,
+    _currentProjectIndex :: Int,
+    _configLog :: [Text]
   }
   deriving Show
 
-makeClassy_ ''Env
+deepLenses ''Env
 
 instance Default Env where
   def = Env def def def def def
+
+type Proteome a = Ribo Env Error a
