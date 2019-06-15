@@ -11,7 +11,6 @@ import Test.Framework
 import Proteome.Data.Env (Proteome)
 import Proteome.Init (resolveAndInitMain)
 import Proteome.Plugin (plugin')
-import Unit (integrationSpecDef)
 
 configSpec :: Proteome ()
 configSpec = do

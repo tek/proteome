@@ -2,6 +2,7 @@ module Unit where
 
 import Chiasma.Native.Api (TmuxNative(TmuxNative))
 import Neovim.Plugin (Plugin)
+import Prelude hiding (defaultTestConfig, defaultTestConfigWith, integrationSpec)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (tmuxSocket)
 import Ribosome.Error.Report.Class (ReportError)
@@ -58,9 +59,9 @@ integrationSpec ::
   Plugin env ->
   m () ->
   IO ()
-integrationSpec reconf env thunk = do
+integrationSpec reconf plug thunk = do
   conf <- reconf defaultTestConfig
-  Ribosome.integrationSpec conf env thunk
+  Ribosome.integrationSpec conf plug thunk
 
 integrationSpecDef ::
   NvimE e m =>

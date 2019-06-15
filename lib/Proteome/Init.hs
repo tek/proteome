@@ -3,6 +3,7 @@ module Proteome.Init where
 import Control.Monad.Catch (MonadThrow)
 import Neovim (Neovim)
 import Neovim.Context.Internal (Config(customConfig), asks')
+import Ribosome.Api.Autocmd (uautocmd)
 import Ribosome.Config.Setting (settingMaybe, updateSetting)
 import Ribosome.Control.Monad.Ribo (RNeovim, runRibo)
 import Ribosome.Control.Ribosome (Ribosome, newRibosome)
@@ -80,6 +81,7 @@ initWithMain main@(Project meta _ _ _) = do
   showDebug "initializing with main project:" main
   setMainProject main
   setMainProjectVars meta
+  uautocmd "ProteomeMainProject"
   activateProject main
 
 resolveAndInitMain ::
