@@ -128,7 +128,6 @@ safeLoadBuffers path =
   lockOrSkip "load-buffers" $ unsafeLoadBuffers path
 
 storeBuffers ::
-  MonadIO m =>
   MonadRibo m =>
   NvimE e m =>
   MonadBaseControl IO m =>

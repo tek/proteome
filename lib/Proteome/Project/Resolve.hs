@@ -14,7 +14,6 @@ import Path.IO (doesDirExist)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Control.Exception (catchAnyAs)
 import Ribosome.Data.Foldable (findMapMaybeM)
-import Ribosome.Data.Maybe (orElse)
 import Ribosome.Data.PersistError (PersistError)
 import Ribosome.Data.SettingError (SettingError)
 import System.FilePath.Glob (globDir1)
@@ -103,7 +102,7 @@ resolveByType ::
   m (Maybe Project)
 resolveByType baseDirs explicit root name tpe = do
   byBaseSubpath <- byProjectBasesSubpath baseDirs name tpe
-  return $ orElse (orElse byPath byBaseSubpath) (fmap projectFromSpec byTypeName)
+  return $ (byPath <|> byBaseSubpath) <|> (fmap projectFromSpec byTypeName)
   where
     byTypeName = byProjectTypeName explicit name tpe
     byPath = root >>= resolveByTypeAndPath baseDirs name tpe

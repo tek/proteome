@@ -15,6 +15,7 @@ import Proteome.Data.Error (Error)
 import Proteome.Diag (proDiag)
 import Proteome.Init (initialize, proteomeStage1, proteomeStage2, proteomeStage4)
 import Proteome.Project.Activate (proNext, proPrev)
+import Proteome.Quit (proQuit)
 import Proteome.Save (proSave)
 import Proteome.Tags (proTags)
 
@@ -37,8 +38,8 @@ rpcHandlers =
     $(rpcHandlerDef 'proReadConfig),
     $(rpcHandler (cmd []) 'proDiag),
     $(rpcHandler (autocmd "BufEnter") 'bufEnter),
-    $(rpcHandler (autocmd "BufWritePost") 'proSave)
-    -- $(rpcHandler (autocmd "VimLeave") 'proQuit)
+    $(rpcHandler (autocmd "BufWritePost") 'proSave),
+    $(rpcHandler (autocmd "VimLeave" . sync) 'proQuit)
   ]
 
 

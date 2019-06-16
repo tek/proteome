@@ -4,7 +4,6 @@
 module AddFSpec (htf_thisModulesTests) where
 
 import qualified Data.Map as Map (fromList)
-import Neovim (Neovim)
 import Path (parseAbsDir, reldir, (</>))
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Control.Ribosome (newRibosome)

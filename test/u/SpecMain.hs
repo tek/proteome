@@ -9,6 +9,7 @@ import {-@ HTF_TESTS @-} AddSpec
 import {-@ HTF_TESTS @-} ConfigSpec
 import {-@ HTF_TESTS @-} CycleSpec
 import {-@ HTF_TESTS @-} DiagSpec
+import {-@ HTF_TESTS @-} GrepSpec
 import {-@ HTF_TESTS @-} InitSpec
 import {-@ HTF_TESTS @-} MultiTagsSpec
 import {-@ HTF_TESTS @-} PersistLoadSpec

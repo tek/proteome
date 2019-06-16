@@ -2,7 +2,7 @@ module Proteome.Add where
 
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Text as Text (splitOn)
-import Neovim (CommandArguments(CommandArguments, bang))
+import Neovim (CommandArguments(CommandArguments))
 import Ribosome.Data.PersistError (PersistError)
 import Ribosome.Data.SettingError (SettingError)
 
@@ -81,8 +81,7 @@ proAddCmd ::
 proAddCmd (CommandArguments bang _ _ _) spec =
   process (Text.splitOn "/" spec)
   where
-    process [tpe, name] = do
-      dbgs bang
+    process [tpe, name] =
       add (ProjectName name) (Just (ProjectType tpe)) activate
     process [name] =
       addFromName (ProjectName name) activate

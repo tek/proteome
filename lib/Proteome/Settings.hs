@@ -40,3 +40,7 @@ tagsFork = Setting "tags_fork" True (Just True)
 
 tagsFileName :: Setting (Path Rel File)
 tagsFileName = Setting "tags_file_name" True (Just [relfile|.tags|])
+
+grepCmdline :: Setting Text
+grepCmdline =
+  Setting "grep_cmdline" True (Just "grep -Hnr ${pattern} ${path}")

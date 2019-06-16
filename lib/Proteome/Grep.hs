@@ -1,0 +1,260 @@
+module Proteome.Grep where
+
+import Chiasma.Data.Conduit (createSinkFlush)
+import Chiasma.Data.Ident (generateIdent, identText)
+import Conduit (ConduitT, Flush, (.|))
+import Data.Attoparsec.Text (parseOnly)
+import Data.Composition ((.:))
+import qualified Data.Conduit.List as Conduit (mapMaybeM)
+import Data.Conduit.Process.Typed (createSource)
+import qualified Data.Map as Map (fromList)
+import Data.Text (isInfixOf)
+import qualified Data.Text as Text (breakOn, null, replace, splitOn, strip, stripPrefix, take)
+import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, parseRelFile, toFilePath)
+import Path.IO (findExecutable, isLocationOccupied)
+import Ribosome.Api.Buffer (edit)
+import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Api.Window (redraw, setCurrentCursor, setCursor, setLine, windowLine)
+import Ribosome.Config.Setting (setting)
+import Ribosome.Data.SettingError (SettingError)
+import Ribosome.Menu.Data.Menu (Menu)
+import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
+import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
+import Ribosome.Menu.Data.MenuResult (MenuResult)
+import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
+import Ribosome.Menu.Prompt.Nvim (getCharC, nvimPromptRenderer)
+import Ribosome.Menu.Prompt.Run (basicTransition)
+import Ribosome.Menu.Run (nvimMenu)
+import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuit, menuQuitWith, selectedMenuItem)
+import Ribosome.Msgpack.Error (DecodeError)
+import Ribosome.Nvim.Api.IO (vimCommand)
+import System.Process.Typed (
+  Process,
+  ProcessConfig,
+  getStdin,
+  getStdout,
+  proc,
+  setStdin,
+  setStdout,
+  startProcess,
+  stopProcess,
+  )
+import Text.Parser.Char (CharParsing, anyChar, char, newline, noneOf, string)
+import Text.Parser.Combinators (choice, eof, many, manyTill, skipMany, skipOptional, try)
+import Text.Parser.LookAhead (LookAheadParsing, lookAhead)
+import Text.Parser.Token (TokenParsing, brackets, natural, whiteSpace)
+
+import Proteome.Data.GrepError (GrepError)
+import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
+import qualified Proteome.Settings as Settings (grepCmdline)
+
+patternPlaceholder :: Text
+patternPlaceholder =
+  "${pattern}"
+
+pathPlaceholder :: Text
+pathPlaceholder =
+  "${path}"
+
+replaceOrAppend :: Text -> Text -> [Text] -> [Text]
+replaceOrAppend placeholder target segments | any (placeholder `isInfixOf`) segments =
+  Text.replace placeholder target <$> segments
+replaceOrAppend placeholder target segments =
+  segments <> [target]
+
+parseAbsExe ::
+  MonadDeepError e GrepError m =>
+  Text ->
+  m (Path Abs File)
+parseAbsExe exe =
+  hoistEitherAs (GrepError.NoSuchExecutable exe) $ parseAbsFile (toString exe)
+
+findExe ::
+  MonadIO m =>
+  MonadDeepError e GrepError m =>
+  Text ->
+  m (Path Abs File)
+findExe exe = do
+  path <- hoistEitherAs parseError $ parseRelFile (toString exe)
+  hoistMaybe notInPath =<< findExecutable path
+  where
+    parseError =
+      GrepError.NoSuchExecutable exe
+    notInPath =
+      GrepError.NotInPath exe
+
+grepCmdline ::
+  Text ->
+  Text ->
+  Text ->
+  Text ->
+  MonadIO m =>
+  MonadDeepError e GrepError m =>
+  m (Text, [Text])
+grepCmdline cmdline patt cwd destination = do
+  when (Text.null exe) $ throwHoist GrepError.Empty
+  absExe <- if absolute exe then parseAbsExe exe else findExe exe
+  destPath <- hoistEitherAs destError $ parseAbsFile (toString (absDestination destination))
+  unlessM (isLocationOccupied destPath) $ throwHoist destError
+  return (toText (toFilePath absExe), withDir destPath)
+  where
+    absDestination d =
+      if absolute d then d else cwd <> "/" <> d
+    absolute a =
+      Text.take 1 a == "/"
+    argSegments =
+      Text.splitOn " " (Text.strip args)
+    (exe, args) =
+      Text.breakOn " " (Text.strip cmdline)
+    withDir dir =
+      replaceOrAppend pathPlaceholder (toText (toFilePath dir)) withPattern
+    withPattern =
+      replaceOrAppend patternPlaceholder patt argSegments
+    destError =
+      GrepError.NoSuchDestination destination
+
+grepProcess ::
+  NvimE e m =>
+  MonadIO m =>
+  Text ->
+  [Text] ->
+  m (Process () (ConduitT () ByteString m ()) ())
+grepProcess exe args =
+  startProcess (config (toString exe) (toString <$> args))
+  where
+    config =
+      setStdout createSource .: proc
+
+data GrepOutputLine =
+  GrepOutputLine Text Int (Maybe Int) Text
+  deriving (Eq, Show)
+
+grepParser ::
+  TokenParsing m =>
+  m GrepOutputLine
+grepParser =
+  GrepOutputLine <$> path <*> number <*> optional (try number) <*> (toText <$> manyTill (noneOf "\n") newline)
+  where
+    path =
+      toText <$> manyTill (noneOf ":") (char ':')
+    number =
+      (fromInteger <$> natural) <* char ':'
+
+lineNumber :: Text
+lineNumber =
+  "\57505"
+
+formatGrepLine :: Text -> GrepOutputLine -> Text
+formatGrepLine cwd (GrepOutputLine path line col text) =
+  relativePath <> " " <> lineNumber <> " " <> show line <> formatCol col <> text
+  where
+    formatCol (Just c) =
+      "/" <> show c
+    formatCol Nothing =
+      ""
+    relativePath =
+      fromMaybe path (Text.stripPrefix cwd path)
+
+parseGrepOutput ::
+  MonadRibo m =>
+  Text ->
+  ByteString ->
+  m (Maybe (MenuItem GrepOutputLine))
+parseGrepOutput cwd =
+  item . parseOnly grepParser . decodeUtf8
+  where
+    item (Right a) = do
+      ident <- identText <$> generateIdent
+      return (Just (convert ident a))
+    item (Left err) =
+      Nothing <$ logDebug ("parsing grep output failed: " <> err)
+    convert ident grepLine =
+      MenuItem grepLine (formatGrepLine cwd grepLine)
+
+grep ::
+  NvimE e m =>
+  MonadRibo m =>
+  Text ->
+  Text ->
+  [Text] ->
+  ConduitT () (MenuItem GrepOutputLine) m ()
+grep cwd exe args = do
+  prc <- lift $ grepProcess exe args
+  getStdout prc .| Conduit.mapMaybeM (parseGrepOutput cwd)
+
+navigate ::
+  NvimE e m =>
+  Text ->
+  Int ->
+  Maybe Int ->
+  m ()
+navigate path line col = do
+  edit (toString path)
+  setCurrentCursor line (fromMaybe 0 col)
+  vimCommand "normal! zv"
+  vimCommand "normal! zz"
+
+selectResult ::
+  NvimE e m =>
+  MonadRibo m =>
+  Menu GrepOutputLine ->
+  Prompt ->
+  m (MenuConsumerAction m (), Menu GrepOutputLine)
+selectResult menu _ =
+  check $ selectedMenuItem menu
+  where
+    check (Just (MenuItem (GrepOutputLine path line col _) _)) =
+      menuQuitWith (navigate path line col) menu
+    check Nothing =
+      menuContinue menu
+
+proGrepWith ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e GrepError m =>
+  MonadDeepError e DecodeError m =>
+  MonadDeepError e SettingError m =>
+  PromptConfig m ->
+  Text ->
+  Text ->
+  m ()
+proGrepWith promptConfig path patt = do
+  grepper <- setting Settings.grepCmdline
+  cwd <- toText <$> nvimCwd
+  (exe, args) <- grepCmdline grepper patt cwd path
+  void $ nvimMenu def (grep cwd exe args) handler promptConfig
+  where
+    handler =
+      defaultMenu (Map.fromList [("cr", selectResult)])
+
+proGrepIn ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e GrepError m =>
+  MonadDeepError e DecodeError m =>
+  MonadDeepError e SettingError m =>
+  Text ->
+  Text ->
+  m ()
+proGrepIn =
+  proGrepWith promptConfig
+  where
+    promptConfig =
+      PromptConfig (getCharC 0.033) basicTransition nvimPromptRenderer False
+
+proGrep ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e GrepError m =>
+  MonadDeepError e DecodeError m =>
+  MonadDeepError e SettingError m =>
+  Text ->
+  m ()
+proGrep patt = do
+  cwd <- nvimCwd
+  proGrepIn (toText cwd) patt

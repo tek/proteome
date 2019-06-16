@@ -18,11 +18,14 @@ dependencies:
 - Glob
 - aeson
 - ansi-terminal
+- attoparsec
 - base-noprelude >= 4.7 && < 5
 - bytestring
 - chiasma
 - composition
 - composition-extra
+- conduit
+- conduit-extra
 - containers
 - data-default-class
 - deepseq
@@ -38,6 +41,7 @@ dependencies:
 - messagepack
 - mtl
 - nvim-hs
+- parsers
 - path
 - path-io
 - pretty-terminal
@@ -96,6 +100,7 @@ default-extensions:
 - DoAndIfThenElse
 - EmptyDataDecls
 - ExistentialQuantification
+- ExtendedDefaultRules
 - FlexibleContexts
 - FlexibleInstances
 - FunctionalDependencies
