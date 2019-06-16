@@ -120,6 +120,10 @@ between executions to avoid running multiple times when executing `:wa`.
 The command `ProTags` triggers the execution of `ctags` or another tag generation tool.
 It can be configured with these variables:
 
+# Grep
+
+The command `ProGrep` will execute `grep` or another, configurable, program using the specified pattern and display the results in a menu.
+
 # TODO
 
 [Neovim]: https://github.com/neovim/neovim

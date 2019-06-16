@@ -1,8 +1,7 @@
 module Proteome.Grep where
 
-import Chiasma.Data.Conduit (createSinkFlush)
 import Chiasma.Data.Ident (generateIdent, identText)
-import Conduit (ConduitT, Flush, (.|))
+import Conduit (ConduitT, (.|))
 import Data.Attoparsec.Text (parseOnly)
 import Data.Composition ((.:))
 import qualified Data.Conduit.List as Conduit (mapMaybeM)
@@ -10,41 +9,34 @@ import Data.Conduit.Process.Typed (createSource)
 import qualified Data.Map as Map (fromList)
 import Data.Text (isInfixOf)
 import qualified Data.Text as Text (breakOn, null, replace, splitOn, strip, stripPrefix, take)
-import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, parseRelFile, toFilePath)
+import Path (Abs, File, Path, parseAbsFile, parseRelFile, toFilePath)
 import Path.IO (findExecutable, isLocationOccupied)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
-import Ribosome.Api.Window (redraw, setCurrentCursor, setCursor, setLine, windowLine)
+import Ribosome.Api.Window (setCurrentCursor)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
-import Ribosome.Menu.Data.MenuResult (MenuResult)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Nvim (getCharC, nvimPromptRenderer)
 import Ribosome.Menu.Prompt.Run (basicTransition)
 import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuit, menuQuitWith, selectedMenuItem)
+import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuitWith, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCommand)
 import System.Process.Typed (
   Process,
-  ProcessConfig,
-  getStdin,
   getStdout,
   proc,
-  setStdin,
   setStdout,
   startProcess,
-  stopProcess,
   )
-import Text.Parser.Char (CharParsing, anyChar, char, newline, noneOf, string)
-import Text.Parser.Combinators (choice, eof, many, manyTill, skipMany, skipOptional, try)
-import Text.Parser.LookAhead (LookAheadParsing, lookAhead)
-import Text.Parser.Token (TokenParsing, brackets, natural, whiteSpace)
+import Text.Parser.Char (char, newline, noneOf)
+import Text.Parser.Combinators (manyTill, try)
+import Text.Parser.Token (TokenParsing, natural)
 
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
@@ -61,7 +53,7 @@ pathPlaceholder =
 replaceOrAppend :: Text -> Text -> [Text] -> [Text]
 replaceOrAppend placeholder target segments | any (placeholder `isInfixOf`) segments =
   Text.replace placeholder target <$> segments
-replaceOrAppend placeholder target segments =
+replaceOrAppend _ target segments =
   segments <> [target]
 
 parseAbsExe ::
@@ -170,7 +162,7 @@ parseGrepOutput cwd =
       return (Just (convert ident a))
     item (Left err) =
       Nothing <$ logDebug ("parsing grep output failed: " <> err)
-    convert ident grepLine =
+    convert _ grepLine =
       MenuItem grepLine (formatGrepLine cwd grepLine)
 
 grep ::

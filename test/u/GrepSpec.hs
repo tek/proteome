@@ -3,12 +3,12 @@
 module GrepSpec (htf_thisModulesTests) where
 
 import Conduit (ConduitT, yieldMany)
+import Ribosome.Api.Window (currentLine)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
 import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
 import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
 import Test.Framework
-import Ribosome.Api.Window (currentLine)
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
@@ -18,9 +18,9 @@ promptInput ::
   MonadIO m =>
   [Text] ->
   ConduitT () PromptEvent m ()
-promptInput chars = do
+promptInput chars' = do
   lift $ sleep 0.1
-  yieldMany (PromptEvent.Character <$> chars)
+  yieldMany (PromptEvent.Character <$> chars')
 
 chars :: [Text]
 chars =

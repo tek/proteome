@@ -3,9 +3,8 @@
 module ConfigSpec (htf_thisModulesTests) where
 
 import Data.MessagePack (Object(ObjectInt))
-import Neovim (Neovim)
 import Ribosome.Control.Ribosome (newRibosome)
-import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand, vimGetVar, vimSetVar)
+import Ribosome.Nvim.Api.IO (vimCallFunction, vimGetVar)
 import Test.Framework
 
 import Proteome.Data.Env (Proteome)

@@ -8,12 +8,12 @@ import Ribosome.Config.Settings (tmuxSocket)
 import Ribosome.Error.Report.Class (ReportError)
 import Ribosome.Plugin.RpcHandler (RpcHandler)
 import Ribosome.Test.Embed (TestConfig(..), Vars)
-import qualified Ribosome.Test.Embed as Ribosome (integrationSpec, integrationSpecDef)
+import qualified Ribosome.Test.Embed as Ribosome (integrationSpec)
 import Ribosome.Test.Orphans ()
 import qualified Ribosome.Test.Tmux as Ribosome (tmuxGuiSpec, tmuxSpec)
 import Ribosome.Test.Unit (unitSpec)
 
-import Config (defaultTestConfig, defaultTestConfigWith, vars, withVars)
+import Config (defaultTestConfig, defaultTestConfigWith, withVars)
 import Proteome.Data.Env (Env, Proteome)
 
 specConfig :: TestConfig -> Env -> Proteome () -> IO ()
@@ -25,8 +25,8 @@ spec =
   specConfig defaultTestConfig
 
 specWith :: Env -> Proteome () -> Vars -> IO ()
-specWith env thunk vars =
-  unitSpec (defaultTestConfigWith vars) env thunk
+specWith env thunk vars' =
+  unitSpec (defaultTestConfigWith vars') env thunk
 
 specWithDef :: Proteome () -> Vars -> IO ()
 specWithDef =
