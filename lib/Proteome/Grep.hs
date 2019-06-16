@@ -2,8 +2,10 @@ module Proteome.Grep where
 
 import Chiasma.Data.Ident (generateIdent, identText)
 import Conduit (ConduitT, (.|))
+import Control.Monad.Catch (MonadThrow)
 import Data.Attoparsec.Text (parseOnly)
 import Data.Composition ((.:))
+import qualified Data.Conduit.Combinators as Conduit (decodeUtf8, linesUnbounded)
 import qualified Data.Conduit.List as Conduit (mapMaybeM)
 import Data.Conduit.Process.Typed (createSource)
 import qualified Data.Map as Map (fromList)
@@ -15,6 +17,7 @@ import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (setCurrentCursor)
 import Ribosome.Config.Setting (setting)
+import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
@@ -34,12 +37,13 @@ import System.Process.Typed (
   setStdout,
   startProcess,
   )
-import Text.Parser.Char (char, newline, noneOf)
+import Text.Parser.Char (anyChar, char, newline, noneOf)
 import Text.Parser.Combinators (manyTill, try)
 import Text.Parser.Token (TokenParsing, natural)
 
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
+import Proteome.Grep.Syntax (grepSyntax, lineNumber)
 import qualified Proteome.Settings as Settings (grepCmdline)
 
 patternPlaceholder :: Text
@@ -127,16 +131,12 @@ grepParser ::
   TokenParsing m =>
   m GrepOutputLine
 grepParser =
-  GrepOutputLine <$> path <*> number <*> optional (try number) <*> (toText <$> manyTill (noneOf "\n") newline)
+  GrepOutputLine <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
   where
     path =
       toText <$> manyTill (noneOf ":") (char ':')
     number =
       (fromInteger <$> natural) <* char ':'
-
-lineNumber :: Text
-lineNumber =
-  "\57505"
 
 formatGrepLine :: Text -> GrepOutputLine -> Text
 formatGrepLine cwd (GrepOutputLine path line col text) =
@@ -147,15 +147,15 @@ formatGrepLine cwd (GrepOutputLine path line col text) =
     formatCol Nothing =
       ""
     relativePath =
-      fromMaybe path (Text.stripPrefix cwd path)
+      fromMaybe path (Text.stripPrefix (cwd <> "/") path)
 
 parseGrepOutput ::
   MonadRibo m =>
   Text ->
-  ByteString ->
+  Text ->
   m (Maybe (MenuItem GrepOutputLine))
 parseGrepOutput cwd =
-  item . parseOnly grepParser . decodeUtf8
+  item . parseOnly grepParser
   where
     item (Right a) = do
       ident <- identText <$> generateIdent
@@ -168,13 +168,14 @@ parseGrepOutput cwd =
 grep ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   Text ->
   Text ->
   [Text] ->
   ConduitT () (MenuItem GrepOutputLine) m ()
 grep cwd exe args = do
   prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.mapMaybeM (parseGrepOutput cwd)
+  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| Conduit.mapMaybeM (parseGrepOutput cwd)
 
 navigate ::
   NvimE e m =>
@@ -205,6 +206,7 @@ selectResult menu _ =
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
@@ -217,14 +219,17 @@ proGrepWith promptConfig path patt = do
   grepper <- setting Settings.grepCmdline
   cwd <- toText <$> nvimCwd
   (exe, args) <- grepCmdline grepper patt cwd path
-  void $ nvimMenu def (grep cwd exe args) handler promptConfig
+  void $ nvimMenu scratchOptions (grep cwd exe args) handler promptConfig
   where
+    scratchOptions =
+      scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
     handler =
       defaultMenu (Map.fromList [("cr", selectResult)])
 
 proGrepIn ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
@@ -241,6 +246,7 @@ proGrepIn =
 proGrep ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>

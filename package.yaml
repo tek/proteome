@@ -46,6 +46,7 @@ dependencies:
 - path-io
 - pretty-terminal
 - prettyprinter
+- raw-strings-qq
 - rawstring-qm
 - relude
 - resourcet

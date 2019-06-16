@@ -2,7 +2,8 @@
 
 module GrepSpec (htf_thisModulesTests) where
 
-import Conduit (ConduitT, yieldMany)
+import Conduit (ConduitT, yield)
+import Ribosome.Api.Input (syntheticInput)
 import Ribosome.Api.Window (currentLine)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
@@ -12,32 +13,33 @@ import Test.Framework
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
-import Unit (specDef)
+import Unit (tmuxGuiSpec)
 
 promptInput ::
   MonadIO m =>
   [Text] ->
   ConduitT () PromptEvent m ()
-promptInput chars' = do
-  lift $ sleep 0.1
-  yieldMany (PromptEvent.Character <$> chars')
+promptInput chars' =
+  sleep 0.1 *>
+  traverse_ (\ x -> sleep 1 *> yield x) (PromptEvent.Character <$> chars')
 
 chars :: [Text]
 chars =
-  ["cr"]
+  ["k", "cr"]
 
 promptConfig ::
   MonadIO m =>
   PromptConfig m
 promptConfig =
-  PromptConfig (promptInput chars) basicTransition noPromptRenderer True
+  PromptConfig (promptInput chars) basicTransition noPromptRenderer False
 
 grepSpec :: Proteome ()
 grepSpec = do
   dir <- fixture "grep/pro"
-  proGrepWith promptConfig (toText dir) "target"
-  gassertEqual 3 =<< currentLine
+  proGrepWith promptConfig (toText dir) "target with spaces"
+  l <- currentLine
+  gassertEqual 5 l
 
 test_grep :: IO ()
 test_grep =
-  specDef grepSpec
+  tmuxGuiSpec grepSpec
