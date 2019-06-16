@@ -32,7 +32,8 @@ runtime ::
 runtime path = do
   vimCommand $ "runtime! " <> toText fpath
   globRtp fpath
-  where fpath = path <> ".vim"
+  where
+    fpath = path <> ".vim"
 
 runtimeConf ::
   NvimE e m =>

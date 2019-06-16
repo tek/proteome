@@ -4,7 +4,7 @@ module ConfigSpec (htf_thisModulesTests) where
 
 import Data.MessagePack (Object(ObjectInt))
 import Ribosome.Control.Ribosome (newRibosome)
-import Ribosome.Nvim.Api.IO (vimCallFunction, vimGetVar)
+import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand, vimGetVar)
 import Test.Framework
 
 import Proteome.Data.Env (Proteome)
@@ -13,6 +13,8 @@ import Proteome.Plugin (plugin')
 
 configSpec :: Proteome ()
 configSpec = do
+  dir <- fixture "projects/haskell/flagellum"
+  vimCommand $ "cd " <> toText dir
   resolveAndInitMain
   () <- vimCallFunction "ProReadConfig" []
   await (gassertEqual (ObjectInt 13)) (vimGetVar "flag")
