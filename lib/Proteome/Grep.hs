@@ -1,18 +1,7 @@
 module Proteome.Grep where
 
-import Chiasma.Data.Ident (generateIdent, identText)
-import Conduit (ConduitT, (.|))
 import Control.Monad.Catch (MonadThrow)
-import Data.Attoparsec.Text (parseOnly)
-import Data.Composition ((.:))
-import qualified Data.Conduit.Combinators as Conduit (decodeUtf8, linesUnbounded)
-import qualified Data.Conduit.List as Conduit (mapMaybeM)
-import Data.Conduit.Process.Typed (createSource)
 import qualified Data.Map as Map (fromList)
-import Data.Text (isInfixOf)
-import qualified Data.Text as Text (breakOn, null, replace, splitOn, strip, stripPrefix, take)
-import Path (Abs, File, Path, parseAbsFile, parseRelFile, toFilePath)
-import Path.IO (findExecutable, isLocationOccupied)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (setCurrentCursor)
@@ -30,152 +19,12 @@ import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuitWith, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCommand)
-import System.Process.Typed (
-  Process,
-  getStdout,
-  proc,
-  setStdout,
-  startProcess,
-  )
-import Text.Parser.Char (anyChar, char, newline, noneOf)
-import Text.Parser.Combinators (manyTill, try)
-import Text.Parser.Token (TokenParsing, natural)
 
 import Proteome.Data.GrepError (GrepError)
-import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
-import Proteome.Grep.Syntax (grepSyntax, lineNumber)
+import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Grep.Process (grep, grepCmdline)
+import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
-
-patternPlaceholder :: Text
-patternPlaceholder =
-  "${pattern}"
-
-pathPlaceholder :: Text
-pathPlaceholder =
-  "${path}"
-
-replaceOrAppend :: Text -> Text -> [Text] -> [Text]
-replaceOrAppend placeholder target segments | any (placeholder `isInfixOf`) segments =
-  Text.replace placeholder target <$> segments
-replaceOrAppend _ target segments =
-  segments <> [target]
-
-parseAbsExe ::
-  MonadDeepError e GrepError m =>
-  Text ->
-  m (Path Abs File)
-parseAbsExe exe =
-  hoistEitherAs (GrepError.NoSuchExecutable exe) $ parseAbsFile (toString exe)
-
-findExe ::
-  MonadIO m =>
-  MonadDeepError e GrepError m =>
-  Text ->
-  m (Path Abs File)
-findExe exe = do
-  path <- hoistEitherAs parseError $ parseRelFile (toString exe)
-  hoistMaybe notInPath =<< findExecutable path
-  where
-    parseError =
-      GrepError.NoSuchExecutable exe
-    notInPath =
-      GrepError.NotInPath exe
-
-grepCmdline ::
-  Text ->
-  Text ->
-  Text ->
-  Text ->
-  MonadIO m =>
-  MonadDeepError e GrepError m =>
-  m (Text, [Text])
-grepCmdline cmdline patt cwd destination = do
-  when (Text.null exe) $ throwHoist GrepError.Empty
-  absExe <- if absolute exe then parseAbsExe exe else findExe exe
-  destPath <- hoistEitherAs destError $ parseAbsFile (toString (absDestination destination))
-  unlessM (isLocationOccupied destPath) $ throwHoist destError
-  return (toText (toFilePath absExe), withDir destPath)
-  where
-    absDestination d =
-      if absolute d then d else cwd <> "/" <> d
-    absolute a =
-      Text.take 1 a == "/"
-    argSegments =
-      Text.splitOn " " (Text.strip args)
-    (exe, args) =
-      Text.breakOn " " (Text.strip cmdline)
-    withDir dir =
-      replaceOrAppend pathPlaceholder (toText (toFilePath dir)) withPattern
-    withPattern =
-      replaceOrAppend patternPlaceholder patt argSegments
-    destError =
-      GrepError.NoSuchDestination destination
-
-grepProcess ::
-  NvimE e m =>
-  MonadIO m =>
-  Text ->
-  [Text] ->
-  m (Process () (ConduitT () ByteString m ()) ())
-grepProcess exe args =
-  startProcess (config (toString exe) (toString <$> args))
-  where
-    config =
-      setStdout createSource .: proc
-
-data GrepOutputLine =
-  GrepOutputLine Text Int (Maybe Int) Text
-  deriving (Eq, Show)
-
-grepParser ::
-  TokenParsing m =>
-  m GrepOutputLine
-grepParser =
-  GrepOutputLine <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
-  where
-    path =
-      toText <$> manyTill (noneOf ":") (char ':')
-    number =
-      (fromInteger <$> natural) <* char ':'
-
-formatGrepLine :: Text -> GrepOutputLine -> Text
-formatGrepLine cwd (GrepOutputLine path line col text) =
-  relativePath <> " " <> lineNumber <> " " <> show line <> formatCol col <> text
-  where
-    formatCol (Just c) =
-      "/" <> show c
-    formatCol Nothing =
-      ""
-    relativePath =
-      fromMaybe path (Text.stripPrefix (cwd <> "/") path)
-
-parseGrepOutput ::
-  MonadRibo m =>
-  Text ->
-  Text ->
-  m (Maybe (MenuItem GrepOutputLine))
-parseGrepOutput cwd =
-  item . parseOnly grepParser
-  where
-    item (Right a) = do
-      ident <- identText <$> generateIdent
-      return (Just (convert ident a))
-    item (Left err) =
-      Nothing <$ logDebug ("parsing grep output failed: " <> err)
-    convert _ grepLine =
-      MenuItem grepLine (formatGrepLine cwd grepLine)
-
-grep ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  Text ->
-  Text ->
-  [Text] ->
-  ConduitT () (MenuItem GrepOutputLine) m ()
-grep cwd exe args = do
-  prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| Conduit.mapMaybeM (parseGrepOutput cwd)
 
 navigate ::
   NvimE e m =>

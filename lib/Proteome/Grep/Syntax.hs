@@ -20,7 +20,7 @@ path :: SyntaxItem
 path =
   item { siParams = params }
   where
-    item = syntaxMatch "ProGrepPath" ([r|^.*\ze |] <> lineNumber)
+    item = syntaxMatch "ProGrepPath" ([r|^.*\ze|] <> lineNumber)
     params = Map.fromList [("nextgroup", "ProGrepLN")]
 
 ln :: SyntaxItem
@@ -28,14 +28,23 @@ ln =
   item { siOptions = options, siParams = params }
   where
     item = syntaxMatch "ProGrepLN" lineNumber
-    options = ["skipwhite"]
+    options = ["contained", "skipwhite"]
     params = Map.fromList [("nextgroup", "ProGrepLine")]
 
 line :: SyntaxItem
 line =
-  item { siParams = params }
+  item { siOptions = options, siParams = params }
   where
-    item = syntaxMatch "ProGrepLine" [r|\d\+\ze\/|]
+    item = syntaxMatch "ProGrepLine" [r|\d\+\ze:|]
+    options = ["contained"]
+    params = Map.fromList [("nextgroup", "ProGrepColon")]
+
+colon :: SyntaxItem
+colon =
+  item { siOptions = options, siParams = params }
+  where
+    item = syntaxMatch "ProGrepColon" [r|:|]
+    options = ["contained"]
     params = Map.fromList [("nextgroup", "ProGrepCol")]
 
 col :: SyntaxItem
@@ -43,7 +52,7 @@ col =
   item { siOptions = options, siParams = params }
   where
     item = syntaxMatch "ProGrepCol" [r|\d\+|]
-    options = ["skipwhite"]
+    options = ["contained", "skipwhite"]
     params = Map.fromList [("nextgroup", "ProGrepText")]
 
 text :: SyntaxItem
@@ -51,7 +60,7 @@ text =
   item { siOptions = options }
   where
     item = syntaxMatch "ProGrepText" [r|.\+|]
-    options = ["skipwhite"]
+    options = ["contained"]
 
 sync :: SyntaxItem
 sync =
@@ -59,11 +68,11 @@ sync =
 
 hlPath :: HiLink
 hlPath =
-  HiLink "ProGrepPath" "Directory"
+  HiLink "ProGrepPath" "Type"
 
 hlLn :: HiLink
 hlLn =
-  HiLink "ProGrepLN" "Statement"
+  HiLink "ProGrepLN" "LineNr"
 
 hlLine :: HiLink
 hlLine =
@@ -73,11 +82,15 @@ hlCol :: HiLink
 hlCol =
   HiLink "ProGrepCol" "Constant"
 
+hlText :: HiLink
+hlText =
+  HiLink "ProGrepText" "Directory"
+
 grepSyntax :: Syntax
 grepSyntax =
   Syntax items [] links
   where
     items =
-      [path, ln, line, col, sync, text]
+      [path, ln, line, col, colon, text, sync]
     links =
-      [hlPath, hlLn, hlLine, hlCol]
+      [hlPath, hlLn, hlLine, hlCol, hlText]
