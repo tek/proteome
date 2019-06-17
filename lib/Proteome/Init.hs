@@ -81,7 +81,7 @@ initWithMain main@(Project meta _ _ _) = do
   showDebug "initializing with main project:" main
   setMainProject main
   setMainProjectVars meta
-  uautocmd "ProteomeMainProject"
+  uautocmd True "ProteomeMainProject"
   activateProject main
 
 resolveAndInitMain ::
