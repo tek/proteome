@@ -1,9 +1,9 @@
 module Proteome.Grep.Process where
 
-import Conduit (ConduitT, (.|))
+import Conduit (ConduitT, (.|), mapC)
 import Control.Monad.Catch (MonadThrow)
 import Data.Composition ((.:))
-import qualified Data.Conduit.Combinators as Conduit (decodeUtf8, linesUnbounded)
+import qualified Data.Conduit.Combinators as Conduit (decodeUtf8, linesUnbounded, chunksOfE)
 import qualified Data.Conduit.List as Conduit (mapMaybeM)
 import Data.Conduit.Process.Typed (createSource)
 import Data.Text (isInfixOf)
@@ -108,7 +108,10 @@ grep ::
   Text ->
   Text ->
   [Text] ->
-  ConduitT () (MenuItem GrepOutputLine) m ()
+  ConduitT () [MenuItem GrepOutputLine] m ()
 grep cwd exe args = do
   prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| Conduit.mapMaybeM (parseGrepOutput cwd)
+  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| parse .| mapC pure .| Conduit.chunksOfE 20
+  where
+    parse =
+      Conduit.mapMaybeM (parseGrepOutput cwd)

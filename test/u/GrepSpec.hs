@@ -14,7 +14,7 @@ import Test.Framework
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
-import Unit (tmuxGuiSpec, tmuxSpec)
+import Unit (tmuxSpec)
 
 promptInput ::
   MonadIO m =>
@@ -64,4 +64,4 @@ grepYankSpec = do
 
 test_grepYank :: IO ()
 test_grepYank =
-  tmuxGuiSpec grepYankSpec
+  tmuxSpec grepYankSpec
