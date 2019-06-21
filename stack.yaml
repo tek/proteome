@@ -9,6 +9,7 @@ extra-deps:
 - pretty-terminal-0.1.0.0
 - posix-pty-0.2.1.1
 - filepattern-0.1.1
+- fuzzy-0.1.0.0
 - github: neovimhaskell/nvim-hs
   commit: 8b1a38c18f530f65a17a7fda2a14c168a2663821
 - github: tek/cornea
@@ -16,7 +17,7 @@ extra-deps:
 - github: tek/chiasma
   commit: a15987575a5da2606d4cea110a8e8d7aa9ce8446
 - github: tek/ribosome
-  commit: 35348135af635868784b5af60cacc0c4e0ef22c3
+  commit: 0b002adf3517600178cfc1de602eac54f974d5fc
   subdirs:
   - modules/core
   - modules/test
