@@ -4,8 +4,10 @@ import Control.Monad.Catch (MonadThrow)
 import qualified Data.Map as Map (fromList)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Api.Register (setregLine)
 import Ribosome.Api.Window (setCurrentCursor)
 import Ribosome.Config.Setting (setting)
+import qualified Ribosome.Data.Register as Register (Register(Special))
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Data.Menu (Menu)
@@ -52,6 +54,20 @@ selectResult menu _ =
     check Nothing =
       menuContinue menu
 
+yankResult ::
+  NvimE e m =>
+  MonadRibo m =>
+  Menu GrepOutputLine ->
+  Prompt ->
+  m (MenuConsumerAction m (), Menu GrepOutputLine)
+yankResult menu _ =
+  check $ selectedMenuItem menu
+  where
+    check (Just (MenuItem (GrepOutputLine _ _ _ text) _)) =
+      menuQuitWith (setregLine (Register.Special "\"") [text]) menu
+    check Nothing =
+      menuContinue menu
+
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
@@ -73,7 +89,7 @@ proGrepWith promptConfig path patt = do
     scratchOptions =
       scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
     handler =
-      defaultMenu (Map.fromList [("cr", selectResult)])
+      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult)])
 
 proGrepIn ::
   NvimE e m =>
