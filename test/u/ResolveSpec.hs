@@ -17,6 +17,7 @@ import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
 import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
 import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType)
+import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Project.Resolve (resolveProject)
 
 
@@ -47,8 +48,8 @@ targetProject =
 
 test_typeMap :: IO ()
 test_typeMap = do
-  project <- resolveProject [] config (Just root) fn (Just tp)
-  assertEqual targetProject project
+  project <- runExceptT @ResolveError $ resolveProject [] config (Just root) fn (Just tp)
+  assertEqual (Right targetProject) project
 
 markerConfig :: ProjectConfig
 markerConfig = ProjectConfig def def def def defaultTypeMarkers def def
@@ -61,4 +62,5 @@ test_marker :: IO ()
 test_marker = do
   dir <- parseAbsDir =<< fixture "projects/haskell/flagellum"
   let root' = ProjectRoot dir
-  assertEqual (markerTarget root') =<< resolveProject [] markerConfig (Just root') fn Nothing
+  project <- runExceptT @ResolveError $ resolveProject [] markerConfig (Just root') fn Nothing
+  assertEqual (Right $ markerTarget root') project

@@ -2,7 +2,6 @@ module Proteome.Project.Resolve where
 
 import qualified Control.Lens as Lens (over, view)
 import Control.Monad (foldM)
-import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Extra (firstJustM)
 import Data.Functor.Syntax ((<$$>))
 import Data.List (find, nub)
@@ -31,6 +30,8 @@ import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
 import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ResolveError (ResolveError)
+import qualified Proteome.Data.ResolveError as ResolveError (ResolveError(..))
 import Proteome.Path (parseAbsDirMaybe)
 import Proteome.Project (pathData)
 import qualified Proteome.Settings as Settings (projectConfig, projects)
@@ -59,21 +60,21 @@ matchProjectBases baseDirs (ProjectRoot root) = (parent . parent) root `elem` ba
 
 byProjectBaseSubpath ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadDeepError e ResolveError m =>
   ProjectName ->
   ProjectType ->
   Path Abs Dir ->
   m (Maybe Project)
 byProjectBaseSubpath n@(ProjectName name) t@(ProjectType tpe) base = do
-  tpePath <- parseRelDir (toString tpe)
-  namePath <- parseRelDir (toString name)
+  tpePath <- hoistEitherAs (ResolveError.ParsePath tpe) $ parseRelDir (toString tpe)
+  namePath <- hoistEitherAs (ResolveError.ParsePath name) $ parseRelDir (toString name)
   let root = base </> tpePath </> namePath
   exists <- doesDirExist root
   return $ if exists then Just $ projectFromSegments t n (ProjectRoot root) else Nothing
 
 byProjectBasesSubpath ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadDeepError e ResolveError m =>
   [Path Abs Dir] ->
   ProjectName ->
   ProjectType ->
@@ -93,7 +94,7 @@ resolveByTypeAndPath baseDirs name tpe root =
 
 resolveByType ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadDeepError e ResolveError m =>
   [Path Abs Dir] ->
   [ProjectSpec] ->
   Maybe ProjectRoot ->
@@ -102,7 +103,7 @@ resolveByType ::
   m (Maybe Project)
 resolveByType baseDirs explicit root name tpe = do
   byBaseSubpath <- byProjectBasesSubpath baseDirs name tpe
-  return $ (byPath <|> byBaseSubpath) <|> (fmap projectFromSpec byTypeName)
+  return $ byPath <|> byBaseSubpath <|> fmap projectFromSpec byTypeName
   where
     byTypeName = byProjectTypeName explicit name tpe
     byPath = root >>= resolveByTypeAndPath baseDirs name tpe
@@ -114,21 +115,23 @@ fromProjectRoot dir =
     (root, name, tpe) = pathData dir
 
 projectFromNameIn ::
+  ∀ m e .
   MonadIO m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
+  MonadDeepError e ResolveError m =>
   ProjectName ->
   Path Abs Dir ->
   m (Maybe Project)
 projectFromNameIn (ProjectName name) base =
-  fromProjectRoot <$$> join . find isJust <$> (traverse parseAbsDirMaybe =<< (fmap toText <$> glob))
+  fromProjectRoot <$$> join . find isJust <$> matches
   where
+    matches =
+      parseAbsDirMaybe . toText <$$> glob
     glob =
       liftIO $ globDir1 (Glob.compile ("*/" <> toString name)) (toFilePath base)
 
 resolveByName ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadDeepError e ResolveError m =>
   MonadBaseControl IO m =>
   [Path Abs Dir] ->
   ProjectName ->
@@ -205,8 +208,8 @@ augmentFromConfig _ project = project
 
 resolveProject ::
   MonadIO m =>
-  MonadThrow m =>
   MonadBaseControl IO m =>
+  MonadDeepError e ResolveError m =>
   [ProjectSpec] ->
   ProjectConfig ->
   Maybe ProjectRoot ->
@@ -230,6 +233,7 @@ projectConfig ::
   MonadRibo m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   m ProjectConfig
 projectConfig =
   Lens.over ProjectConfig.typeMarkers (`Map.union` defaultTypeMarkers) <$> setting Settings.projectConfig
@@ -237,10 +241,10 @@ projectConfig =
 resolveProjectFromConfig ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   Maybe ProjectRoot ->
   ProjectName ->
   Maybe ProjectType ->

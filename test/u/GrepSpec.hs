@@ -3,7 +3,6 @@
 module GrepSpec (htf_thisModulesTests) where
 
 import Conduit (ConduitT, yield)
-import Ribosome.Api.Input (syntheticInput)
 import Ribosome.Api.Window (currentLine)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
@@ -13,7 +12,7 @@ import Test.Framework
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
-import Unit (tmuxGuiSpec)
+import Unit (tmuxSpec)
 
 promptInput ::
   MonadIO m =>
@@ -42,4 +41,4 @@ grepSpec = do
 
 test_grep :: IO ()
 test_grep =
-  tmuxGuiSpec grepSpec
+  tmuxSpec grepSpec

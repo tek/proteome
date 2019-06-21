@@ -27,6 +27,7 @@ dependencies:
 - conduit
 - conduit-extra
 - containers
+- cornea
 - data-default-class
 - deepseq
 - directory

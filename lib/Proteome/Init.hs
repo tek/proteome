@@ -20,6 +20,7 @@ import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project (Project(Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata(VirtualProject, DirProject))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ResolveError (ResolveError)
 import Proteome.PersistBuffers (loadBuffers)
 import Proteome.Project (pathData)
 import Proteome.Project.Activate (activateProject)
@@ -29,10 +30,10 @@ import qualified Proteome.Settings as Settings (mainName, mainProjectDir, mainTy
 resolveMainProject ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   m Project
 resolveMainProject = do
   mainDir <- settingMaybe Settings.mainProjectDir
@@ -91,6 +92,7 @@ resolveAndInitMain ::
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   MonadDeepState s Env m =>
   m ()
 resolveAndInitMain =

@@ -15,6 +15,7 @@ import Proteome.Data.Project (Project(Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata(VirtualProject))
 import Proteome.Data.ProjectName (ProjectName(ProjectName))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Project.Activate (selectProject)
 import Proteome.Project.Resolve (resolveProjectFromConfig)
 
@@ -26,6 +27,7 @@ add ::
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   ProjectName ->
   Maybe ProjectType ->
   Bool ->
@@ -47,6 +49,7 @@ proAdd ::
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   AddOptions ->
   m ()
 proAdd (AddOptions name tpe activate) =
@@ -60,6 +63,7 @@ addFromName ::
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
+  MonadDeepError e ResolveError m =>
   ProjectName ->
   Bool ->
   m ()
@@ -75,6 +79,7 @@ proAddCmd ::
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
   MonadDeepError e AddError m =>
+  MonadDeepError e ResolveError m =>
   CommandArguments ->
   Text ->
   m ()
