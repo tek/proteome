@@ -1,6 +1,5 @@
 module Proteome.Buffers where
 
-import Conduit (ConduitT, yield)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text (length, replicate)
 import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
@@ -12,10 +11,10 @@ import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
-import Ribosome.Menu.Run (nvimMenu)
+import Ribosome.Menu.Run (strictNvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, menuQuitWith, withSelectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, vimCommand, nvimBufIsLoaded)
+import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, nvimBufIsLoaded, vimCommand)
 
 import Proteome.Buffers.Syntax (buffersSyntax)
 import Proteome.Data.Env (Env)
@@ -74,13 +73,6 @@ buffers = do
     padded pad num =
       Text.replicate (pad - Text.length num) " " <> num
 
-bufferSource ::
-  NvimE e m =>
-  MonadDeepState s Env m =>
-  ConduitT () [MenuItem ListedBuffer] m ()
-bufferSource =
-  yield =<< lift buffers
-
 actions ::
   NvimE e m =>
   MonadRibo m =>
@@ -103,8 +95,9 @@ buffersWith ::
   MonadDeepError e SettingError m =>
   PromptConfig m ->
   m ()
-buffersWith promptConfig =
-  void $ nvimMenu scratchOptions bufferSource handler promptConfig Nothing
+buffersWith promptConfig = do
+  bufs <- buffers
+  void $ strictNvimMenu scratchOptions bufs handler promptConfig Nothing
   where
     scratchOptions =
       scratchSyntax [buffersSyntax] . defaultScratchOptions $ "proteome-buffers"
