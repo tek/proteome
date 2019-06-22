@@ -2,6 +2,7 @@ module Proteome.Tags where
 
 import Control.Concurrent.Lifted (fork)
 import qualified Control.Lens as Lens (view)
+import Data.Composition ((.:))
 import qualified Data.Text as Text (intercalate, replace, words)
 import GHC.IO.Exception (ExitCode(..))
 import Path (File, Path, Rel, toFilePath, (<.>), (</>))
@@ -147,9 +148,7 @@ regenerateTags ::
   m ()
 regenerateTags root langs = do
   (cmd, args) <- tagsCommand root langs
-  let thunk = executeTags root cmd args
-  wantFork <- setting Settings.tagsFork
-  if wantFork then void $ fork thunk else thunk
+  executeTags root cmd args
 
 projectTags ::
   NvimE e m =>
@@ -174,4 +173,10 @@ proTags ::
 proTags = do
   main <- getL @Env Env.mainProject
   extra <- getL @Env Env.projects
-  lockOrSkip "tags" $ traverse_ projectTags (main : extra)
+  wantFork <- setting Settings.tagsFork
+  runner wantFork main extra
+  where
+    runner wantFork =
+      if wantFork then void . fork .: run else run
+    run main extra =
+      lockOrSkip "tags" $ traverse_ projectTags (main : extra)
