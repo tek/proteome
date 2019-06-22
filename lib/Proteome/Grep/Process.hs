@@ -1,9 +1,9 @@
 module Proteome.Grep.Process where
 
-import Conduit (ConduitT, (.|), mapC)
+import Conduit (ConduitT, mapC, (.|))
 import Control.Monad.Catch (MonadThrow)
 import Data.Composition ((.:))
-import qualified Data.Conduit.Combinators as Conduit (decodeUtf8, linesUnbounded, chunksOfE)
+import qualified Data.Conduit.Combinators as Conduit (chunksOfE, decodeUtf8, linesUnbounded)
 import qualified Data.Conduit.List as Conduit (mapMaybeM)
 import Data.Conduit.Process.Typed (createSource)
 import Data.Text (isInfixOf)

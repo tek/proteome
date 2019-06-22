@@ -8,15 +8,14 @@ import Ribosome.Api.Register (setregLine)
 import Ribosome.Api.Window (setCurrentCursor)
 import Ribosome.Config.Setting (setting)
 import qualified Ribosome.Data.Register as Register (Register(Special))
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
+import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSize, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
-import Ribosome.Menu.Prompt.Nvim (getCharC, nvimPromptRenderer)
-import Ribosome.Menu.Prompt.Run (basicTransition)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuitWith, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
@@ -84,10 +83,10 @@ proGrepWith promptConfig path patt = do
   grepper <- setting Settings.grepCmdline
   cwd <- toText <$> nvimCwd
   (exe, args) <- grepCmdline grepper patt cwd path
-  void $ nvimMenu scratchOptions (grep cwd exe args) handler promptConfig
+  void $ nvimMenu scratchOptions (grep cwd exe args) handler promptConfig Nothing
   where
     scratchOptions =
-      scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
+      scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
     handler =
       defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult)])
 
@@ -103,10 +102,7 @@ proGrepIn ::
   Text ->
   m ()
 proGrepIn =
-  proGrepWith promptConfig
-  where
-    promptConfig =
-      PromptConfig (getCharC 0.033) basicTransition nvimPromptRenderer False
+  proGrepWith (defaultPrompt False)
 
 proGrep ::
   NvimE e m =>
