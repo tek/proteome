@@ -14,7 +14,7 @@ import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Error.Report (processErrorReport)
 import System.Log (Priority(NOTICE))
-import System.Process.Typed (closed, proc, readProcessStderr, setStdout, setWorkingDir)
+import System.Process.Typed (proc, readProcess, setWorkingDir)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (mainProject, projects)
@@ -96,13 +96,14 @@ tagsProcess ::
   Text ->
   Text ->
   IO (ExitCode, Text)
-tagsProcess (ProjectRoot root) cmd args =
-  second decodeUtf8 <$> readProcessStderr (conf prc)
+tagsProcess (ProjectRoot root) cmd args = do
+  (exitCode, _, err) <- readProcess (conf prc)
+  return (exitCode, decodeUtf8 err)
   where
     prc =
       proc (toString cmd) (toString <$> Text.words args)
     conf =
-      setStdout closed . setWorkingDir (toFilePath root)
+      setWorkingDir (toFilePath root)
 
 executeTags ::
   NvimE e m =>
