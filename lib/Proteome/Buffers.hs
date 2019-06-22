@@ -15,7 +15,7 @@ import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, menuQuitWith, withSelectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, vimCommand)
+import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, vimCommand, nvimBufIsLoaded)
 
 import Proteome.Buffers.Syntax (buffersSyntax)
 import Proteome.Data.Env (Env)
@@ -43,8 +43,8 @@ load ::
 load menu _ =
   action quit menu
   where
-    quit (MenuItem (ListedBuffer buffer _ _) _) =
-      setCurrentBuffer buffer
+    quit (MenuItem (ListedBuffer buffer number _) _) =
+      ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand $ "buffer " <> show number)
 
 deleteWith ::
   NvimE e m =>
