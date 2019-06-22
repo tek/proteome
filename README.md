@@ -110,8 +110,6 @@ After that, the second stage loads the same set of files from the `project_after
 This command is intended to be used when saving files and executes the tag generation as well as writing the current
 list of buffers to disk.
 
-# TODO
-
 An autocmd will execute it for you whenever you save a file, waiting a number of seconds (`g:proteome_save_interval`)
 between executions to avoid running multiple times when executing `:wa`.
 
@@ -124,7 +122,16 @@ It can be configured with these variables:
 
 The command `ProGrep` will execute `grep` or another, configurable, program using the specified pattern and display the results in a menu.
 
-# TODO
+# Buffers
+
+The command `ProBuffers` displays the currently loaded file buffers in MRU order.
+
+Mappings:
+* `<cr>` to load a buffer
+* `d` to delete a buffer
+* `D` to delete a buffer, discarding changes
+* `w` to wipe a buffer
+* `W` to wipe a buffer, discarding changes
 
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org

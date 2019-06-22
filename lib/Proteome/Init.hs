@@ -11,6 +11,7 @@ import Ribosome.Data.PersistError (PersistError)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Error.Report (reportError')
 import Ribosome.Internal.IO (retypeNeovim)
+import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCallFunction)
 import System.Log.Logger (Priority(ERROR), setLevel, updateGlobalLogger)
 
@@ -116,9 +117,10 @@ proteomeStage1 ::
   MonadRibo m =>
   MonadThrow m =>
   MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
+  MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e PersistError m =>
-  MonadDeepState s Env m =>
   m ()
 proteomeStage1 =
   loadBuffers

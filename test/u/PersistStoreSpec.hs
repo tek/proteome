@@ -13,6 +13,7 @@ import Ribosome.Test.Unit (fixture, tempDir)
 import Test.Framework
 
 import Config (vars)
+import Proteome.BufEnter (updateBuffers)
 import Proteome.Data.Env (Env, Proteome)
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.PersistBuffers (PersistBuffers(PersistBuffers))
@@ -29,7 +30,7 @@ main = DirProject (ProjectName "flagellum") (ProjectRoot [absdir|/|]) (Just (Pro
 
 storeTarget :: Path Abs File -> Path Abs File -> Path Abs File -> PersistBuffers
 storeTarget f1 f2 f3 =
-  PersistBuffers (Just f2) [f1, f2, f3]
+  PersistBuffers (Just f2) [f2, f3, f1]
 
 storeBuffersSpec :: Proteome ()
 storeBuffersSpec = do
@@ -52,10 +53,10 @@ storeBuffersSpec = do
   pb <- case decode json of
     Just a -> return a
     _ -> fail "invalid json"
-  liftIO $ assertEqual pb (storeTarget file1 file2 file3)
+  liftIO $ assertEqual (storeTarget file1 file2 file3) pb
   where
-    e =
-      edit . toFilePath
+    e a =
+      edit (toFilePath a) *> updateBuffers
 
 test_storeBuffers :: IO ()
 test_storeBuffers =

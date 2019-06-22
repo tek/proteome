@@ -9,6 +9,7 @@ import Ribosome.Plugin (RpcDef, autocmd, cmd, name, riboPlugin, rpcHandler, rpcH
 
 import Proteome.Add (proAdd, proAddCmd)
 import Proteome.BufEnter (bufEnter)
+import Proteome.Buffers (proBuffers)
 import Proteome.Config (proReadConfig)
 import Proteome.Data.Env (Env, Proteome)
 import Proteome.Data.Error (Error)
@@ -36,6 +37,7 @@ rpcHandlers =
     $(rpcHandlerDef 'proTags),
     $(rpcHandler (cmd []) 'proGrep),
     $(rpcHandler (cmd []) 'proGrepIn),
+    $(rpcHandler (cmd []) 'proBuffers),
     $(rpcHandler (cmd []) 'proNext),
     $(rpcHandler (cmd []) 'proPrev),
     $(rpcHandlerDef 'proReadConfig),

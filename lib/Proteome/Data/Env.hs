@@ -1,10 +1,13 @@
-module Proteome.Data.Env  where
+{-# LANGUAGE DeriveAnyClass #-}
 
-import Proteome.Data.Project(Project)
+module Proteome.Data.Env where
+
 import Ribosome.Control.Monad.Ribo (Ribo)
 import Ribosome.Data.Errors (Errors)
+import Ribosome.Nvim.Api.Data (Buffer)
 
 import Proteome.Data.Error (Error)
+import Proteome.Data.Project(Project)
 
 data Env =
   Env {
@@ -12,13 +15,11 @@ data Env =
     _projects :: [Project],
     _errors :: Errors,
     _currentProjectIndex :: Int,
-    _configLog :: [Text]
+    _configLog :: [Text],
+    _buffers :: [Buffer]
   }
-  deriving Show
+  deriving (Show, Generic, Default)
 
 deepLenses ''Env
-
-instance Default Env where
-  def = Env def def def def def
 
 type Proteome a = Ribo Env Error a

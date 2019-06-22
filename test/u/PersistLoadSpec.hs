@@ -16,7 +16,7 @@ import Test.Framework
 
 import Config (vars)
 import Proteome.Data.Env (Env, Proteome)
-import qualified Proteome.Data.Env as Env (mainProject)
+import qualified Proteome.Data.Env as Env (buffers, mainProject)
 import qualified Proteome.Data.Project as Project (meta)
 import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
 import Proteome.Data.ProjectName (ProjectName(ProjectName))
@@ -47,7 +47,11 @@ loadBuffersSpec = do
   gassertEqual 3 (length buffers)
   active <- bufferGetName =<< vimGetCurrentBuffer
   gassertEqual (toString active) (fixDir </> "file2")
+  gassertEqual (target fixDir) =<< traverse bufferGetName =<< getL @Env Env.buffers
+  where
+    target fixDir =
+      toText . (fixDir </>) <$> ["file1", "file2", "file3"]
 
-test_loadBuffers :: IO ()
-test_loadBuffers =
+test_loadPersistedBuffers :: IO ()
+test_loadPersistedBuffers =
   vars >>= specWithDef loadBuffersSpec
