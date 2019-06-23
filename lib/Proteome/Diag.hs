@@ -127,6 +127,7 @@ diagnostics = do
 proDiag ::
   NvimE e m =>
   MonadRibo m =>
+  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e TagsError m =>
   MonadDeepError e DecodeError m =>

@@ -69,7 +69,7 @@ wipeBufferSpec = do
   (buf1, _, buf3) <- setupBuffers
   gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
   buffersWith (promptConfig ["k", "w"])
-  gassertEqual [buf1, buf3, ""] =<< traverse bufferGetName =<< vimGetBuffers
+  gassertEqual [buf1, buf3] =<< traverse bufferGetName =<< vimGetBuffers
 
 test_wipeBuffer :: IO ()
 test_wipeBuffer =
