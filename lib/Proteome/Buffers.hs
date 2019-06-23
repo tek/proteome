@@ -1,5 +1,6 @@
 module Proteome.Buffers where
 
+import Data.Foldable (maximum)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text (length, replicate, stripPrefix)
 import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
@@ -66,11 +67,13 @@ buffers ::
 buffers = do
   cwd <- (<> "/") <$> nvimCwd
   bufs <- filterM bufferIsFile =<< filterM buflisted =<< getL @Env Env.buffers
-  traverse (cons (toText cwd) (Text.length . show . length $ bufs)) bufs
+  numbers <- traverse bufferGetNumber bufs
+  names <- traverse bufferGetName bufs
+  return $ item (toText cwd) (padding numbers) <$> zip3 bufs numbers names
   where
-    cons cwd pad buf =
-      item cwd pad buf <$> bufferGetNumber buf <*> bufferGetName buf
-    item cwd pad buf num name =
+    padding =
+      Text.length . show . maximum
+    item cwd pad (buf, num, name) =
       MenuItem (ListedBuffer buf num name) (" * " <> padded pad (show num) <> "  " <> strip cwd name)
     padded pad num =
       Text.replicate (pad - Text.length num) " " <> num
