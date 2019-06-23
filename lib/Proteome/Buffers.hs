@@ -64,7 +64,7 @@ buffers ::
   MonadDeepState s Env m =>
   m [MenuItem ListedBuffer]
 buffers = do
-  cwd <- nvimCwd
+  cwd <- (<> "/") <$> nvimCwd
   bufs <- filterM bufferIsFile =<< filterM buflisted =<< getL @Env Env.buffers
   traverse (cons (toText cwd) (Text.length . show . length $ bufs)) bufs
   where
