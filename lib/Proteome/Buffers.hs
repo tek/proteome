@@ -1,8 +1,9 @@
 module Proteome.Buffers where
 
 import qualified Data.Map as Map (fromList)
-import qualified Data.Text as Text (length, replicate)
+import qualified Data.Text as Text (length, replicate, stripPrefix)
 import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
+import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Data.Menu (Menu)
@@ -63,15 +64,18 @@ buffers ::
   MonadDeepState s Env m =>
   m [MenuItem ListedBuffer]
 buffers = do
+  cwd <- nvimCwd
   bufs <- filterM bufferIsFile =<< filterM buflisted =<< getL @Env Env.buffers
-  traverse (cons (Text.length . show . length $ bufs)) bufs
+  traverse (cons (toText cwd) (Text.length . show . length $ bufs)) bufs
   where
-    cons pad buf =
-      item pad buf <$> bufferGetNumber buf <*> bufferGetName buf
-    item pad buf num name =
-      MenuItem (ListedBuffer buf num name) (" * " <> padded pad (show num) <> "  " <> name)
+    cons cwd pad buf =
+      item cwd pad buf <$> bufferGetNumber buf <*> bufferGetName buf
+    item cwd pad buf num name =
+      MenuItem (ListedBuffer buf num name) (" * " <> padded pad (show num) <> "  " <> strip cwd name)
     padded pad num =
       Text.replicate (pad - Text.length num) " " <> num
+    strip cwd name =
+      fromMaybe name $ Text.stripPrefix cwd name
 
 actions ::
   NvimE e m =>
