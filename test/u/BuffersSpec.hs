@@ -77,7 +77,7 @@ test_wipeBuffer =
 
 deleteMultipleBuffersSpec :: Proteome ()
 deleteMultipleBuffersSpec = do
-  (buf1, _, buf3) <- setupBuffers
+  (_, _, buf3) <- setupBuffers
   gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
   buffersWith (promptConfig ["k", "space", "space", "d"])
   gassertEqual [buf3] =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
