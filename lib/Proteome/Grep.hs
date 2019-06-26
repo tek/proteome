@@ -2,6 +2,7 @@ module Proteome.Grep where
 
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Map as Map (fromList)
+import qualified Data.Text as Text (null)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Register (setregLine)
@@ -19,9 +20,10 @@ import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, menuContinue, menuQuitWith, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (vimCommand)
+import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
 import Proteome.Data.GrepError (GrepError)
+import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
 import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
 import Proteome.Grep.Process (grep, grepCmdline)
 import Proteome.Grep.Syntax (grepSyntax)
@@ -104,6 +106,14 @@ proGrepIn ::
 proGrepIn =
   proGrepWith (defaultPrompt False)
 
+askPattern ::
+  NvimE e m =>
+  MonadDeepError e GrepError m =>
+  m Text
+askPattern = do
+  input <- vimCallFunction "input" [toMsgpack ("pattern: " :: Text)]
+  if Text.null input then throwHoist GrepError.EmptyPattern else pure input
+
 proGrep ::
   NvimE e m =>
   MonadRibo m =>
@@ -112,8 +122,9 @@ proGrep ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
-  Text ->
+  Maybe Text ->
   m ()
 proGrep patt = do
   cwd <- nvimCwd
-  proGrepIn (toText cwd) patt
+  nonemptyPattern <- maybe askPattern pure patt
+  proGrepIn (toText cwd) nonemptyPattern

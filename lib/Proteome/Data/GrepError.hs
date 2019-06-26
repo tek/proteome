@@ -12,6 +12,8 @@ data GrepError =
   NoSuchExecutable Text
   |
   NoSuchDestination Text
+  |
+  EmptyPattern
   deriving (Eq, Show)
 
 deepPrisms ''GrepError
@@ -25,3 +27,5 @@ instance ReportError GrepError where
     ErrorReport ("grep executable `" <> exe <> "` does not exist") ["GrepError.NoSuchExecutable:", exe] NOTICE
   errorReport (NoSuchDestination dir) =
     ErrorReport ("grep destination `" <> dir <> "` does not exist") ["GrepError.NoSuchDestination:", dir] NOTICE
+  errorReport EmptyPattern =
+    ErrorReport "no pattern given" ["GrepError.EmptyPattern"] NOTICE
