@@ -57,7 +57,7 @@ deleteBufferSpec :: Proteome ()
 deleteBufferSpec = do
   (buf1, _, buf3) <- setupBuffers
   gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
-  buffersWith (promptConfig ["k", "d"])
+  buffersWith (promptConfig ["k", "d", "esc"])
   gassertEqual [buf1, buf3] =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
 
 test_deleteBuffer :: IO ()
@@ -68,7 +68,7 @@ wipeBufferSpec :: Proteome ()
 wipeBufferSpec = do
   (buf1, _, buf3) <- setupBuffers
   gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
-  buffersWith (promptConfig ["k", "w"])
+  buffersWith (promptConfig ["k", "w", "esc"])
   gassertEqual [buf1, buf3] =<< traverse bufferGetName =<< vimGetBuffers
 
 test_wipeBuffer :: IO ()
@@ -79,7 +79,7 @@ deleteMultipleBuffersSpec :: Proteome ()
 deleteMultipleBuffersSpec = do
   (_, _, buf3) <- setupBuffers
   gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
-  buffersWith (promptConfig ["k", "space", "space", "d"])
+  buffersWith (promptConfig ["k", "space", "space", "d", "esc"])
   gassertEqual [buf3] =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
 
 test_deleteMultipleBuffers :: IO ()
