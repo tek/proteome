@@ -5,12 +5,12 @@ import Data.Foldable (maximum)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text (length, replicate, stripPrefix)
-import Ribosome.Api.Buffer (bufferIsFile, buflisted, edit, setCurrentBuffer)
+import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith, menuRender)
+import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
@@ -23,7 +23,6 @@ import Ribosome.Menu.Simple (
   defaultMenu,
   deleteMarked,
   markedMenuItems,
-  traverseMarkedMenuItems_,
   unmarkedMenuItems,
   withSelectedMenuItem,
   )
@@ -84,7 +83,7 @@ compensateForMissingActiveBuffer _ [] =
   vimCommand "enew"
 compensateForMissingActiveBuffer marked (next : _) = do
   prev <- vimGetCurrentWindow
-  main <- ensureMainWindow
+  void ensureMainWindow
   current <- vimGetCurrentBuffer
   when (elemOf (each . ListedBuffer.buffer) current marked) (loadListedBuffer next)
   vimSetCurrentWindow prev
@@ -94,11 +93,11 @@ deleteListedBuffersWith ::
   Text ->
   NonEmpty ListedBuffer ->
   m ()
-deleteListedBuffersWith deleter buffers =
+deleteListedBuffersWith deleter bufs =
   vimCommand $ deleter <> " " <> numbers
   where
     numbers =
-      unwords (show . view ListedBuffer.number <$> NonEmpty.toList buffers)
+      unwords (show . view ListedBuffer.number <$> NonEmpty.toList bufs)
 
 deleteWith ::
   NvimE e m =>
@@ -114,9 +113,9 @@ deleteWith deleter menu _ =
       view MenuItem.meta <$$> markedMenuItems menu
     remaining =
       view MenuItem.meta <$> unmarkedMenuItems menu
-    delete buffers = do
-      compensateForMissingActiveBuffer buffers remaining
-      deleteListedBuffersWith deleter buffers
+    delete bufs = do
+      compensateForMissingActiveBuffer bufs remaining
+      deleteListedBuffersWith deleter bufs
       menuFilter (deleteMarked menu)
 
 buffers ::
