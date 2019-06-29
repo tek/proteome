@@ -62,7 +62,6 @@ deleteWith ::
   m (MenuConsumerAction m (), Menu ListedBuffer)
 deleteWith deleter menu _ = do
   traverseMarkedMenuItems_ handle menu
-  dbgs (deleteMarked menu)
   menuFilter (deleteMarked menu)
   where
     handle (MenuItem (ListedBuffer _ number _) _) =
