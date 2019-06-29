@@ -7,6 +7,7 @@ import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
+import Ribosome.Menu.Action (menuFilter, menuQuitWith, menuRender)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
@@ -14,7 +15,12 @@ import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (strictNvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, deleteMarked, menuQuitWith, traverseMarkedMenuItems_, withSelectedMenuItem)
+import Ribosome.Menu.Simple (
+  defaultMenu,
+  deleteMarked,
+  traverseMarkedMenuItems_,
+  withSelectedMenuItem,
+  )
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, nvimBufIsLoaded, vimCommand)
 
@@ -54,8 +60,10 @@ deleteWith ::
   Menu ListedBuffer ->
   Prompt ->
   m (MenuConsumerAction m (), Menu ListedBuffer)
-deleteWith deleter menu _ =
-  second deleteMarked <$> traverseMarkedMenuItems_ handle menu
+deleteWith deleter menu _ = do
+  traverseMarkedMenuItems_ handle menu
+  dbgs (deleteMarked menu)
+  menuFilter (deleteMarked menu)
   where
     handle (MenuItem (ListedBuffer _ number _) _) =
       vimCommand $ deleter <> " " <> show number
