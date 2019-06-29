@@ -1,16 +1,20 @@
 module Proteome.Buffers where
 
+import Control.Lens (each, elemOf, view)
 import Data.Foldable (maximum)
+import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text (length, replicate, stripPrefix)
-import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
+import Ribosome.Api.Buffer (bufferIsFile, buflisted, edit, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Menu.Action (menuFilter, menuQuitWith, menuRender)
+import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith, menuRender)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
@@ -18,16 +22,27 @@ import Ribosome.Menu.Run (strictNvimMenu)
 import Ribosome.Menu.Simple (
   defaultMenu,
   deleteMarked,
+  markedMenuItems,
   traverseMarkedMenuItems_,
+  unmarkedMenuItems,
   withSelectedMenuItem,
   )
 import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (bufferGetName, bufferGetNumber, nvimBufIsLoaded, vimCommand)
+import Ribosome.Nvim.Api.IO (
+  bufferGetName,
+  bufferGetNumber,
+  nvimBufIsLoaded,
+  vimCommand,
+  vimGetCurrentBuffer,
+  vimGetCurrentWindow,
+  vimSetCurrentWindow,
+  )
 
 import Proteome.Buffers.Syntax (buffersSyntax)
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (buffers)
 import Proteome.Data.ListedBuffer (ListedBuffer(ListedBuffer))
+import qualified Proteome.Data.ListedBuffer as ListedBuffer (buffer, number)
 
 action ::
   NvimE e m =>
@@ -41,6 +56,13 @@ action act menu =
     quit item =
       menuQuitWith (act item) menu
 
+loadListedBuffer ::
+  NvimE e m =>
+  ListedBuffer ->
+  m ()
+loadListedBuffer (ListedBuffer buffer number _) =
+  ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand $ "buffer " <> show number)
+
 load ::
   NvimE e m =>
   MonadRibo m =>
@@ -50,8 +72,33 @@ load ::
 load menu _ =
   action quit menu
   where
-    quit (MenuItem (ListedBuffer buffer number _) _) =
-      ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand $ "buffer " <> show number)
+    quit (MenuItem buf _) =
+      loadListedBuffer buf
+
+compensateForMissingActiveBuffer ::
+  NvimE e m =>
+  NonEmpty ListedBuffer ->
+  [ListedBuffer] ->
+  m ()
+compensateForMissingActiveBuffer _ [] =
+  vimCommand "enew"
+compensateForMissingActiveBuffer marked (next : _) = do
+  prev <- vimGetCurrentWindow
+  main <- ensureMainWindow
+  current <- vimGetCurrentBuffer
+  when (elemOf (each . ListedBuffer.buffer) current marked) (loadListedBuffer next)
+  vimSetCurrentWindow prev
+
+deleteListedBuffersWith ::
+  NvimE e m =>
+  Text ->
+  NonEmpty ListedBuffer ->
+  m ()
+deleteListedBuffersWith deleter buffers =
+  vimCommand $ deleter <> " " <> numbers
+  where
+    numbers =
+      unwords (show . view ListedBuffer.number <$> NonEmpty.toList buffers)
 
 deleteWith ::
   NvimE e m =>
@@ -60,12 +107,17 @@ deleteWith ::
   Menu ListedBuffer ->
   Prompt ->
   m (MenuConsumerAction m (), Menu ListedBuffer)
-deleteWith deleter menu _ = do
-  traverseMarkedMenuItems_ handle menu
-  menuFilter (deleteMarked menu)
+deleteWith deleter menu _ =
+  maybe (menuContinue menu) delete marked
   where
-    handle (MenuItem (ListedBuffer _ number _) _) =
-      vimCommand $ deleter <> " " <> show number
+    marked =
+      view MenuItem.meta <$$> markedMenuItems menu
+    remaining =
+      view MenuItem.meta <$> unmarkedMenuItems menu
+    delete buffers = do
+      compensateForMissingActiveBuffer buffers remaining
+      deleteListedBuffersWith deleter buffers
+      menuFilter (deleteMarked menu)
 
 buffers ::
   NvimE e m =>

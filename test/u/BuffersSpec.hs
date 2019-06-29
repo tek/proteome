@@ -85,3 +85,14 @@ deleteMultipleBuffersSpec = do
 test_deleteMultipleBuffers :: IO ()
 test_deleteMultipleBuffers =
   specDef deleteMultipleBuffersSpec
+
+deleteCurrentBufferSpec :: Proteome ()
+deleteCurrentBufferSpec = do
+  (buf1, _, _) <- setupBuffers
+  gassertEqual 3 . length =<< filterM buflisted =<< vimGetBuffers
+  buffersWith (promptConfig ["d", "d", "esc"])
+  gassertEqual [buf1] =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
+
+test_deleteCurrentBuffer :: IO ()
+test_deleteCurrentBuffer =
+  specDef deleteCurrentBufferSpec

@@ -9,3 +9,5 @@ data ListedBuffer =
     _name :: Text
   }
   deriving (Eq, Show)
+
+makeClassy 'ListedBuffer
