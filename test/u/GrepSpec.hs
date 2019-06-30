@@ -2,7 +2,7 @@
 
 module GrepSpec (htf_thisModulesTests) where
 
-import Conduit (ConduitT, yieldMany)
+import Conduit (ConduitT, runConduit, sinkList, yieldMany, (.|))
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
@@ -14,7 +14,8 @@ import Test.Framework
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
-import Unit (tmuxSpec)
+import Proteome.Grep.Process (grep, unique)
+import Unit (specDef, tmuxSpec)
 
 promptInput ::
   MonadIO m =>
@@ -65,3 +66,18 @@ grepYankSpec = do
 test_grepYank :: IO ()
 test_grepYank =
   tmuxSpec grepYankSpec
+
+grepDuplicatesSpec :: Proteome ()
+grepDuplicatesSpec = do
+  dir <- toText <$> fixture "grep/duplicates"
+  outputDupes <- runConduit $ proc dir .| sinkList
+  gassertEqual 2 (length (join outputDupes))
+  outputUnique <- runConduit $ proc dir .| unique .| sinkList
+  gassertEqual 1 (length (join outputUnique))
+  where
+    proc dir =
+      grep dir "grep" ["-Hnor", "target", dir]
+
+test_grepDuplicates :: IO ()
+test_grepDuplicates =
+  specDef grepDuplicatesSpec

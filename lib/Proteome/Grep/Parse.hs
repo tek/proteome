@@ -2,7 +2,7 @@ module Proteome.Grep.Parse where
 
 import Chiasma.Data.Ident (generateIdent, identText)
 import Data.Attoparsec.Text (parseOnly)
-import qualified Data.Text as Text (stripPrefix, strip)
+import qualified Data.Text as Text (strip, stripPrefix)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
 import Text.Parser.Char (anyChar, char, noneOf)
 import Text.Parser.Combinators (manyTill)
