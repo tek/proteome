@@ -207,7 +207,7 @@ augmentFromConfig config (Project meta@(DirProject _ _ (Just tpe)) types lang la
 augmentFromConfig _ project = project
 
 resolveProject ::
-  MonadIO m =>
+  MonadRibo m =>
   MonadBaseControl IO m =>
   MonadDeepError e ResolveError m =>
   [ProjectSpec] ->
@@ -217,16 +217,19 @@ resolveProject ::
   Maybe ProjectType ->
   m Project
 resolveProject explicit config root name tpe = do
-  byType <- traverse (resolveByType baseDirs explicit root name) tpe
+  byType <- join <$> traverse (resolveByType baseDirs explicit root name) tpe
   byName <- if isJust root then return Nothing else resolveByName baseDirs name
   byRoot <- join <$> traverse (resolveByRoot config name explicit) root
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
-  let byTypeOrName = fromMaybe byNameOrVirtual (join byType)
+  let byTypeOrName = fromMaybe byNameOrVirtual byType
   let project = fromMaybe byTypeOrName byRoot
+  logDebug @Text $ logMsg byType byName byRoot
   return $ augmentFromConfig config project
   where
     baseDirs =
       Lens.view ProjectConfig.baseDirs config
+    logMsg byType byName byRoot =
+      "resolved project: byType(" <> show byType <> ") byName(" <> show byName <> ") byRoot(" <> show byRoot <> ")"
 
 projectConfig ::
   NvimE e m =>

@@ -83,7 +83,6 @@ initWithMain main@(Project meta _ _ _) = do
   showDebug "initializing with main project:" main
   setMainProject main
   setMainProjectVars meta
-  uautocmd True "ProteomeMainProject"
   activateProject main
 
 resolveAndInitMain ::
@@ -140,7 +139,8 @@ proteomeStage2 ::
   MonadDeepState s Env m =>
   m ()
 proteomeStage2 =
-  loadConfig "project"
+  loadConfig "project" *>
+  uautocmd True "ProteomeProject"
 
 proteomeStage4 ::
   NvimE e m =>
@@ -148,4 +148,5 @@ proteomeStage4 ::
   MonadDeepState s Env m =>
   m ()
 proteomeStage4 =
-  loadConfig "project_after"
+  loadConfig "project_after" *>
+  uautocmd True "ProteomeProjectAfter"

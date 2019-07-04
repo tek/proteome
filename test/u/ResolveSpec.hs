@@ -12,14 +12,14 @@ import Test.Framework
 
 import Project (fn, l, la, li, ta, ti, tp)
 import Proteome.Config (defaultTypeMarkers)
+import Proteome.Data.Env (Proteome)
 import Proteome.Data.Project (Project(Project))
 import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
 import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
 import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType)
-import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Project.Resolve (resolveProject)
-
+import Unit (specDef)
 
 paths :: [FilePath]
 paths = [
@@ -46,10 +46,14 @@ targetProject :: Project
 targetProject =
   Project (DirProject fn root (Just tp)) [ti, ta] (Just l) [li, la]
 
+typeMapSpec :: Proteome ()
+typeMapSpec = do
+  project <- resolveProject [] config (Just root) fn (Just tp)
+  gassertEqual targetProject project
+
 test_typeMap :: IO ()
-test_typeMap = do
-  project <- runExceptT @ResolveError $ resolveProject [] config (Just root) fn (Just tp)
-  assertEqual (Right targetProject) project
+test_typeMap =
+  specDef typeMapSpec
 
 markerConfig :: ProjectConfig
 markerConfig = ProjectConfig def def def def defaultTypeMarkers def def
@@ -58,9 +62,13 @@ markerTarget :: ProjectRoot -> Project
 markerTarget root' =
   Project (DirProject fn root' (Just tp)) [] (Just l) []
 
-test_marker :: IO ()
-test_marker = do
+markerSpec :: Proteome ()
+markerSpec = do
   dir <- parseAbsDir =<< fixture "projects/haskell/flagellum"
   let root' = ProjectRoot dir
-  project <- runExceptT @ResolveError $ resolveProject [] markerConfig (Just root') fn Nothing
-  assertEqual (Right $ markerTarget root') project
+  project <- resolveProject [] markerConfig (Just root') fn Nothing
+  gassertEqual (markerTarget root') project
+
+test_marker :: IO ()
+test_marker =
+  specDef markerSpec

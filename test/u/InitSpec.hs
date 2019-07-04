@@ -11,13 +11,14 @@ import Test.Framework
 import Proteome.Data.Env (Proteome)
 import Proteome.Data.ProjectName (ProjectName(ProjectName))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
-import Proteome.Init (resolveAndInitMain)
+import Proteome.Init (proteomeStage2, resolveAndInitMain)
 import Unit (specWithDef)
 
 initSpec :: Proteome ()
 initSpec = do
-  vimCommand "autocmd User ProteomeMainProject let g:success = 13"
+  vimCommand "autocmd User ProteomeProject let g:success = 13"
   resolveAndInitMain
+  proteomeStage2
   tpe <- setting Settings.mainType
   name <- setting Settings.mainName
   gassertEqual (ProjectName "flagellum") name
