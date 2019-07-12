@@ -14,6 +14,7 @@ import Proteome.Config (proReadConfig)
 import Proteome.Data.Env (Env, Proteome)
 import Proteome.Data.Error (Error)
 import Proteome.Diag (proDiag)
+import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn)
 import Proteome.Init (initialize, proteomeStage1, proteomeStage2, proteomeStage4)
 import Proteome.Project.Activate (proNext, proPrev)
@@ -38,6 +39,7 @@ rpcHandlers =
     $(rpcHandler (cmd []) 'proGrep),
     $(rpcHandler (cmd []) 'proGrepIn),
     $(rpcHandler (cmd []) 'proBuffers),
+    $(rpcHandler (cmd []) 'proFiles),
     $(rpcHandler (cmd []) 'proNext),
     $(rpcHandler (cmd []) 'proPrev),
     $(rpcHandlerDef 'proReadConfig),

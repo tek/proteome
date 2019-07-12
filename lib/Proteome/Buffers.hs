@@ -71,7 +71,7 @@ load ::
 load menu _ =
   action quit menu
   where
-    quit (MenuItem buf _) =
+    quit (MenuItem buf _ _) =
       loadListedBuffer buf
 
 compensateForMissingActiveBuffer ::
@@ -132,7 +132,10 @@ buffers = do
     padding =
       Text.length . show . maximum
     item cwd pad (buf, num, name) =
-      MenuItem (ListedBuffer buf num name) (" * " <> padded pad (show num) <> "  " <> strip cwd name)
+      MenuItem (ListedBuffer buf num name) text text
+      where
+        text =
+          " * " <> padded pad (show num) <> "  " <> strip cwd name
     padded pad num =
       Text.replicate (pad - Text.length num) " " <> num
     strip cwd name =

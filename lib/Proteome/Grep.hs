@@ -52,7 +52,7 @@ selectResult ::
 selectResult menu _ =
   check $ selectedMenuItem menu
   where
-    check (Just (MenuItem (GrepOutputLine path line col _) _)) =
+    check (Just (MenuItem (GrepOutputLine path line col _) _ _)) =
       menuQuitWith (navigate path line col) menu
     check Nothing =
       menuContinue menu
@@ -66,7 +66,7 @@ yankResult ::
 yankResult menu _ =
   check $ selectedMenuItem menu
   where
-    check (Just (MenuItem (GrepOutputLine _ _ _ text) _)) =
+    check (Just (MenuItem (GrepOutputLine _ _ _ text) _ _)) =
       menuQuitWith (setregLine (Register.Special "\"") [text]) menu
     check Nothing =
       menuContinue menu

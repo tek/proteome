@@ -44,3 +44,7 @@ tagsFileName = Setting "tags_file_name" True (Just [relfile|.tags|])
 grepCmdline :: Setting Text
 grepCmdline =
   Setting "grep_cmdline" True (Just "grep -Hnr ${pattern} ${path}")
+
+filesCmdline :: Setting Text
+filesCmdline =
+  Setting "files_cmdline" True (Just "rg --files ${paths}")

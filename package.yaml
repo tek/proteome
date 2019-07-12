@@ -54,6 +54,7 @@ dependencies:
 - ribosome
 - split
 - stm
+- stm-conduit
 - text
 - time
 - transformers

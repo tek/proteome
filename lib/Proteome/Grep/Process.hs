@@ -9,8 +9,8 @@ import Data.Conduit.Process.Typed (createSource)
 import qualified Data.Set as Set (difference, empty, fromList, toList, union)
 import Data.Text (isInfixOf)
 import qualified Data.Text as Text (breakOn, null, replace, splitOn, strip, take)
-import Path (Abs, File, Path, parseAbsFile, parseRelFile, toFilePath)
-import Path.IO (findExecutable, isLocationOccupied)
+import Path (Abs, File, Path, parseAbsFile, toFilePath)
+import Path.IO (isLocationOccupied)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
 import System.Process.Typed (
   Process,
@@ -24,6 +24,7 @@ import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
 import Proteome.Grep.Parse (parseGrepOutput)
+import Proteome.System.Path (findExe)
 
 patternPlaceholder :: Text
 patternPlaceholder =
@@ -45,20 +46,6 @@ parseAbsExe ::
   m (Path Abs File)
 parseAbsExe exe =
   hoistEitherAs (GrepError.NoSuchExecutable exe) $ parseAbsFile (toString exe)
-
-findExe ::
-  MonadIO m =>
-  MonadDeepError e GrepError m =>
-  Text ->
-  m (Path Abs File)
-findExe exe = do
-  path <- hoistEitherAs parseError $ parseRelFile (toString exe)
-  hoistMaybe notInPath =<< findExecutable path
-  where
-    parseError =
-      GrepError.NoSuchExecutable exe
-    notInPath =
-      GrepError.NotInPath exe
 
 grepCmdline ::
   Text ->

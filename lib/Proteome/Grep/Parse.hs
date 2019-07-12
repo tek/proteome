@@ -42,5 +42,8 @@ parseGrepOutput cwd =
       return (Just (convert ident a))
     item (Left err) =
       Nothing <$ logDebug ("parsing grep output failed: " <> err)
-    convert _ grepLine =
-      MenuItem grepLine (formatGrepLine cwd grepLine)
+    convert _ file =
+      MenuItem file text text
+      where
+        text =
+          formatGrepLine cwd file
