@@ -4,7 +4,7 @@
 module FilesSpec (htf_thisModulesTests) where
 
 import Conduit (ConduitT, yieldMany)
-import Path (Abs, Dir, Path, isProperPrefixOf, parseAbsDir, parseAbsFile, reldir, (</>))
+import Path (Abs, Dir, Path, isProperPrefixOf, parseAbsDir, parseAbsFile, reldir, toFilePath, (</>))
 import Ribosome.Api.Buffer (currentBufferName)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
@@ -31,9 +31,9 @@ promptConfig ::
 promptConfig cs =
   PromptConfig (promptInput cs) basicTransition noPromptRenderer False
 
-paths :: Path Abs Dir -> [Path Abs Dir]
+paths :: Path Abs Dir -> [Text]
 paths base =
-  [base </> [reldir|dir1|], base </> [reldir|dir2|]]
+  toText . toFilePath <$> [base </> [reldir|dir1|], base </> [reldir|dir2|]]
 
 editChars :: [Text]
 editChars =

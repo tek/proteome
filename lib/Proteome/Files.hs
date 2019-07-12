@@ -2,7 +2,8 @@ module Proteome.Files where
 
 import Control.Lens (view)
 import qualified Data.Map as Map (fromList)
-import Path (Abs, Dir, File, Path, parseAbsDir, toFilePath)
+import qualified Data.Text as Text (take)
+import Path (Abs, Dir, File, Path, parseAbsDir, parseRelDir, toFilePath, (</>))
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
@@ -48,6 +49,12 @@ actions =
     ("cr", editFile)
     ]
 
+parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
+parsePath _ path | Text.take 1 path == "/" =
+  parseAbsDir (toString path)
+parsePath cwd path =
+  (cwd </>) <$> parseRelDir (toString path)
+
 filesWith ::
   NvimE e m =>
   MonadRibo m =>
@@ -57,13 +64,15 @@ filesWith ::
   MonadDeepError e SettingError m =>
   PromptConfig m ->
   Path Abs Dir ->
-  [Path Abs Dir] ->
+  [Text] ->
   m ()
 filesWith promptConfig cwd paths =
   void $ nvimMenu scratchOptions (files cwd nePaths) handler promptConfig Nothing
   where
     nePaths =
-      fromMaybe (cwd :| []) $ nonEmpty paths
+      fromMaybe (cwd :| []) $ nonEmpty absPaths
+    absPaths =
+      mapMaybe (parsePath cwd) paths
     scratchOptions =
       scratchSyntax [filesSyntax] . defaultScratchOptions $ "proteome-files"
     handler =
@@ -77,7 +86,7 @@ proFiles ::
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e FilesError m =>
-  [Path Abs Dir] ->
+  [Text] ->
   m ()
 proFiles paths = do
   cwd <- hoistEitherAs FilesError.BadCwd =<< parseAbsDir <$> nvimCwd
