@@ -133,6 +133,13 @@ Mappings:
 * `w` to wipe a buffer
 * `W` to wipe a buffer, discarding changes
 
+# Files
+
+The command `ProFiles` takes a list of directories and lists all files inside, recursively.
+
+Mappings:
+* `<cr>` edit a file
+
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
 [ribosome]: https://github.com/tek/ribosome

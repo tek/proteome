@@ -27,7 +27,7 @@ files ::
   MonadIO m =>
   MonadBaseControl IO m =>
   Path Abs Dir ->
-  [Path Abs Dir] ->
+  NonEmpty (Path Abs Dir) ->
   ConduitT () [MenuItem (Path Abs File)] m ()
 files cwd paths = do
   chan <- atomically newTMChan

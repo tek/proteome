@@ -60,8 +60,10 @@ filesWith ::
   [Path Abs Dir] ->
   m ()
 filesWith promptConfig cwd paths =
-  void $ nvimMenu scratchOptions (files cwd paths) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (files cwd nePaths) handler promptConfig Nothing
   where
+    nePaths =
+      fromMaybe (cwd :| []) $ nonEmpty paths
     scratchOptions =
       scratchSyntax [filesSyntax] . defaultScratchOptions $ "proteome-files"
     handler =
