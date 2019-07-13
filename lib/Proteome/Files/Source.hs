@@ -1,4 +1,4 @@
-module Proteome.Files.Process where
+module Proteome.Files.Source where
 
 import Conduit (ConduitT, mapC, (.|))
 import Control.Concurrent.Async.Lifted (async, wait)
@@ -19,38 +19,34 @@ matchPath exclude path =
     match regex =
       toText (toFilePath path) *=~ regex
 
-filterPaths ::
+hiddenFilter ::
   (Path Abs t -> Path Rel t) ->
   Bool ->
-  Bool ->
-  [RE] ->
-  [Path Abs t] ->
-  [Path Abs t]
-filterPaths lastSegment isInclude excludeHidden patterns =
-  filter (negation . matchPath patterns) . filter (not . hidden)
-  where
-    negation =
-      if isInclude then id else not
-    hidden =
-      if excludeHidden
-      then Text.isPrefixOf "." . toText . toFilePath . lastSegment
-      else const False
+  Path Abs t ->
+  Bool
+hiddenFilter lastSegment True =
+  Text.isPrefixOf "." . toText . toFilePath . lastSegment
+hiddenFilter _ False =
+  const False
 
 filterFiles ::
   Bool ->
   [RE] ->
   [Path Abs File] ->
   [Path Abs File]
-filterFiles =
-  filterPaths filename False
+filterFiles excludeHidden patterns =
+    filter (not . matchPath patterns) . filter (not . hiddenFilter filename excludeHidden)
 
 filterDirs ::
   Bool ->
   [RE] ->
   [Path Abs Dir] ->
   [Path Abs Dir]
-filterDirs =
-  filterPaths dirname True
+filterDirs excludeHidden patterns =
+  filter pred'
+  where
+    pred' a =
+      matchPath patterns a || hiddenFilter dirname excludeHidden a
 
 scan ::
   MonadIO m =>

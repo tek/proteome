@@ -26,7 +26,7 @@ import Proteome.Data.Env (Env)
 import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
 import Proteome.Data.FilesError (FilesError)
 import qualified Proteome.Data.FilesError as FilesError (FilesError(..))
-import Proteome.Files.Process (files)
+import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
 import qualified Proteome.Settings as Settings (filesExcludeDirectories, filesExcludeFiles, filesExcludeHidden)
 

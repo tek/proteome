@@ -18,7 +18,7 @@ import Text.RE.PCRE.Text (re)
 import Proteome.Data.Env (Proteome)
 import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
 import Proteome.Files (filesWith)
-import Proteome.Files.Process (files)
+import Proteome.Files.Source (files)
 import Unit (specDef)
 
 promptInput ::
