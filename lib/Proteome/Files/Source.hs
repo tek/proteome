@@ -3,6 +3,7 @@ module Proteome.Files.Source where
 import Conduit (ConduitT, mapC, (.|))
 import Control.Concurrent.Async.Lifted (async, wait)
 import Data.Conduit.TMChan (TMChan, closeTMChan, newTMChan, sourceTMChan, writeTMChan)
+import qualified Data.List.NonEmpty as NonEmpty (head)
 import qualified Data.Text as Text (isPrefixOf)
 import Path (Abs, Dir, File, Path, Rel, dirname, filename, stripProperPrefix, toFilePath)
 import Path.IO (walkDir)
@@ -89,4 +90,8 @@ files conf cwd paths = do
   sourceTMChan chan .| mapC (fmap menuItem)
   where
     menuItem path =
-      simpleMenuItem path (formatFileLine cwd path)
+      simpleMenuItem path (formatFileLine baseDir path)
+    baseDir =
+      if length paths == 1
+      then NonEmpty.head paths
+      else cwd
