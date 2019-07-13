@@ -7,7 +7,7 @@ import qualified Data.Text as Text (isPrefixOf)
 import Path (Abs, Dir, File, Path, Rel, dirname, filename, stripProperPrefix, toFilePath)
 import Path.IO (walkDir)
 import qualified Path.IO as WalkAction (WalkAction(WalkExclude))
-import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
 import Text.RE.PCRE.Text (RE, anyMatches, (*=~))
 
 import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
@@ -26,13 +26,13 @@ filterPaths ::
   [RE] ->
   [Path Abs t] ->
   [Path Abs t]
-filterPaths lastSegment isInclude ignoreHidden patterns =
+filterPaths lastSegment isInclude excludeHidden patterns =
   filter (negation . matchPath patterns) . filter (not . hidden)
   where
     negation =
       if isInclude then id else not
     hidden =
-      if ignoreHidden
+      if excludeHidden
       then Text.isPrefixOf "." . toText . toFilePath . lastSegment
       else const False
 
@@ -58,12 +58,12 @@ scan ::
   TMChan [Path Abs File] ->
   Path Abs Dir ->
   m ()
-scan (FilesConfig ignoreHidden ignoreFiles ignoreDirs) chan =
+scan (FilesConfig excludeHidden ignoreFiles ignoreDirs) chan =
   walkDir enqueue
   where
     enqueue _ dirs files' =
-      atomically (writeTMChan chan (filterFiles ignoreHidden ignoreFiles files')) $>
-      WalkAction.WalkExclude (filterDirs ignoreHidden ignoreDirs dirs)
+      atomically (writeTMChan chan (filterFiles excludeHidden ignoreFiles files')) $>
+      WalkAction.WalkExclude (filterDirs excludeHidden ignoreDirs dirs)
 
 runScanners ::
   MonadIO m =>
@@ -93,4 +93,4 @@ files conf cwd paths = do
   sourceTMChan chan .| mapC (fmap menuItem)
   where
     menuItem path =
-      MenuItem path (toText (toFilePath path)) (formatFileLine cwd path)
+      simpleMenuItem path (formatFileLine cwd path)

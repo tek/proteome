@@ -145,6 +145,8 @@ Config:
 * `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
 * `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
 
+The regexes are matches against the entire path.
+
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
 [ribosome]: https://github.com/tek/ribosome
