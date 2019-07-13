@@ -140,6 +140,11 @@ The command `ProFiles` takes a list of directories and lists all files inside, r
 Mappings:
 * `<cr>` edit a file
 
+Config:
+* `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
+* `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
+* `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
+
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
 [ribosome]: https://github.com/tek/ribosome

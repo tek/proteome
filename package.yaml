@@ -38,6 +38,7 @@ dependencies:
 - filepattern
 - hslogger
 - lens
+- lifted-async
 - lifted-base
 - messagepack
 - mtl
@@ -49,6 +50,7 @@ dependencies:
 - prettyprinter
 - raw-strings-qq
 - rawstring-qm
+- regex-with-pcre
 - relude
 - resourcet
 - ribosome

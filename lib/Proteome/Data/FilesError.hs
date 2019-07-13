@@ -8,6 +8,8 @@ data FilesError =
   BadCwd
   |
   NoSuchPath Text
+  |
+  BadRE Text Text
   deriving (Eq, Show)
 
 deepPrisms ''FilesError
@@ -17,3 +19,5 @@ instance ReportError FilesError where
     ErrorReport "internal error" ["FilesError.BadCwd"] ERROR
   errorReport (NoSuchPath path) =
     ErrorReport ("path doesn't exist: " <> path) ["FilesError.NoSuchPath:", path] NOTICE
+  errorReport (BadRE var re) =
+    ErrorReport ("bad regex in `g:proteome_" <> var <> "`: " <> re) ["FilesError.BadRE:", var, re] NOTICE

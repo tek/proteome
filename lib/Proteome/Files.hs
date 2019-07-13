@@ -6,7 +6,9 @@ import qualified Data.Text as Text (take)
 import Path (Abs, Dir, File, Path, parseAbsDir, parseRelDir, toFilePath, (</>))
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Config.Setting (setting)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
+import Ribosome.Data.Setting (Setting(Setting))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Action (menuContinue, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
@@ -18,12 +20,15 @@ import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
+import Text.RE.PCRE.Text (RE, compileRegex)
 
 import Proteome.Data.Env (Env)
+import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
 import Proteome.Data.FilesError (FilesError)
 import qualified Proteome.Data.FilesError as FilesError (FilesError(..))
 import Proteome.Files.Process (files)
 import Proteome.Files.Syntax (filesSyntax)
+import qualified Proteome.Settings as Settings (filesExcludeDirectories, filesExcludeFiles, filesExcludeHidden)
 
 editFile ::
   NvimE e m =>
@@ -55,6 +60,43 @@ parsePath _ path | Text.take 1 path == "/" =
 parsePath cwd path =
   (cwd </>) <$> parseRelDir (toString path)
 
+readRE ::
+  MonadBaseControl IO m =>
+  MonadDeepError e FilesError m =>
+  Text ->
+  Text ->
+  m RE
+readRE name text =
+  tryHoistAnyAs (FilesError.BadRE name text) (compileRegex (toString text))
+
+readREs ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e FilesError m =>
+  MonadDeepError e SettingError m =>
+  Setting [Text] ->
+  m [RE]
+readREs s@(Setting name _ _) =
+  traverse (readRE name) =<< setting s
+
+filesConfig ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepError e SettingError m =>
+  MonadDeepError e FilesError m =>
+  m FilesConfig
+filesConfig =
+  FilesConfig <$> hidden <*> fs <*> dirs
+  where
+    hidden =
+      setting Settings.filesExcludeHidden
+    fs =
+      readREs Settings.filesExcludeFiles
+    dirs =
+      readREs Settings.filesExcludeDirectories
+
 filesWith ::
   NvimE e m =>
   MonadRibo m =>
@@ -62,12 +104,14 @@ filesWith ::
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e FilesError m =>
   PromptConfig m ->
   Path Abs Dir ->
   [Text] ->
   m ()
-filesWith promptConfig cwd paths =
-  void $ nvimMenu scratchOptions (files cwd nePaths) handler promptConfig Nothing
+filesWith promptConfig cwd paths = do
+  conf <- filesConfig
+  void $ nvimMenu scratchOptions (files conf cwd nePaths) handler promptConfig Nothing
   where
     nePaths =
       fromMaybe (cwd :| []) $ nonEmpty absPaths
@@ -90,4 +134,4 @@ proFiles ::
   m ()
 proFiles paths = do
   cwd <- hoistEitherAs FilesError.BadCwd =<< parseAbsDir <$> nvimCwd
-  filesWith (defaultPrompt False) cwd paths
+  filesWith (defaultPrompt True) cwd paths

@@ -45,6 +45,14 @@ grepCmdline :: Setting Text
 grepCmdline =
   Setting "grep_cmdline" True (Just "grep -Hnr ${pattern} ${path}")
 
-filesCmdline :: Setting Text
-filesCmdline =
-  Setting "files_cmdline" True (Just "rg --files ${paths}")
+filesExcludeHidden :: Setting Bool
+filesExcludeHidden =
+  Setting "files_exclude_hidden" True (Just True)
+
+filesExcludeFiles :: Setting [Text]
+filesExcludeFiles =
+  Setting "files_exclude_files" True (Just [])
+
+filesExcludeDirectories :: Setting [Text]
+filesExcludeDirectories =
+  Setting "files_exclude_directories" True (Just [])
