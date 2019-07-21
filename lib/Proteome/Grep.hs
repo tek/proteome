@@ -1,6 +1,6 @@
 module Proteome.Grep where
 
-import Conduit (ConduitT, mapC, (.|))
+import Conduit ((.|))
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
@@ -27,8 +27,9 @@ import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
-import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine), PerLine(..))
-import Proteome.Grep.Process (grep, grepCmdline, unique)
+import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Grep.Line (uniqueGrepLines)
+import Proteome.Grep.Process (grep, grepCmdline)
 import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
 
@@ -71,12 +72,6 @@ yankResult menu _ =
       menuQuitWith (setregLine (Register.Special "\"") [text]) menu
     check Nothing =
       menuContinue menu
-
-uniqueGrepLines ::
-  Monad m =>
-  ConduitT [MenuItem GrepOutputLine] [MenuItem GrepOutputLine] m ()
-uniqueGrepLines =
-  mapC (fmap (fmap PerLine)) .| unique .| mapC (fmap (fmap unPerLine))
 
 proGrepWith ::
   NvimE e m =>

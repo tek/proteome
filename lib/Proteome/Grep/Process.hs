@@ -1,12 +1,11 @@
 module Proteome.Grep.Process where
 
-import Conduit (ConduitT, await, mapC, yield, (.|))
+import Conduit (ConduitT, mapC, (.|))
 import Control.Monad.Catch (MonadThrow)
 import Data.Composition ((.:))
 import qualified Data.Conduit.Combinators as Conduit (chunksOfE, decodeUtf8, linesUnbounded)
 import qualified Data.Conduit.List as Conduit (mapMaybeM)
 import Data.Conduit.Process.Typed (createSource)
-import qualified Data.Set as Set (difference, empty, fromList, toList, union)
 import Data.Text (isInfixOf)
 import qualified Data.Text as Text (breakOn, null, replace, splitOn, strip, take)
 import Path (Abs, File, Path, parseAbsFile, toFilePath)
@@ -101,20 +100,3 @@ grep cwd exe args = do
   where
     parse =
       Conduit.mapMaybeM (parseGrepOutput cwd)
-
-unique ::
-  Show a =>
-  Ord a =>
-  Monad m =>
-  ConduitT [a] [a] m ()
-unique =
-  consume Set.empty
-  where
-    consume seen =
-      traverse_ (rec seen) =<< await
-    rec seen as =
-      yield (Set.toList uniques) *>
-      consume (Set.union uniques seen)
-      where
-        uniques =
-          Set.difference (Set.fromList as) seen
