@@ -1,6 +1,7 @@
 module Proteome.Buffers where
 
 import Control.Lens (each, elemOf, view)
+import Control.Monad.Trans.Resource (MonadResource)
 import Data.Foldable (maximum)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Map as Map (fromList)
@@ -157,6 +158,7 @@ actions =
 buffersWith ::
   NvimE e m =>
   MonadRibo m =>
+  MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
@@ -175,6 +177,7 @@ buffersWith promptConfig = do
 proBuffers ::
   NvimE e m =>
   MonadRibo m =>
+  MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>

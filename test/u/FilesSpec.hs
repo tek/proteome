@@ -3,10 +3,22 @@
 
 module FilesSpec (htf_thisModulesTests) where
 
-import Conduit (ConduitT, runConduit, sinkList, yieldMany, (.|))
+import Conduit (ConduitT, runConduit, sinkList, yield, yieldMany, (.|))
 import qualified Data.Conduit.Combinators as Conduit (concat)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
-import Path (Abs, Dir, Path, isProperPrefixOf, parseAbsDir, parseAbsFile, reldir, toFilePath, (</>))
+import Path (
+  Abs,
+  Dir,
+  Path,
+  isProperPrefixOf,
+  parseAbsDir,
+  parseAbsFile,
+  reldir,
+  relfile,
+  toFilePath,
+  (</>),
+  )
+import Path.IO (createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
@@ -28,6 +40,17 @@ promptInput ::
 promptInput chars' =
   sleep 0.1 *>
   yieldMany (PromptEvent.Character <$> chars')
+
+slowPromptInput ::
+  MonadIO m =>
+  [Text] ->
+  ConduitT () PromptEvent m ()
+slowPromptInput chars' =
+  sleep 0.1 *>
+  traverse_ send (PromptEvent.Character <$> chars')
+  where
+    send c =
+      sleep 0.1 *> yield c
 
 promptConfig ::
   MonadIO m =>
@@ -62,3 +85,22 @@ test_filesExclude :: IO ()
 test_filesExclude = do
   dir <- parseAbsDir =<< fixture "files"
   assertEqual 3 . length =<< runConduit (files conf dir (paths dir) .| Conduit.concat .| sinkList)
+
+createChars :: [Text]
+createChars =
+  ["p", "tab", "t", "tab", "d", "tab", "f", "i", "l", "e", "c-y"]
+
+filesCreateSpec :: Proteome ()
+filesCreateSpec = do
+  base <- parseAbsDir =<< tempDir "files/create"
+  let targetDir = base </> [reldir|path/to/dir|]
+  createDirIfMissing True targetDir
+  filesWith slowPromptConfig base [toText (toFilePath base)]
+  gassertEqual (targetDir </> [relfile|file|]) =<< parseAbsFile . toString =<< currentBufferName
+  where
+    slowPromptConfig =
+      PromptConfig (slowPromptInput createChars) basicTransition noPromptRenderer True
+
+test_filesCreate :: IO ()
+test_filesCreate =
+  tmuxSpecDef filesCreateSpec

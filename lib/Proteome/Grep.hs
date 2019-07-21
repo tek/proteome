@@ -2,6 +2,7 @@ module Proteome.Grep where
 
 import Conduit ((.|))
 import Control.Monad.Catch (MonadThrow)
+import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text (null)
 import Ribosome.Api.Buffer (edit)
@@ -75,6 +76,7 @@ proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
   MonadThrow m =>
+  MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
@@ -98,6 +100,7 @@ proGrepIn ::
   NvimE e m =>
   MonadRibo m =>
   MonadThrow m =>
+  MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
@@ -120,6 +123,7 @@ proGrep ::
   NvimE e m =>
   MonadRibo m =>
   MonadThrow m =>
+  MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>

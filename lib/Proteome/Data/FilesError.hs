@@ -10,6 +10,10 @@ data FilesError =
   NoSuchPath Text
   |
   BadRE Text Text
+  |
+  InvalidFilePath Text
+  |
+  CouldntCreateDir Text
   deriving (Eq, Show)
 
 deepPrisms ''FilesError
@@ -21,3 +25,7 @@ instance ReportError FilesError where
     ErrorReport ("path doesn't exist: " <> path) ["FilesError.NoSuchPath:", path] NOTICE
   errorReport (BadRE var re) =
     ErrorReport ("bad regex in `g:proteome_" <> var <> "`: " <> re) ["FilesError.BadRE:", var, re] NOTICE
+  errorReport (InvalidFilePath path) =
+    ErrorReport ("invalid file path: " <> path) ["FilesError.InvalidFilePath:", path] NOTICE
+  errorReport (CouldntCreateDir path) =
+    ErrorReport ("couldn't create directory: " <> path) ["FilesError.CouldntCreateDir:", path] NOTICE

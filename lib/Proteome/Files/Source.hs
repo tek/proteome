@@ -75,7 +75,10 @@ runScanners conf chan paths = do
 
 formatFileLine :: Path Abs Dir -> Path Abs File -> Text
 formatFileLine cwd path =
-  toText $ maybe (toFilePath path) toFilePath (stripProperPrefix cwd path)
+  " * " <> toText (maybe (toFilePath path) toFilePath relativePath)
+  where
+    relativePath =
+      stripProperPrefix cwd path
 
 files ::
   MonadIO m =>
