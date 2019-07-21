@@ -2,7 +2,7 @@
 
 module GrepSpec (htf_thisModulesTests) where
 
-import Conduit (ConduitT, runConduit, sinkList, yieldMany, (.|))
+import Conduit (ConduitT, runConduit, sinkList, yield, yieldMany, (.|))
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
@@ -13,8 +13,10 @@ import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
 import Test.Framework
 
 import Proteome.Data.Env (Proteome)
-import Proteome.Grep (proGrepWith)
-import Proteome.Grep.Process (grep, unique)
+import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Grep (proGrepWith, uniqueGrepLines)
+import Proteome.Grep.Process (grep)
+import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
 import Unit (specDef, tmuxSpec)
 
 promptInput ::
@@ -72,11 +74,15 @@ grepDuplicatesSpec = do
   dir <- toText <$> fixture "grep/duplicates"
   outputDupes <- runConduit $ proc dir .| sinkList
   gassertEqual 2 (length (join outputDupes))
-  outputUnique <- runConduit $ proc dir .| unique .| sinkList
+  outputUnique <- runConduit $ proc dir .| uniqueGrepLines .| sinkList
   gassertEqual 1 (length (join outputUnique))
+  output3 <- runConduit $ yield (item 1) *> yield (item 2) .| uniqueGrepLines .| sinkList
+  gassertEqual 1 (length (join output3))
   where
     proc dir =
       grep dir "grep" ["-Hnor", "target", dir]
+    item col =
+      [MenuItem (GrepOutputLine "/path/to/file" 0 (Just col) "target") "" ""]
 
 test_grepDuplicates :: IO ()
 test_grepDuplicates =

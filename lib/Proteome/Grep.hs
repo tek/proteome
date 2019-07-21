@@ -1,6 +1,6 @@
 module Proteome.Grep where
 
-import Conduit ((.|))
+import Conduit (ConduitT, mapC, (.|))
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
@@ -27,7 +27,7 @@ import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
-import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine), PerLine(..))
 import Proteome.Grep.Process (grep, grepCmdline, unique)
 import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
@@ -72,6 +72,12 @@ yankResult menu _ =
     check Nothing =
       menuContinue menu
 
+uniqueGrepLines ::
+  Monad m =>
+  ConduitT [MenuItem GrepOutputLine] [MenuItem GrepOutputLine] m ()
+uniqueGrepLines =
+  mapC (fmap (fmap PerLine)) .| unique .| mapC (fmap (fmap unPerLine))
+
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
@@ -89,7 +95,7 @@ proGrepWith promptConfig path patt = do
   grepper <- setting Settings.grepCmdline
   cwd <- toText <$> nvimCwd
   (exe, args) <- grepCmdline grepper patt cwd path
-  void $ nvimMenu scratchOptions (grep cwd exe args .| unique) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (grep cwd exe args .| uniqueGrepLines) handler promptConfig Nothing
   where
     scratchOptions =
       scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"

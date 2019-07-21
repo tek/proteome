@@ -102,6 +102,8 @@ default-extensions:
 - DeriveFunctor
 - DeriveGeneric
 - DeriveTraversable
+- DerivingStrategies
+- DerivingVia
 - DoAndIfThenElse
 - EmptyDataDecls
 - ExistentialQuantification
