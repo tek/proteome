@@ -21,7 +21,7 @@ import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt(Prompt))
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag(StartInsert, OnlyInsert))
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
@@ -239,4 +239,4 @@ proFiles ::
   m ()
 proFiles paths = do
   cwd <- hoistEitherAs FilesError.BadCwd =<< parseAbsDir <$> nvimCwd
-  filesWith (defaultPrompt True) cwd paths
+  filesWith (defaultPrompt [StartInsert, OnlyInsert]) cwd paths

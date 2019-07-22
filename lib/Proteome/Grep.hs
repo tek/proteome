@@ -110,7 +110,7 @@ proGrepIn ::
   Text ->
   m ()
 proGrepIn =
-  proGrepWith (defaultPrompt False)
+  proGrepWith (defaultPrompt [])
 
 askPattern ::
   NvimE e m =>

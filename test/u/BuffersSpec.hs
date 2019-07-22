@@ -29,7 +29,7 @@ promptConfig ::
   [Text] ->
   PromptConfig m
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer False
+  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
 
 setupBuffers :: Proteome (Text, Text, Text)
 setupBuffers = do

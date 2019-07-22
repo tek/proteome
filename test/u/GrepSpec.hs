@@ -33,7 +33,7 @@ promptConfig ::
   [Text] ->
   PromptConfig m
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer False
+  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
 
 pat :: Text
 pat =

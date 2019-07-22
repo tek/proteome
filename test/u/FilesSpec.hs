@@ -20,7 +20,7 @@ import Path (
   )
 import Path.IO (createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig), PromptFlag(StartInsert))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
 import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
 import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
@@ -57,7 +57,7 @@ promptConfig ::
   [Text] ->
   PromptConfig m
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer False
+  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
 
 paths :: Path Abs Dir -> NonEmpty (Path Abs Dir)
 paths base =
@@ -99,7 +99,7 @@ filesCreateSpec = do
   gassertEqual (targetDir </> [relfile|file|]) =<< parseAbsFile . toString =<< currentBufferName
   where
     slowPromptConfig =
-      PromptConfig (slowPromptInput createChars) basicTransition noPromptRenderer True
+      PromptConfig (slowPromptInput createChars) basicTransition noPromptRenderer [StartInsert]
 
 test_filesCreate :: IO ()
 test_filesCreate =

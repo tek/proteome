@@ -184,4 +184,4 @@ proBuffers ::
   MonadDeepError e SettingError m =>
   m ()
 proBuffers =
-  buffersWith (defaultPrompt False)
+  buffersWith (defaultPrompt [])
