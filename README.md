@@ -136,9 +136,12 @@ Mappings:
 # Files
 
 The command `ProFiles` takes a list of directories and lists all files inside, recursively.
+Selecting multiple files is supported.
 
 Mappings:
 * `<cr>` edit a file
+* `<tab>` complete the longest common prefix of existing directories
+* `<c-y>` edit a new file with the path given on the prompt, creating necessary directories
 
 Config:
 * `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
