@@ -21,15 +21,17 @@ import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, selectedMenuItem)
+import Ribosome.Menu.Simple (defaultMenu, markedMenuItems, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
+import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
 import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
 import Proteome.Grep.Line (uniqueGrepLines)
 import Proteome.Grep.Process (grep, grepCmdline)
+import Proteome.Grep.Replace (replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
 
@@ -73,12 +75,30 @@ yankResult menu _ =
     check Nothing =
       menuContinue menu
 
+replaceResult ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
+  MonadDeepError e DecodeError m =>
+  Menu GrepOutputLine ->
+  Prompt ->
+  m (MenuConsumerAction m (), Menu GrepOutputLine)
+replaceResult menu _ =
+  check (markedMenuItems menu) menu
+  where
+    check (Just items) =
+      menuQuitWith $ replaceBuffer items
+    check Nothing =
+      menuContinue
+
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
   MonadThrow m =>
   MonadResource m =>
   MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
@@ -95,7 +115,7 @@ proGrepWith promptConfig path patt = do
     scratchOptions =
       scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
     handler =
-      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult)])
+      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult)])
 
 proGrepIn ::
   NvimE e m =>
@@ -103,6 +123,7 @@ proGrepIn ::
   MonadThrow m =>
   MonadResource m =>
   MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
@@ -126,6 +147,7 @@ proGrep ::
   MonadThrow m =>
   MonadResource m =>
   MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>

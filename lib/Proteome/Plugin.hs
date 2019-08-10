@@ -16,6 +16,7 @@ import Proteome.Data.Error (Error)
 import Proteome.Diag (proDiag)
 import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn)
+import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (initialize, proteomeStage1, proteomeStage2, proteomeStage4)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Quit (proQuit)
@@ -38,6 +39,8 @@ rpcHandlers =
     $(rpcHandlerDef 'proTags),
     $(rpcHandler (cmd []) 'proGrep),
     $(rpcHandler (cmd []) 'proGrepIn),
+    $(rpcHandler (cmd []) 'proReplaceSave),
+    $(rpcHandler (cmd []) 'proReplaceQuit),
     $(rpcHandler (cmd []) 'proBuffers),
     $(rpcHandler (cmd []) 'proFiles),
     $(rpcHandler (cmd []) 'proNext),

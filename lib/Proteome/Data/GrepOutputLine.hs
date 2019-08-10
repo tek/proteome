@@ -8,3 +8,5 @@ data GrepOutputLine =
     _text :: Text
   }
   deriving (Eq, Show)
+
+makeClassy ''GrepOutputLine

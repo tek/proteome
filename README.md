@@ -122,11 +122,23 @@ It can be configured with these variables:
 
 The command `ProGrep` will execute `grep` or another, configurable, program using the specified pattern and display the results in a menu.
 
+Mappings:
+* `<space>` to mark an item
+* `<cr>` to jump to a match
+* `y` to yank the matching line
+* `r` to start replace mode
+
+## Replace Mode
+
+When starting replace mode, all marked lines are loaded into a scratch buffer.
+When this buffer is saved, the modified lines will be written to the corresponding files.
+
 # Buffers
 
 The command `ProBuffers` displays the currently loaded file buffers in MRU order.
 
 Mappings:
+* `<space>` to mark an item
 * `<cr>` to load a buffer
 * `d` to delete a buffer
 * `D` to delete a buffer, discarding changes
@@ -139,6 +151,7 @@ The command `ProFiles` takes a list of directories and lists all files inside, r
 Selecting multiple files is supported.
 
 Mappings:
+* `<space>` to mark an item
 * `<cr>` edit a file
 * `<tab>` complete the longest common prefix of existing directories
 * `<c-y>` edit a new file with the path given on the prompt, creating necessary directories

@@ -8,6 +8,7 @@ import Ribosome.Nvim.Api.Data (Buffer)
 
 import Proteome.Data.Error (Error)
 import Proteome.Data.Project(Project)
+import Proteome.Data.Replace (Replace)
 
 data Env =
   Env {
@@ -16,7 +17,8 @@ data Env =
     _errors :: Errors,
     _currentProjectIndex :: Int,
     _configLog :: [Text],
-    _buffers :: [Buffer]
+    _buffers :: [Buffer],
+    _replace :: Maybe Replace
   }
   deriving (Show, Generic, Default)
 

@@ -17,6 +17,7 @@ import {-@ HTF_TESTS @-} MruSpec
 import {-@ HTF_TESTS @-} MultiTagsSpec
 import {-@ HTF_TESTS @-} PersistLoadSpec
 import {-@ HTF_TESTS @-} PersistStoreSpec
+import {-@ HTF_TESTS @-} ReplaceSpec
 import {-@ HTF_TESTS @-} ResolveSpec
 import {-@ HTF_TESTS @-} TagsSpec
 

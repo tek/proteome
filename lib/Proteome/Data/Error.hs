@@ -8,6 +8,7 @@ import Ribosome.Error.Report.Class (ReportError(..))
 import Proteome.Data.AddError (AddError)
 import Proteome.Data.FilesError (FilesError)
 import Proteome.Data.GrepError (GrepError)
+import Proteome.Data.ReplaceError (ReplaceError)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Data.TagsError (TagsError)
 
@@ -19,6 +20,8 @@ data Error =
   Tags TagsError
   |
   Grep GrepError
+  |
+  Replace ReplaceError
   |
   Resolve ResolveError
   |
