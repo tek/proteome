@@ -2,17 +2,19 @@ module Proteome.Grep.Replace where
 
 import Control.Lens (view)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
+import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, closeBuffer, setBufferLine)
 import Ribosome.Api.Option (withOption)
 import Ribosome.Api.Window (closeWindow)
 import Ribosome.Data.FloatOptions (FloatOptions(FloatOptions))
 import Ribosome.Data.Scratch (Scratch(Scratch))
+import qualified Ribosome.Data.Scratch as Scratch (Scratch(scratchBuffer))
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchFocus, scratchModify)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.Data (Buffer, Window)
-import Ribosome.Nvim.Api.IO (nvimWinSetBuf, vimCommand)
+import Ribosome.Nvim.Api.IO (bufferSetOption, nvimWinSetBuf, vimCommand)
 import Ribosome.Scratch (createFloat, showInScratch)
 
 import Proteome.Data.Env (Env)
@@ -37,6 +39,10 @@ replaceBuffer ::
   m ()
 replaceBuffer items = do
   scratch <- showInScratch text options
+  let buffer = Scratch.scratchBuffer scratch
+  bufferSetOption buffer "buftype" (toMsgpack ("acwrite" :: Text))
+  bufferAutocmd buffer "ProteomeReplaceSave" "BufWriteCmd" "silent! ProReplaceSave"
+  bufferAutocmd buffer "ProteomeReplaceQuit" "BufUnload" "silent! ProReplaceQuit"
   setL @Env Env.replace (Just (Replace scratch lines'))
   where
     text =
