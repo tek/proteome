@@ -75,12 +75,15 @@ replaceLines ::
   MonadBaseControl IO m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e ReplaceError m =>
+  Buffer ->
   [(Text, GrepOutputLine)] ->
   m ()
-replaceLines lines' = do
+replaceLines scratchBuffer lines' = do
   (buffer, window) <- createFloat floatOptions
   transient <- withOption "hidden" True (traverse (uncurry (replaceLine window)) lines')
-  vimCommand "wall"
+  bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
+  vimCommand "noautocmd wall"
+  bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
   traverse_ closeBuffer (catMaybes transient)
   closeWindow window
   closeBuffer buffer
@@ -100,7 +103,7 @@ replaceSave (Replace (Scratch _ buffer _ _ _) lines') = do
   updatedLines <- bufferContent buffer
   if length updatedLines /= length lines'
   then badReplacement
-  else replaceLines (zip updatedLines (NonEmpty.toList lines'))
+  else replaceLines buffer (zip updatedLines (NonEmpty.toList lines'))
   where
     badReplacement =
       throwHoist ReplaceError.BadReplacement
