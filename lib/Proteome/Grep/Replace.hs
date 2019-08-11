@@ -82,7 +82,7 @@ replaceLines scratchBuffer lines' = do
   (buffer, window) <- createFloat floatOptions
   transient <- withOption "hidden" True (traverse (uncurry (replaceLine window)) lines')
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
-  vimCommand "noautocmd wall"
+  ignoreError @RpcError $ vimCommand "noautocmd wall"
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
   traverse_ closeBuffer (catMaybes transient)
   closeWindow window
