@@ -84,6 +84,7 @@ replaceLines scratchBuffer lines' = do
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
   ignoreError @RpcError $ vimCommand "noautocmd wall"
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
+  bufferSetOption scratchBuffer "modified" (toMsgpack False)
   traverse_ closeBuffer (catMaybes transient)
   closeWindow window
   closeBuffer buffer
