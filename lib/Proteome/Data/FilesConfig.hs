@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Proteome.Data.FilesConfig where
 
 import Text.RE.PCRE.Text (RE)

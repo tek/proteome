@@ -4,9 +4,11 @@ import Control.Lens (_1, view)
 import Control.Monad (foldM)
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Composition ((.:))
-import qualified Data.List.NonEmpty as NonEmpty (toList)
+import Data.List.Extra (dropEnd)
+import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
+import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Map as Map (fromList)
-import qualified Data.Text as Text (breakOnEnd, commonPrefixes, isPrefixOf, length, take)
+import qualified Data.Text as Text (breakOnEnd, commonPrefixes, isPrefixOf, length, splitOn, take)
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome.Api.Buffer (edit)
@@ -126,6 +128,24 @@ createAndEditFile path =
     dir =
       parent path
 
+existingSubdirCount ::
+  MonadIO m =>
+  [Text] ->
+  Path Abs Dir ->
+  m Int
+existingSubdirCount =
+  loop 0
+  where
+    loop count [] _ =
+      pure count
+    loop count (h : t) dir =
+      case parseRelDir (toString h) of
+        Right f ->
+          ifM (doesDirExist sub) (loop (count + 1) t sub) (pure count)
+          where sub = dir </> f
+        Left _ ->
+          pure count
+
 createFile ::
   NvimE e m =>
   MonadIO m =>
@@ -135,11 +155,16 @@ createFile ::
   Menu (Path Abs File) ->
   Prompt ->
   m (MenuConsumerAction m (), Menu (Path Abs File))
-createFile (base :| _) menu (Prompt _ _ text) =
-  menuQuitWith (maybe err createAndEditFile parse) menu
+createFile bases menu (Prompt _ _ text) = do
+  subdirCounts <- traverse (existingSubdirCount dirSegments) bases
+  menuQuitWith (maybe err createAndEditFile (parse subdirCounts)) menu
   where
-    parse =
-      (base </>) <$> parseRelFile (toString text)
+    parse counts =
+      (base counts </>) <$> parseRelFile (toString text)
+    base counts =
+      fst $ maximumOn1 snd (NonEmpty.zip bases counts)
+    dirSegments =
+      dropEnd 1 $ Text.splitOn "/" text
     err =
       throwHoist (FilesError.InvalidFilePath text)
 
@@ -215,7 +240,7 @@ filesWith ::
   m ()
 filesWith promptConfig cwd paths = do
   conf <- filesConfig
-  void $ nvimMenu scratchOptions (files conf cwd nePaths) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (files conf nePaths) handler promptConfig Nothing
   where
     nePaths =
       fromMaybe (cwd :| []) $ nonEmpty absPaths

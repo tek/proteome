@@ -4,8 +4,10 @@
 module FilesSpec (htf_thisModulesTests) where
 
 import Conduit (ConduitT, runConduit, sinkList, yield, yieldMany, (.|))
+import Control.Lens (view)
 import qualified Data.Conduit.Combinators as Conduit (concat)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
+import qualified Data.Set as Set (fromList)
 import Path (
   Abs,
   Dir,
@@ -20,6 +22,7 @@ import Path (
   )
 import Path.IO (createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName)
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem (abbreviated)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig), PromptFlag(StartInsert))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
 import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
@@ -84,7 +87,7 @@ conf =
 test_filesExclude :: IO ()
 test_filesExclude = do
   dir <- parseAbsDir =<< fixture "files"
-  assertEqual 3 . length =<< runConduit (files conf dir (paths dir) .| Conduit.concat .| sinkList)
+  assertEqual 3 . length =<< runConduit (files conf (paths dir) .| Conduit.concat .| sinkList)
 
 createChars :: [Text]
 createChars =
@@ -104,3 +107,19 @@ filesCreateSpec = do
 test_filesCreate :: IO ()
 test_filesCreate =
   tmuxSpecDef filesCreateSpec
+
+test_filesMultiDir :: IO ()
+test_filesMultiDir = do
+  dir1 <- parseAbsDir =<< tempDir "files/multi/dir1"
+  dir2 <- parseAbsDir =<< tempDir "files/multi/dir2"
+  createDirIfMissing True dir1
+  createDirIfMissing True dir2
+  writeFile (toFilePath (dir1 </> [relfile|file1|])) "content"
+  writeFile (toFilePath (dir2 </> [relfile|file2|])) "content"
+  fs <- fmap (view MenuItem.abbreviated) . join <$> runConduit (files conf' (dir1 :| [dir2]) .| sinkList)
+  gassertEqual target (Set.fromList fs)
+  where
+    conf' =
+      FilesConfig False [] []
+    target =
+      Set.fromList [" * file1", " * file2"]
