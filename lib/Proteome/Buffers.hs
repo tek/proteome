@@ -9,6 +9,7 @@ import qualified Data.Text as Text (length, replicate, stripPrefix)
 import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (ensureMainWindow)
+import Ribosome.Config.Setting (settingOr)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith)
@@ -43,6 +44,7 @@ import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (buffers)
 import Proteome.Data.ListedBuffer (ListedBuffer(ListedBuffer))
 import qualified Proteome.Data.ListedBuffer as ListedBuffer (buffer, number)
+import qualified Proteome.Settings as Settings (buffersCurrentLast)
 
 action ::
   NvimE e m =>
@@ -119,8 +121,26 @@ deleteWith deleter menu _ =
       deleteListedBuffersWith deleter bufs
       menuFilter (deleteMarked menu)
 
+moveCurrentLast ::
+  NvimE e m =>
+  [MenuItem ListedBuffer] ->
+  m [MenuItem ListedBuffer]
+moveCurrentLast items = do
+  current <- vimGetCurrentBuffer
+  return $ spin current items []
+  where
+    spin current (item : rest) result | view lens item == current =
+      result ++ rest ++ [item]
+    spin current (item : rest) result =
+      spin current rest (item : result)
+    spin _ [] result =
+      result
+    lens =
+      MenuItem.meta . ListedBuffer.buffer
+
 buffers ::
   NvimE e m =>
+  MonadRibo m =>
   MonadDeepState s Env m =>
   m [MenuItem ListedBuffer]
 buffers = do
@@ -128,7 +148,8 @@ buffers = do
   bufs <- filterM bufferIsFile =<< filterM buflisted =<< getL @Env Env.buffers
   numbers <- traverse bufferGetNumber bufs
   names <- traverse bufferGetName bufs
-  return $ item (toText cwd) (padding numbers) <$> zip3 bufs numbers names
+  let items = item (toText cwd) (padding numbers) <$> zip3 bufs numbers names
+  ifM (settingOr False Settings.buffersCurrentLast) (moveCurrentLast items) (return items)
   where
     padding =
       Text.length . show . maximum

@@ -3,7 +3,11 @@
 module BuffersSpec (htf_thisModulesTests) where
 
 import Conduit (ConduitT, yieldMany)
+import Control.Lens (view)
+import Data.MonoTraversable (lastMay)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, currentBufferName, edit)
+import Ribosome.Config.Setting (updateSetting)
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
 import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
@@ -11,9 +15,11 @@ import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
 import Ribosome.Nvim.Api.IO (bufferGetName, vimGetBuffers)
 import Test.Framework
 
-import Proteome.Buffers (buffersWith)
+import Proteome.Buffers (buffers, buffersWith)
 import Proteome.Data.Env (Env, Proteome)
 import qualified Proteome.Data.Env as Env (buffers)
+import qualified Proteome.Data.ListedBuffer as ListedBuffer (name)
+import qualified Proteome.Settings as Settings (buffersCurrentLast)
 import Unit (specDef)
 
 promptInput ::
@@ -96,3 +102,14 @@ deleteCurrentBufferSpec = do
 test_deleteCurrentBuffer :: IO ()
 test_deleteCurrentBuffer =
   specDef deleteCurrentBufferSpec
+
+currentBufferPositionSpec :: Proteome ()
+currentBufferPositionSpec = do
+  (_, _, buf3) <- setupBuffers
+  updateSetting Settings.buffersCurrentLast True
+  bufs <- buffers
+  gassertEqual (Just buf3) (view (MenuItem.meta . ListedBuffer.name) <$> lastMay bufs)
+
+test_currentBufferPosition :: IO ()
+test_currentBufferPosition =
+  specDef currentBufferPositionSpec

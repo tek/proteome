@@ -41,6 +41,7 @@ dependencies:
 - lifted-async
 - lifted-base
 - messagepack
+- mono-traversable
 - mtl
 - nvim-hs
 - parsers

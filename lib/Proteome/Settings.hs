@@ -56,3 +56,7 @@ filesExcludeFiles =
 filesExcludeDirectories :: Setting [Text]
 filesExcludeDirectories =
   Setting "files_exclude_directories" True (Just [])
+
+buffersCurrentLast :: Setting Bool
+buffersCurrentLast =
+  Setting "buffers_current_last" True (Just False)
