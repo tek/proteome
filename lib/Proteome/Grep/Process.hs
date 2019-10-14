@@ -27,11 +27,11 @@ import Proteome.System.Path (findExe)
 
 patternPlaceholder :: Text
 patternPlaceholder =
-  "${pattern}"
+  "{pattern}"
 
 pathPlaceholder :: Text
 pathPlaceholder =
-  "${path}"
+  "{path}"
 
 replaceOrAppend :: Text -> Text -> [Text] -> [Text]
 replaceOrAppend placeholder target segments | any (placeholder `isInfixOf`) segments =
