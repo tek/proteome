@@ -1,8 +1,8 @@
 name: proteome
 version: 0.3.17.0
 synopsis: neovim project manager
-description: Please see the README on GitHub at <https://github.com/tek/proteome-hs>
-github: "tek/proteome-hs"
+description: Please see the README on GitHub at <https://github.com/tek/proteome>
+github: "tek/proteome"
 license: MIT
 license-file: LICENSE
 author: "Torsten Schmits"
