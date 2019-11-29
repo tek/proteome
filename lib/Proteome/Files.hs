@@ -8,6 +8,7 @@ import Data.List.Extra (dropEnd)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Map as Map (fromList)
+import qualified Data.Sequences as Sequences (filterM)
 import qualified Data.Text as Text (breakOnEnd, commonPrefixes, isPrefixOf, length, splitOn, take)
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
@@ -54,11 +55,11 @@ editFile menu _ =
 
 matchingDirs ::
   MonadIO m =>
-  NonEmpty (Path Abs Dir) ->
+  [Path Abs Dir] ->
   Path Rel Dir ->
   m [Path Abs Dir]
 matchingDirs bases path =
-  filterM doesDirExist ((</> path) <$> NonEmpty.toList bases)
+  Sequences.filterM doesDirExist ((</> path) <$> bases)
 
 dirsWithPrefix ::
   MonadIO m =>
@@ -76,7 +77,7 @@ dirsWithPrefix prefix dir =
 -- Return the remainder and the relative subdir paths.
 matchingPaths ::
   MonadIO m =>
-  NonEmpty (Path Abs Dir) ->
+  [Path Abs Dir] ->
   Text ->
   m (Text, [Path Rel Dir])
 matchingPaths bases text =
@@ -85,7 +86,7 @@ matchingPaths bases text =
     subpath =
       maybe "" (toText . toFilePath) dir
     dirs =
-      maybe (return $ NonEmpty.toList bases) (matchingDirs bases) dir
+      maybe (return bases) (matchingDirs bases) dir
     (dir, prefix) =
       first (parseRelDir . toString) $ Text.breakOnEnd "/" text
 
@@ -97,12 +98,13 @@ commonPrefix a =
 
 tab ::
   MonadIO m =>
-  NonEmpty (Path Abs Dir) ->
+  [Path Abs Dir] ->
   Menu (Path Abs File) ->
   Prompt ->
   m (MenuConsumerAction m (), Menu (Path Abs File))
 tab bases menu (Prompt _ state' text) = do
-  (subpath, paths) <- matchingPaths bases text
+  existingBases <- Sequences.filterM doesDirExist bases
+  (subpath, paths) <- matchingPaths existingBases text
   action subpath (commonPrefix (toText . toFilePath <$> paths)) menu
   where
     action subpath =
@@ -178,7 +180,7 @@ actions ::
 actions bases =
   [
     ("cr", editFile),
-    ("tab", tab bases),
+    ("tab", tab (NonEmpty.toList bases)),
     ("c-y", createFile bases)
     ]
 
