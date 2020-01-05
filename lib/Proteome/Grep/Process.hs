@@ -96,7 +96,7 @@ grep ::
   ConduitT () [MenuItem GrepOutputLine] m ()
 grep cwd exe args = do
   prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| parse .| mapC pure .| Conduit.chunksOfE 20
+  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| parse .| mapC pure .| Conduit.chunksOfE 100
   where
     parse =
       Conduit.mapMaybeM (parseGrepOutput cwd)
