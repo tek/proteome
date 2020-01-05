@@ -3,7 +3,7 @@ module Proteome.Tags where
 import Control.Concurrent.Lifted (fork)
 import qualified Control.Lens as Lens (view)
 import Data.Composition ((.:))
-import qualified Data.Text as Text (intercalate, replace, words)
+import qualified Data.Text as Text (intercalate, replace)
 import GHC.IO.Exception (ExitCode(..))
 import Path (File, Path, Rel, toFilePath, (<.>), (</>))
 import Path.IO (doesFileExist, removeFile, renameFile)
@@ -14,7 +14,7 @@ import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Error.Report (processErrorReport)
 import System.Log (Priority(NOTICE))
-import System.Process.Typed (proc, readProcess, setWorkingDir)
+import System.Process.Typed (readProcess, setWorkingDir, shell)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (mainProject, projects)
@@ -101,7 +101,7 @@ tagsProcess (ProjectRoot root) cmd args = do
   return (exitCode, decodeUtf8 err)
   where
     prc =
-      proc (toString cmd) (toString <$> Text.words args)
+      shell $ "unset STACK_IN_NIX_SHELL; " <> toString cmd <> " " <> toString args
     conf =
       setWorkingDir (toFilePath root)
 
