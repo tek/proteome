@@ -25,12 +25,15 @@ base =
   item { siOptions = options, siParams = params }
   where
     item = syntaxMatch "ProFilesBase" [r|\[[^]]\+\]|]
-    options = ["skipwhite"]
+    options = ["skipwhite", "contained"]
     params = Map.fromList [("nextgroup", "ProFilesName")]
 
 name :: SyntaxItem
 name =
-  syntaxMatch "ProFilesName" ".*"
+  item { siOptions = options }
+  where
+    item = syntaxMatch "ProFilesName" ".*"
+    options = ["contained"]
 
 sync :: SyntaxItem
 sync =
