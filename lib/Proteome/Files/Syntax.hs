@@ -18,7 +18,19 @@ asterisk =
   where
     item = syntaxMatch "ProFilesAsterisk" [r|^ \*|]
     options = ["skipwhite"]
+    params = Map.fromList [("nextgroup", "ProFilesBase,ProFilesName")]
+
+base :: SyntaxItem
+base =
+  item { siOptions = options, siParams = params }
+  where
+    item = syntaxMatch "ProFilesBase" [r|\[[^]]\+\]|]
+    options = ["skipwhite"]
     params = Map.fromList [("nextgroup", "ProFilesName")]
+
+name :: SyntaxItem
+name =
+  syntaxMatch "ProFilesName" ".*"
 
 sync :: SyntaxItem
 sync =
@@ -27,6 +39,10 @@ sync =
 hlAsterisk :: HiLink
 hlAsterisk =
   HiLink "ProFilesAsterisk" "Todo"
+
+hlBase :: HiLink
+hlBase =
+  HiLink "ProFilesBase" "Directory"
 
 hlName :: HiLink
 hlName =
@@ -37,6 +53,6 @@ filesSyntax =
   Syntax items [] links
   where
     items =
-      [asterisk, sync]
+      [asterisk, base, name, sync]
     links =
-      [hlAsterisk, hlName]
+      [hlAsterisk, hlBase, hlName]

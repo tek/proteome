@@ -72,7 +72,7 @@ packages:
     url: https://github.com/tek/cornea/archive/28c9cc8f2c4beb19f3adaa5aa5cf4aeca5699a7e.tar.gz
     cabal-file:
       size: 3106
-      sha256: e30706ea232d055597545580f50a55f8a06634fe5f90133c6b0d5f136165f0f2
+      sha256: e78e64a217261b096859d2c44623ce7de2f6f87ba7fd6bf3579be059857f2176
     name: cornea
     version: 0.2.2.0
     sha256: 3c4674bfbc48b32d5c5952932cafdb0b7620247e05e544a6c1b4f2f424a3df68
@@ -86,7 +86,7 @@ packages:
     url: https://github.com/tek/chiasma/archive/25578d92b19beba962f8e163805a42da94715a8e.tar.gz
     cabal-file:
       size: 5755
-      sha256: d8b2ccb3392ec124156301ce7a1acc84e5f3e0f085201af1b388a0c474707a1b
+      sha256: 82c289bc61938947afd1a08496fd6ae11a77af73eabedaf26937b7e5b33aea15
     name: chiasma
     version: 0.1.0.0
     sha256: c239bc2ee2ee952dea5e6ecf859151d2c00bb0b72f034f7bfd07e62acfb1dad0
@@ -101,7 +101,7 @@ packages:
     url: https://github.com/tek/ribosome/archive/91b821d158e88dab111f99e2d955c75212200b88.tar.gz
     cabal-file:
       size: 6163
-      sha256: c459287012c66d527ae9faf4a2e18aae5913a1d0a2d4544176f50b3640f7596d
+      sha256: 63fe6b352695aaefa29b42554ef0b468732126de9677ce0a8ec32a038f90ee1a
     name: ribosome
     version: 0.3.0.1
     sha256: c07d4f28024a02c837573194e5c142bfa9bca7fdb88b64ded3ff704f73975e95
@@ -117,7 +117,7 @@ packages:
     url: https://github.com/tek/ribosome/archive/91b821d158e88dab111f99e2d955c75212200b88.tar.gz
     cabal-file:
       size: 2373
-      sha256: 13719f83ae9ac5c4cb0fc817112c0ddb0e09d8545690ca5d4948bc1204434894
+      sha256: 41f5bb0defad9abb96ed7d46235478b47893115abfac43ef85f5961bb1f06c51
     name: ribosome-test
     version: 0.3.0.1
     sha256: c07d4f28024a02c837573194e5c142bfa9bca7fdb88b64ded3ff704f73975e95

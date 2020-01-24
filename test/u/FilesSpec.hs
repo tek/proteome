@@ -122,4 +122,4 @@ test_filesMultiDir = do
     conf' =
       FilesConfig False [] []
     target =
-      Set.fromList [" * file1", " * file2"]
+      Set.fromList [" * [dir1] file1", " * [dir2] file2"]
