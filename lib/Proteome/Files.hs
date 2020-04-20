@@ -68,8 +68,8 @@ dirsWithPrefix ::
   Text ->
   Path Abs Dir ->
   m [Path Rel Dir]
-dirsWithPrefix prefix dir =
-  filter (Text.isPrefixOf prefix . toText . toFilePath) . fst <$> listDirRel dir
+dirsWithPrefix (Text.toLower -> prefix) dir =
+  filter (Text.isPrefixOf prefix . Text.toLower . toText . toFilePath) . fst <$> listDirRel dir
 
 -- |Search all dirs in @bases@ for relative paths starting with @text@.
 -- First, split the last path segment (after /) off and collect the subdirectories of @bases@ that start with the
