@@ -3,7 +3,6 @@
 
 module PersistLoadSpec (htf_thisModulesTests) where
 
-import Data.String.QM (qt)
 import qualified Data.Text.IO as Text (writeFile)
 import Path (absdir)
 import Ribosome.Config.Setting (updateSetting)

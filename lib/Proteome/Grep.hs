@@ -30,7 +30,7 @@ import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
 import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
 import Proteome.Grep.Line (uniqueGrepLines)
-import Proteome.Grep.Process (grep, grepCmdline)
+import Proteome.Grep.Process (grepCmdline, grepMenuItems)
 import Proteome.Grep.Replace (replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
@@ -110,7 +110,7 @@ proGrepWith promptConfig path patt = do
   grepper <- setting Settings.grepCmdline
   cwd <- toText <$> nvimCwd
   (exe, args) <- grepCmdline grepper patt cwd path
-  void $ nvimMenu scratchOptions (grep cwd exe args .| uniqueGrepLines) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (grepMenuItems cwd exe args .| uniqueGrepLines) handler promptConfig Nothing
   where
     scratchOptions =
       scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"

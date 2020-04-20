@@ -45,6 +45,10 @@ grepCmdline :: Setting Text
 grepCmdline =
   Setting "grep_cmdline" True (Just "grep -Hnr {pattern} {path}")
 
+filesUseRg :: Setting Bool
+filesUseRg =
+  Setting "files_use_rg" True (Just True)
+
 filesExcludeHidden :: Setting Bool
 filesExcludeHidden =
   Setting "files_exclude_hidden" True (Just True)
@@ -56,6 +60,10 @@ filesExcludeFiles =
 filesExcludeDirectories :: Setting [Text]
 filesExcludeDirectories =
   Setting "files_exclude_directories" True (Just [])
+
+filesExcludeWildIgnore :: Setting Bool
+filesExcludeWildIgnore =
+  Setting "files_exclude_wildignore" True (Just True)
 
 buffersCurrentLast :: Setting Bool
 buffersCurrentLast =

@@ -2,6 +2,7 @@ module Proteome.Files where
 
 import Control.Lens (_1, view)
 import Control.Monad (foldM)
+import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Composition ((.:))
 import Data.List.Extra (dropEnd)
@@ -9,7 +10,7 @@ import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Sequences as Sequences (filterM)
-import qualified Data.Text as Text (breakOnEnd, commonPrefixes, isPrefixOf, length, splitOn, take)
+import qualified Data.Text as Text
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome.Api.Buffer (edit)
@@ -28,6 +29,7 @@ import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag(StartIns
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
+import Ribosome.Nvim.Api.IO (vimGetOption)
 import Text.RE.PCRE.Text (RE, compileRegex)
 
 import Proteome.Data.Env (Env)
@@ -36,7 +38,7 @@ import Proteome.Data.FilesError (FilesError)
 import qualified Proteome.Data.FilesError as FilesError (FilesError(..))
 import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
-import qualified Proteome.Settings as Settings (filesExcludeDirectories, filesExcludeFiles, filesExcludeHidden)
+import qualified Proteome.Settings as Settings
 
 editFile ::
   NvimE e m =>
@@ -218,18 +220,23 @@ filesConfig ::
   MonadDeepError e FilesError m =>
   m FilesConfig
 filesConfig =
-  FilesConfig <$> hidden <*> fs <*> dirs
+  FilesConfig <$> useRg <*> hidden <*> fs <*> dirs <*> wildignore
   where
+    useRg =
+      setting Settings.filesUseRg
     hidden =
       setting Settings.filesExcludeHidden
     fs =
       readREs Settings.filesExcludeFiles
     dirs =
       readREs Settings.filesExcludeDirectories
+    wildignore =
+      Text.splitOn "," <$> (vimGetOption "wildignore")
 
 filesWith ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
@@ -256,6 +263,7 @@ filesWith promptConfig cwd paths = do
 proFiles ::
   NvimE e m =>
   MonadRibo m =>
+  MonadThrow m =>
   MonadResource m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>

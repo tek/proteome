@@ -10,49 +10,56 @@ packages:
       size: 158
       sha256: 1e4118716a2078385341d7df2f876b616744c3a8f945247766e60f48e32b3d1d
   original:
-    hackage: base-noprelude-4.12.0.0
-- completed:
-    hackage: strings-1.1@sha256:0285dec4c8ab262359342b3e5ef1eb567074669461b9b38404f1cb870c881c5c,1617
-    pantry-tree:
-      size: 212
-      sha256: 876e5a679244143e2a7e74357427c7522a8d61f68a4cc3ae265fe4960b75a2e2
-  original:
-    hackage: strings-1.1
-- completed:
-    hackage: pretty-terminal-0.1.0.0@sha256:e9135d86ebb2a8e3aaf5a79088de4628dbd49988388e0fbfc26c5ecb3c399ad9,1638
-    pantry-tree:
-      size: 385
-      sha256: fecec01e618890c284e57cb873b8f9531f479562b7cf08497aef097da3ef90ec
-  original:
-    hackage: pretty-terminal-0.1.0.0
-- completed:
-    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
-    pantry-tree:
-      size: 512
-      sha256: d8901f7c8c42c767092262da42e1ff1911151310f4cd87f1ee278d168121ecee
-  original:
-    hackage: posix-pty-0.2.1.1
+    hackage: base-noprelude-4.12.0.0@sha256:dcd5ece10257f79fa16e207d558b31ab3467b205adae5d1976abdee28b1c8b4a,6845
 - completed:
     hackage: filepattern-0.1.1@sha256:984f43798572e325e9509b3b59fd4ccc2b0f94b8b065585e0505570c98aa1016,2480
     pantry-tree:
       size: 998
       sha256: 9b2829a8c9b47bb5dcee3c6547fcd3867354ed2b0094271e01fb2df89a3fc6fd
   original:
-    hackage: filepattern-0.1.1
+    hackage: filepattern-0.1.1@sha256:984f43798572e325e9509b3b59fd4ccc2b0f94b8b065585e0505570c98aa1016,2480
 - completed:
     hackage: fuzzy-0.1.0.0@sha256:123b9581c587ae5422b67bbad7e81186b1ecbf86941a8049f921ddf136f2234e,833
     pantry-tree:
       size: 261
       sha256: 97019c97e95f2a91089acec705243e1fa5b8529ae112658757e0ab3574905f3c
   original:
-    hackage: fuzzy-0.1.0.0
+    hackage: fuzzy-0.1.0.0@sha256:123b9581c587ae5422b67bbad7e81186b1ecbf86941a8049f921ddf136f2234e,833
 - completed:
     hackage: messagepack-0.5.4@sha256:49d43a3540bffe0a0e8dc4a335f97046b01de7613cdca8b4c7dc40a330043da5,1961
     pantry-tree:
       size: 431
       sha256: 50860c4325959f45f152c1556baf5306cd83f7cce817f25bcf825a0186a41624
   original:
-    hackage: messagepack-0.5.4
+    hackage: messagepack-0.5.4@sha256:49d43a3540bffe0a0e8dc4a335f97046b01de7613cdca8b4c7dc40a330043da5,1961
+- completed:
+    hackage: neat-interpolation-0.5.1@sha256:19af6ecc2802c6e94655f91e74aa19dc1e02a73ed7b1292c0fa3f082daaf7124,2989
+    pantry-tree:
+      size: 566
+      sha256: c76046884e00551925c43abda1dc25585a9b90a353c7203a62852df285c0840c
+  original:
+    hackage: neat-interpolation-0.5.1@sha256:19af6ecc2802c6e94655f91e74aa19dc1e02a73ed7b1292c0fa3f082daaf7124,2989
+- completed:
+    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
+    pantry-tree:
+      size: 512
+      sha256: d8901f7c8c42c767092262da42e1ff1911151310f4cd87f1ee278d168121ecee
+  original:
+    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
+- completed:
+    hackage: pretty-terminal-0.1.0.0@sha256:e9135d86ebb2a8e3aaf5a79088de4628dbd49988388e0fbfc26c5ecb3c399ad9,1638
+    pantry-tree:
+      size: 385
+      sha256: fecec01e618890c284e57cb873b8f9531f479562b7cf08497aef097da3ef90ec
+  original:
+    hackage: pretty-terminal-0.1.0.0@sha256:e9135d86ebb2a8e3aaf5a79088de4628dbd49988388e0fbfc26c5ecb3c399ad9,1638
+- completed:
+    hackage: strings-1.1@sha256:0285dec4c8ab262359342b3e5ef1eb567074669461b9b38404f1cb870c881c5c,161
+    pantry-tree:
+      size: 212
+      sha256: 876e5a679244143e2a7e74357427c7522a8d61f68a4cc3ae265fe4960b75a2e2
+  original:
+    hackage: strings-1.1@sha256:0285dec4c8ab262359342b3e5ef1eb567074669461b9b38404f1cb870c881c5c,161
 - completed:
     size: 69304
     url: https://github.com/neovimhaskell/nvim-hs/archive/6b276629c1db1b4af9a8d33a1d6fbaf1ed46fae8.tar.gz
@@ -127,9 +134,23 @@ packages:
   original:
     subdir: modules/test
     url: https://github.com/tek/ribosome/archive/91b821d158e88dab111f99e2d955c75212200b88.tar.gz
+- completed:
+    cabal-file:
+      size: 2827
+      sha256: 98609b4bc65209eb5e17f4ec7bba9ee55f7268391f179455cd2c452cb32c734a
+    name: codex
+    version: 0.5.1.2
+    git: /home/tek/code/ext/haskell/codex
+    pantry-tree:
+      size: 1652
+      sha256: 4b4f19b9e6f34997dd33548af3794d237bbbeb3acf69be974a4b83e45d661e58
+    commit: 79f7e03a5839371558ea7abbc495019a45ce33ad
+  original:
+    git: /home/tek/code/ext/haskell/codex
+    commit: 79f7e03a5839371558ea7abbc495019a45ce33ad
 snapshots:
 - completed:
-    size: 500539
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/13/27.yaml
-    sha256: 690db832392afe55733b4c7023fd29b1b1c660ee42f1fb505b86b07394ca994e
-  original: lts-13.27
+    size: 524996
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
+    sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
+  original: lts-14.27

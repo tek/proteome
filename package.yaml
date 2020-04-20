@@ -14,6 +14,33 @@ build-type: Simple
 extra-source-files:
 - README.md
 
+library:
+  source-dirs: lib
+
+executables:
+  proteome:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - proteome
+
+tests:
+  proteome-unit:
+    main: SpecMain.hs
+    source-dirs: test/u
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - proteome
+    - ribosome-test
+    - HTF
+
 dependencies:
 - Glob
 - aeson
@@ -43,6 +70,7 @@ dependencies:
 - messagepack
 - mono-traversable
 - mtl
+- neat-interpolation
 - nvim-hs
 - parsers
 - path
@@ -50,7 +78,6 @@ dependencies:
 - pretty-terminal
 - prettyprinter
 - raw-strings-qq
-- rawstring-qm
 - regex-with-pcre
 - relude
 - resourcet
@@ -58,38 +85,14 @@ dependencies:
 - split
 - stm
 - stm-conduit
+- template-haskell
 - text
 - time
 - transformers
 - typed-process
 - utf8-string
-
-library:
-  source-dirs: lib
-
-executables:
-  proteome:
-    main: Main.hs
-    source-dirs: app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - proteome
-
-tests:
-  proteome-unit:
-    main: SpecMain.hs
-    source-dirs: test/u
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - proteome
-    - ribosome-test
-    - HTF
+- ribosome-test
+- HTF
 
 default-extensions:
 - AutoDeriveTypeable

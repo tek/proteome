@@ -145,10 +145,14 @@ Mappings:
 * `w` to wipe a buffer
 * `W` to wipe a buffer, discarding changes
 
+Config:
+* `g:proteome_buffers_current_last` Boolean indicating whether to display the active buffer at the end of the MRU list
+
 # Files
 
 The command `ProFiles` takes a list of directories and lists all files inside, recursively.
 Selecting multiple files is supported.
+The default is to use `rg`, with fallback on a builtin directory traversal algorithm.
 
 Mappings:
 * `<space>` to mark an item
@@ -160,6 +164,8 @@ Config:
 * `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
 * `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
 * `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
+* `g:proteome_files_exclude_wildignore` Boolean indicating whether to honor the nvim option `'wildignore'`
+* `g:proteome_files_use_rg` Set to `v:false` to prevent the file name collection from using `rg`
 
 The regexes are matches against the entire path.
 

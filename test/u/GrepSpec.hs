@@ -16,7 +16,7 @@ import Proteome.Data.Env (Proteome)
 import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
 import Proteome.Grep (proGrepWith)
 import Proteome.Grep.Line (uniqueGrepLines)
-import Proteome.Grep.Process (grep)
+import Proteome.Grep.Process (grepMenuItems)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
 import Unit (specDef, tmuxSpec)
 
@@ -81,7 +81,7 @@ grepDuplicatesSpec = do
   gassertEqual 1 (length (join output3))
   where
     proc dir =
-      grep dir "rg" ["--vimgrep", "--no-heading", "target", dir]
+      grepMenuItems dir "rg" ["--vimgrep", "--no-heading", "target", dir]
     item col =
       [MenuItem (GrepOutputLine "/path/to/file" 0 (Just col) "target") "" ""]
 

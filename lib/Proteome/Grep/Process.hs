@@ -88,15 +88,24 @@ grepProcess exe args =
       setStdout createSource .: proc
 
 grep ::
+  MonadIO m =>
+  MonadThrow m =>
+  Text ->
+  [Text] ->
+  ConduitT () Text m ()
+grep exe args = do
+  prc <- lift $ grepProcess exe args
+  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded
+
+grepMenuItems ::
   MonadRibo m =>
   MonadThrow m =>
   Text ->
   Text ->
   [Text] ->
   ConduitT () [MenuItem GrepOutputLine] m ()
-grep cwd exe args = do
-  prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded .| parse .| mapC pure .| Conduit.chunksOfE 100
+grepMenuItems cwd exe args =
+  grep exe args .| parse .| mapC pure .| Conduit.chunksOfE 100
   where
     parse =
       Conduit.mapMaybeM (parseGrepOutput cwd)
