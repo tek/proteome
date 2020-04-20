@@ -5,6 +5,7 @@ module Main where
 import Test.Framework
 import Test.Framework.BlackBoxTest ()
 import {-@ HTF_TESTS @-} AddFSpec
+import {-@ HTF_TESTS @-} AddMenuSpec
 import {-@ HTF_TESTS @-} AddSpec
 import {-@ HTF_TESTS @-} BuffersSpec
 import {-@ HTF_TESTS @-} ConfigSpec

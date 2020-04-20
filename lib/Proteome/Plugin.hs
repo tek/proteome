@@ -42,7 +42,7 @@ rpcHandlers =
     $(rpcHandler (cmd []) 'proReplaceSave),
     $(rpcHandler (cmd []) 'proReplaceQuit),
     $(rpcHandler (cmd []) 'proBuffers),
-    $(rpcHandler (cmd []) 'proFiles),
+    $(rpcHandler (sync . cmd []) 'proFiles),
     $(rpcHandler (cmd []) 'proNext),
     $(rpcHandler (cmd []) 'proPrev),
     $(rpcHandlerDef 'proReadConfig),
