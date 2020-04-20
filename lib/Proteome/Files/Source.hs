@@ -191,8 +191,7 @@ filesRg ::
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
   ConduitT () [MenuItem (Path Abs File)] m ()
-filesRg conf paths = do
-  dbgs ("--files" : excludes <> patterns)
+filesRg conf paths =
   grep "rg" ("--files" : excludes <> patterns) .| mapC item .| mapC maybeToList .| Conduit.chunksOfE 100
   where
     patterns =
