@@ -1,5 +1,6 @@
 module Proteome.Path where
 
+import qualified Data.Text as Text
 import Path (
   Abs,
   Dir,
@@ -8,6 +9,7 @@ import Path (
   parseAbsDir,
   parseAbsFile,
   parseRelFile,
+  toFilePath,
   (</>),
   )
 import Path.IO (doesFileExist)
@@ -52,3 +54,11 @@ existingFile cwd spec =
     check path = do
       exists <- doesFileExist path
       return $ if exists then Just path else Nothing
+
+pathText :: Path b t -> Text
+pathText =
+  toText . toFilePath
+
+dropSlash :: Path b t -> Text
+dropSlash =
+  Text.dropWhileEnd ('/' ==) . pathText

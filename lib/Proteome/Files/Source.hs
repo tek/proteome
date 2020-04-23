@@ -32,6 +32,7 @@ import Text.RE.PCRE.Text (RE, anyMatches, (*=~))
 import Proteome.Data.FileScanItem (FileScanItem(FileScanItem))
 import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
 import Proteome.Grep.Process (grep)
+import Proteome.Path (dropSlash)
 
 matchPath :: [RE] -> Path Abs t -> Bool
 matchPath exclude path =
@@ -121,7 +122,7 @@ withBaseIndicators bases =
   where
     findSegment paths =
       if namesUnique paths
-      then Just . Text.dropEnd 1 . toText . toFilePath . dirname <$> paths
+      then Just . dropSlash . dirname <$> paths
       else if allEqual next then Nothing <$ paths else findSegment next
       where
         next = parent <$> paths

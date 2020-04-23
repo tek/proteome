@@ -7,7 +7,7 @@ import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
 import Neovim (CommandArguments(CommandArguments))
-import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix, toFilePath)
+import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix)
 import Path.IO (listDir)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Data.PersistError (PersistError)
@@ -39,6 +39,7 @@ import Proteome.Data.ProjectMetadata (ProjectMetadata(VirtualProject))
 import Proteome.Data.ProjectName (ProjectName(ProjectName))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
 import Proteome.Data.ResolveError (ResolveError)
+import Proteome.Path (dropSlash, pathText)
 import Proteome.Project.Activate (selectProject)
 import Proteome.Project.Resolve (resolveProjectFromConfig)
 import qualified Proteome.Settings as Settings
@@ -119,10 +120,6 @@ proAddCmd (CommandArguments bang _ _ _) spec =
     activate =
       fromMaybe False bang
 
-pathText :: Path b t -> Text
-pathText =
-  toText . toFilePath
-
 availableProjectsInBase ::
   MonadIO m =>
   Path Abs Dir ->
@@ -141,8 +138,6 @@ availableProjectsInBase base =
           dropSlash (dirname proj)
         pt =
           pathText proj
-        dropSlash =
-          Text.dropWhileEnd ('/' ==) . pathText
 
 availableProjects ::
   MonadIO m =>

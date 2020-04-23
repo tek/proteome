@@ -1,8 +1,7 @@
 module Proteome.Project where
 
 import qualified Control.Lens as Lens (element, firstOf)
-import Path (Abs, Dir, Path, dirname, parent, toFilePath)
-import System.FilePath (dropTrailingPathSeparator)
+import Path (Abs, Dir, Path, dirname, parent)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (currentProjectIndex, mainProject, projects)
@@ -10,6 +9,7 @@ import Proteome.Data.Project (Project)
 import Proteome.Data.ProjectName (ProjectName(ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Path (dropSlash)
 
 allProjects ::
   MonadDeepState s Env m =>
@@ -30,6 +30,6 @@ pathData :: Path Abs Dir -> (ProjectRoot, ProjectName, ProjectType)
 pathData root =
   (
     ProjectRoot root,
-    ProjectName . toText . dropTrailingPathSeparator . toFilePath . dirname $ root,
-    ProjectType . toText . toFilePath . dirname . parent $ root
+    ProjectName . dropSlash . dirname $ root,
+    ProjectType . dropSlash . dirname . parent $ root
     )
