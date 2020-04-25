@@ -132,6 +132,7 @@ Mappings:
 
 When starting replace mode, all marked lines are loaded into a scratch buffer.
 When this buffer is saved, the modified lines will be written to the corresponding files.
+If a line is left empty, it will be deleted.
 
 # Buffers
 
