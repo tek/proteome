@@ -2,8 +2,9 @@ module Proteome.Grep.Replace where
 
 import Control.Lens (view)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
+import qualified Data.Text as Text
 import Ribosome.Api.Autocmd (bufferAutocmd)
-import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, closeBuffer, setBufferLine)
+import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, closeBuffer)
 import Ribosome.Api.Option (withOption)
 import Ribosome.Api.Window (closeWindow)
 import Ribosome.Data.FloatOptions (FloatOptions(FloatOptions))
@@ -14,7 +15,7 @@ import Ribosome.Menu.Data.MenuItem (MenuItem)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.Data (Buffer, Window)
-import Ribosome.Nvim.Api.IO (bufferSetOption, nvimWinSetBuf, vimCommand)
+import Ribosome.Nvim.Api.IO (bufferSetLines, bufferSetOption, nvimWinSetBuf, vimCommand)
 import Ribosome.Scratch (createFloat, showInScratch)
 
 import Proteome.Data.Env (Env)
@@ -66,8 +67,13 @@ replaceLine window updatedLine (GrepOutputLine path line _ _) = do
   unless exists $ addBuffer path
   buffer <- hoistMaybe (ReplaceError.CouldntLoadBuffer path) =<< bufferForFile path
   nvimWinSetBuf window buffer
-  setBufferLine buffer line updatedLine
+  bufferSetLines buffer line (line + 1) False replacement
   return $ if exists then Nothing else Just buffer
+  where
+    replacement =
+      if Text.null updatedLine
+      then []
+      else [updatedLine]
 
 replaceLines ::
   NvimE e m =>
