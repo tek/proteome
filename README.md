@@ -145,9 +145,9 @@ process outputs first to a temporary file and renames it if it was successful.
 The args template can contain several variable that will be filled in before
 executing the command:
 
-* `${langsComma}` A comma-separated list of project languages (default is the project type).
-* `${tagFile}` The temporary file name that the command should write to.
-* `${root}` The project root directory, useful when having multiple projects.
+* `{langsComma}` A comma-separated list of project languages (default is the project type).
+* `{tagFile}` The temporary file name that the command should write to.
+* `{root}` The project root directory, useful when having multiple projects.
 
 The default template, for `ctags`, is `-R --languages={langsComma} -f {tagFile} {root}`.
 
