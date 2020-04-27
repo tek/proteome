@@ -35,17 +35,21 @@ Plug 'tek/proteome'
 
 # Overview
 
-The principle of this plugin is that when you run Neovim, the current directory may host a project with a type and name,
-and that you want to set up configuration specific to this project.
+The principle of this plugin is that when you run Neovim, the current directory
+may host a project with a type and name, and that you want to set up
+configuration specific to this project.
 
-The plugin figures out the type and name on startup and, if that was successful, proceeds to load configuration from
-several files in `{runtimepath}/project`.
+The plugin figures out the type and name on startup and, if that was
+successful, proceeds to load configuration from several files in
+`{runtimepath}/project`.
 
-Additional projects can be added at runtime; you can then switch the working directory between them.
+Additional projects can be added at runtime; you can then switch the working
+directory between them.
 
 ## Configuration
 
-The most important configuration is read from the variable `g:proteome_project_config` with the schema:
+The most important configuration is read from the variable
+`g:proteome_project_config` with the schema:
 
 ```vim
 {
@@ -59,68 +63,98 @@ The most important configuration is read from the variable `g:proteome_project_c
 }
 ```
 
-All parts are optional, but you probably want at least one of `baseDirs`, `typeDirs` and `typeMarkers`.
+All parts are optional, but you probably want at least one of `baseDirs`,
+`typeDirs` and `typeMarkers`.
 
 # Project Detection
 
 **proteome** needs to determine the name and type of your project.
-The type can be arbitrarily defined for your own purposes, but mostly you should want it to represent the project's main
-language.
-The builtin tools can detect the type from the contents or the path of the project.
+The type can be arbitrarily defined for your own purposes, but mostly you
+should want it to represent the project's main language.
+The builtin tools can detect the type from the contents or the path of the
+project.
 
 ## Project Content
 
-The project config variable's key `typeMarkers` is read as a mapping of project type names to filename globs that are
-matched against the working directory.
+The project config variable's key `typeMarkers` is read as a mapping of project
+type names to filename globs that are matched against the working directory.
 If any of the globs match, the corresponding type will be used for the project.
-A few defaults are built-in, so if you're lucky you won't have to configure anything.
+A few defaults are built-in, so if you're lucky you won't have to configure
+anything.
 
 ## Project Path
 
-Path based type detection uses the project config keys `baseDirs`, `typeDirs` and `projectTypes`.
-The most direct variant is `projectTypes`, which simply maps types to a list of concrete paths.
-If the working directory is among the paths, the corresponding type will be chosen.
+Path based type detection uses the project config keys `baseDirs`, `typeDirs`
+and `projectTypes`.
+The most direct variant is `projectTypes`, which simply maps types to a list of
+concrete paths.
+If the working directory is among the paths, the corresponding type will be
+chosen.
 
-The `baseDirs` variant assumes that your projects are arranged as `type/name` subdirectories of a common base directory.
-If the working directory matches `basedir/type/name`, where `basedir` is one of the directories in this config option,
-the path segments will be used for type and name.
+The `baseDirs` variant assumes that your projects are arranged as `type/name`
+subdirectories of a common base directory.
+If the working directory matches `basedir/type/name`, where `basedir` is one of
+the directories in this config option, the path segments will be used for type
+and name.
 
-The `typeDirs` variable is similar to that, it assumes `basedir/name`, with `basedir` taken from the values and the type
-from the keys in the config.
+The `typeDirs` variable is similar to that, it assumes `basedir/name`, with
+`basedir` taken from the values and the type from the keys in the config.
 
 ## Additional Types and Languages
 
-The `typeMap`, `langMap` and `langsMap` settings can be used to add types and languages to a project based on the main
-type.
+The `typeMap`, `langMap` and `langsMap` settings can be used to add types and
+languages to a project based on the main type.
 
 # Project Specific Config
 
-When **chromatin** triggers plugin initialization, **proteome** loads the following sequence of files from the `project`
-subdirectory in your `runtimepath`:
+When **chromatin** triggers plugin initialization, **proteome** loads the
+following sequence of files from the `project` subdirectory in your
+`runtimepath`:
 
 * `all.vim`
 * `type.vim`
 * `type/name.vim`
 
 In the first stage of initialization, the `project` directory is used.
-After that, the second stage loads the same set of files from the `project_after` directory.
+After that, the second stage loads the same set of files from the
+`project_after` directory.
 
 # `ProSave`
 
-This command is intended to be used when saving files and executes the tag generation as well as writing the current
-list of buffers to disk.
+This command is intended to be used when saving files and executes the tag
+generation as well as writing the current list of buffers to disk.
 
-An autocmd will execute it for you whenever you save a file, waiting a number of seconds (`g:proteome_save_interval`)
-between executions to avoid running multiple times when executing `:wa`.
+An autocmd will execute it for you whenever you save a file, waiting a number
+of seconds (`g:proteome_save_interval`) between executions to avoid running
+multiple times when executing `:wa`.
 
 # Tags
 
-The command `ProTags` triggers the execution of `ctags` or another tag generation tool.
+The command `ProTags` triggers the execution of `ctags` or another tag
+generation tool.
 It can be configured with these variables:
+
+* `g:proteome_tags_command` The executable, like `ctags`.
+* `g:proteome_tags_args` A template string for the arguments passed to the command.
+* `g:proteome_tags_file_name` The final name for the tags file, default `.tags`.
+* `g:proteome_tags_fork` Whether to run in a thread.
+
+To prevent the tag file from being gone while the tagger is running, the
+process outputs first to a temporary file and renames it if it was successful.
+
+The args template can contain several variable that will be filled in before
+executing the command:
+
+* `${langsComma}` A comma-separated list of project languages (default is the project type).
+* `${tagFile}` The temporary file name that the command should write to.
+* `${root}` The project root directory, useful when having multiple projects.
+
+The default template, for `ctags`, is `-R --languages={langsComma} -f {tagFile} {root}`.
 
 # Grep
 
-The command `ProGrep` will execute `grep` or another, configurable, program using the specified pattern and display the results in a menu.
+The command `ProGrep` will execute `grep` or another, configurable, program
+using the specified pattern and display the results in a menu.
 
 Mappings:
 * `<space>` to mark an item
@@ -147,11 +181,13 @@ Mappings:
 * `W` to wipe a buffer, discarding changes
 
 Config:
-* `g:proteome_buffers_current_last` Boolean indicating whether to display the active buffer at the end of the MRU list
+* `g:proteome_buffers_current_last` Boolean indicating whether to display the
+  active buffer at the end of the MRU list
 
 # Files
 
-The command `ProFiles` takes a list of directories and lists all files inside, recursively.
+The command `ProFiles` takes a list of directories and lists all files inside,
+recursively.
 Selecting multiple files is supported.
 The default is to use `rg`, with fallback on a builtin directory traversal algorithm.
 

@@ -38,5 +38,6 @@ tagsSpec = do
   exists <- liftIO $ doesFileExist tagsFile
   liftIO $ assertBool exists
 
-test_tags :: IO ()
-test_tags = vars >>= specWithDef tagsSpec
+test_simpleTags :: IO ()
+test_simpleTags =
+  vars >>= specWithDef tagsSpec
