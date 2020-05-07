@@ -75,6 +75,10 @@ replaceLine window updatedLine (GrepOutputLine path line _ _) = do
       then []
       else [updatedLine]
 
+lineNumberDesc :: (Text, GrepOutputLine) -> Int
+lineNumberDesc (_, GrepOutputLine _ number _ _) =
+  -number
+
 replaceLines ::
   NvimE e m =>
   MonadIO m =>
@@ -86,7 +90,7 @@ replaceLines ::
   m ()
 replaceLines scratchBuffer lines' = do
   (buffer, window) <- createFloat floatOptions
-  transient <- withOption "hidden" True (traverse (uncurry (replaceLine window)) lines')
+  transient <- withOption "hidden" True (traverse (uncurry (replaceLine window)) (sortOn lineNumberDesc lines'))
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
   ignoreError @RpcError $ vimCommand "noautocmd wall"
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
