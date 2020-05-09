@@ -17,13 +17,13 @@ extra-deps:
 - pretty-terminal-0.1.0.0@sha256:e9135d86ebb2a8e3aaf5a79088de4628dbd49988388e0fbfc26c5ecb3c399ad9,1638
 - strings-1.1@sha256:0285dec4c8ab262359342b3e5ef1eb567074669461b9b38404f1cb870c881c5c,161
 - github: neovimhaskell/nvim-hs
-  commit: 6b276629c1db1b4af9a8d33a1d6fbaf1ed46fae8
+  commit: 6eb110f11a3875da1be9415515014d574834391b
 - github: tek/cornea
   commit: 28c9cc8f2c4beb19f3adaa5aa5cf4aeca5699a7e
 - github: tek/chiasma
   commit: 25578d92b19beba962f8e163805a42da94715a8e
 - github: tek/ribosome
-  commit: 91b821d158e88dab111f99e2d955c75212200b88
+  commit: a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7
   subdirs:
   - modules/core
   - modules/test
