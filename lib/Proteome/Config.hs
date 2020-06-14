@@ -105,6 +105,6 @@ proReadConfig = do
 defaultTypeMarkers :: Map ProjectType [Text]
 defaultTypeMarkers =
   Map.fromList [
-    (ProjectType "haskell", ["stack.yaml", "*.cabal"]),
+    (ProjectType "haskell", ["stack.yaml", "*.cabal", "cabal.project"]),
     (ProjectType "scala", ["*.sbt"])
     ]
