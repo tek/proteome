@@ -162,15 +162,21 @@ Mappings:
 * `y` to yank the matching line
 * `r` to start replace mode
 
+`ProGrepIn` allows you to specify the directory to search.
+
+The function `ProGrepList` returns a list of dictionaries with the results.
+
 ## Replace Mode
 
 When starting replace mode, all marked lines are loaded into a scratch buffer.
-When this buffer is saved, the modified lines will be written to the corresponding files.
+When this buffer is saved, the modified lines will be written to the
+corresponding files.
 If a line is left empty, it will be deleted.
 
 # Buffers
 
-The command `ProBuffers` displays the currently loaded file buffers in MRU order.
+The command `ProBuffers` displays the currently loaded file buffers in MRU
+order.
 
 Mappings:
 * `<space>` to mark an item

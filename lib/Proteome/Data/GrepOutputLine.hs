@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Proteome.Data.GrepOutputLine where
 
 data GrepOutputLine =
@@ -7,6 +9,6 @@ data GrepOutputLine =
     _col :: Maybe Int,
     _text :: Text
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, MsgpackEncode)
 
 makeClassy ''GrepOutputLine

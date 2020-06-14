@@ -1,6 +1,7 @@
 module Proteome.Grep where
 
-import Conduit ((.|))
+import Conduit (ConduitT, runConduit, sinkList, (.|))
+import Control.Lens (view)
 import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
@@ -17,6 +18,7 @@ import Ribosome.Menu.Action (menuContinue, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
@@ -92,6 +94,21 @@ replaceResult menu _ =
     check Nothing =
       menuContinue
 
+grepItems ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadThrow m =>
+  MonadDeepError e GrepError m =>
+  MonadDeepError e SettingError m =>
+  Text ->
+  Text ->
+  m (ConduitT () [MenuItem GrepOutputLine] m ())
+grepItems path patt = do
+  grepper <- setting Settings.grepCmdline
+  cwd <- toText <$> nvimCwd
+  (exe, args) <- grepCmdline grepper patt cwd path
+  pure (grepMenuItems cwd exe args .| uniqueGrepLines)
+
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
@@ -107,10 +124,8 @@ proGrepWith ::
   Text ->
   m ()
 proGrepWith promptConfig path patt = do
-  grepper <- setting Settings.grepCmdline
-  cwd <- toText <$> nvimCwd
-  (exe, args) <- grepCmdline grepper patt cwd path
-  void $ nvimMenu scratchOptions (grepMenuItems cwd exe args .| uniqueGrepLines) handler promptConfig Nothing
+  items <- grepItems path patt
+  void $ nvimMenu scratchOptions items handler promptConfig Nothing
   where
     scratchOptions =
       scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
@@ -157,3 +172,16 @@ proGrep patt = do
   cwd <- nvimCwd
   nonemptyPattern <- maybe askPattern pure patt
   proGrepIn (toText cwd) nonemptyPattern
+
+proGrepList ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadThrow m =>
+  MonadDeepError e GrepError m =>
+  MonadDeepError e SettingError m =>
+  Text ->
+  Text ->
+  m [GrepOutputLine]
+proGrepList path patt = do
+  items <- grepItems path patt
+  fmap (view MenuItem.meta) . concat <$> runConduit (items .| sinkList)
