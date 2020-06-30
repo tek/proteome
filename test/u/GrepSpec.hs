@@ -46,7 +46,7 @@ jumpChars =
 grepJumpSpec :: Proteome ()
 grepJumpSpec = do
   dir <- fixture "grep/pro"
-  proGrepWith (promptConfig jumpChars) (toText dir) pat
+  proGrepWith (promptConfig jumpChars) (toText dir) pat []
   l <- currentLine
   gassertEqual 5 l
 
@@ -61,7 +61,7 @@ yankChars =
 grepYankSpec :: Proteome ()
 grepYankSpec = do
   dir <- fixture "grep/pro"
-  proGrepWith (promptConfig yankChars) (toText dir) pat
+  proGrepWith (promptConfig yankChars) (toText dir) pat []
   normal "P"
   l <- currentBufferContent
   gassertEqual ["line 6 " <> pat, ""] l

@@ -81,7 +81,7 @@ grepReplaceSpec = do
   dir <- tempDir "grep/replace"
   writeFile (dir <> "/file1") (toString $ unlines file1Lines)
   writeFile (dir <> "/file2") (toString $ unlines file2Lines)
-  proGrepWith (promptConfig replaceChars) (toText dir) pat
+  proGrepWith (promptConfig replaceChars) (toText dir) pat []
   replaceContent <- currentBufferContent
   gassertEqual 3 (length replaceContent)
   setCurrentBufferContent $ Text.replace pat replacement <$> replaceContent

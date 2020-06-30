@@ -162,9 +162,38 @@ Mappings:
 * `y` to yank the matching line
 * `r` to start replace mode
 
-`ProGrepIn` allows you to specify the directory to search.
+`ProGrepIn(path, pattern)` allows you to specify the directory to search.
 
-The function `ProGrepList` returns a list of dictionaries with the results.
+`ProGrepOpt(options, pattern)` allows you to specify additional options for the grep program.
+For command invocation, whitespace must be escaped:
+
+```vim
+ProGrepOpt -r\ bar foo
+```
+
+`ProGrepOptIn(path, options, pattern)` combines the last two.
+
+The function `ProGrepList(path, options, pattern)` returns a list of dictionaries with the results.
+
+## Configuration
+
+`g:proteome_grep_cmdline` is read as a template string that configures the
+program and options to be executed.
+The strings `{pattern}` and `{path}` will be replaced accordingly.
+If those strings are missing, they will be appended.
+
+Default:
+
+```vim
+let g:proteome_grep_cmdline = 'grep -Hnr {pattern} {path}'
+```
+
+The program should be configured to output vim-compatible results.
+Example for `rg`:
+
+```vim
+let g:proteome_grep_cmdline = 'rg --vimgrep --no-heading --multiline'
+```
 
 ## Replace Mode
 
