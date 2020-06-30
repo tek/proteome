@@ -207,7 +207,7 @@ proGrep ::
   m ()
 proGrep patt = do
   nonemptyPattern <- maybe askPattern pure patt
-  proGrepOpt nonemptyPattern ""
+  proGrepOpt "" nonemptyPattern
 
 proGrepList ::
   NvimE e m =>
