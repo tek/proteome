@@ -35,9 +35,9 @@ updateBufferMru ::
   MonadDeepState s Env m =>
   Buffer ->
   m ()
-updateBufferMru buffer =
-  prependUnique @Env Env.buffers buffer *>
-  modifyML @Env Env.buffers (filterM buflisted)
+updateBufferMru buffer = do
+  prependUnique @Env Env.buffers buffer
+  modifyML @Env Env.buffers (filterM (catchAs @RpcError False . buflisted))
 
 updateBuffers ::
   NvimE e m =>
