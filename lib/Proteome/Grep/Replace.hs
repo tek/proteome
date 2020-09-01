@@ -4,7 +4,7 @@ import Control.Lens (view)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Text as Text
 import Ribosome.Api.Autocmd (bufferAutocmd)
-import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, closeBuffer)
+import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
 import Ribosome.Api.Window (closeWindow)
 import Ribosome.Data.FloatOptions (FloatOptions(FloatOptions))
@@ -95,9 +95,9 @@ replaceLines scratchBuffer lines' = do
   ignoreError @RpcError $ vimCommand "noautocmd wall"
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
   bufferSetOption scratchBuffer "modified" (toMsgpack False)
-  traverse_ closeBuffer (catMaybes transient)
+  traverse_ wipeBuffer (catMaybes transient)
   closeWindow window
-  closeBuffer buffer
+  wipeBuffer buffer
   where
     floatOptions =
       FloatOptions def 1 1 0 0 True def
