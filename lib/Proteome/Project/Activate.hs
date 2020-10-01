@@ -1,8 +1,5 @@
 module Proteome.Project.Activate where
 
-import Control.Monad (when)
-import Control.Monad.IO.Class (liftIO)
-import Data.Maybe (fromMaybe)
 import Path (toFilePath)
 import Path.IO (doesDirExist)
 import Ribosome.Config.Setting (updateSetting)

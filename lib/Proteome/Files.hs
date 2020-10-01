@@ -199,7 +199,7 @@ readRE ::
   Text ->
   m RE
 readRE name text =
-  tryHoistAnyAs (FilesError.BadRE name text) (compileRegex (toString text))
+  maybe (throwHoist (FilesError.BadRE name text)) pure (compileRegex (toString text))
 
 readREs ::
   NvimE e m =>

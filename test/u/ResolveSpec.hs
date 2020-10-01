@@ -3,11 +3,9 @@
 
 module ResolveSpec (htf_thisModulesTests) where
 
-import Data.Map (Map)
 import qualified Data.Map as Map (fromList)
 import Path (absdir, parseAbsDir)
 import Ribosome.File (canonicalPaths)
-import Ribosome.Test.Unit (fixture)
 import Test.Framework
 
 import Project (fn, l, la, li, ta, ti, tp)

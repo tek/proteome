@@ -4,7 +4,6 @@ module AddSpec(htf_thisModulesTests) where
 
 import Path (parseAbsDir, parseRelDir, (</>))
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Test.Unit (fixture)
 import Test.Framework
 
 import Config (vars)

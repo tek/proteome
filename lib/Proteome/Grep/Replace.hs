@@ -100,7 +100,7 @@ replaceLines scratchBuffer lines' = do
   wipeBuffer buffer
   where
     floatOptions =
-      FloatOptions def 1 1 0 0 True def
+      FloatOptions def 1 1 0 0 True def Nothing
 
 replaceSave ::
   NvimE e m =>

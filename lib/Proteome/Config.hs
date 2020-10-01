@@ -1,10 +1,7 @@
 module Proteome.Config where
 
 import qualified Control.Lens as Lens (each, toListOf)
-import Control.Monad (join)
-import Data.Map (Map)
 import qualified Data.Map as Map (fromList)
-import Data.Maybe (fromMaybe)
 import Ribosome.Api.Option (optionString)
 import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 

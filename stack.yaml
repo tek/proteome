@@ -1,4 +1,4 @@
-resolver: lts-14.27
+resolver: lts-16.16
 packages:
 - .
 # - ../ribosome
@@ -8,7 +8,6 @@ packages:
 # - ../cornea
 # - ../nvim-hs
 extra-deps:
-- base-noprelude-4.12.0.0@sha256:dcd5ece10257f79fa16e207d558b31ab3467b205adae5d1976abdee28b1c8b4a,6845
 - filepattern-0.1.1@sha256:984f43798572e325e9509b3b59fd4ccc2b0f94b8b065585e0505570c98aa1016,2480
 - fuzzy-0.1.0.0@sha256:123b9581c587ae5422b67bbad7e81186b1ecbf86941a8049f921ddf136f2234e,833
 - messagepack-0.5.4@sha256:49d43a3540bffe0a0e8dc4a335f97046b01de7613cdca8b4c7dc40a330043da5,1961
@@ -23,7 +22,7 @@ extra-deps:
 - github: tek/chiasma
   commit: 25578d92b19beba962f8e163805a42da94715a8e
 - github: tek/ribosome
-  commit: a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7
+  commit: 70598f2b52ad6236c35022975ec169a1876c8230
   subdirs:
   - modules/core
   - modules/test

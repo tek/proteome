@@ -8,7 +8,6 @@ import Path (absdir)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
 import Ribosome.Nvim.Api.IO (bufferGetName, vimGetBuffers, vimGetCurrentBuffer, vimSetOption)
-import Ribosome.Test.Unit (fixture, tempDir)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import Test.Framework

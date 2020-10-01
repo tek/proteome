@@ -1,6 +1,5 @@
 module Proteome.BufEnter where
 
-import Control.Monad.DeepState (modifyML)
 import qualified Data.Text as Text (intercalate)
 import Path (Abs, Dir, File, Path, toFilePath, (</>))
 import Ribosome.Api.Buffer (bufferIsFile, buflisted)

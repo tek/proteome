@@ -7,7 +7,6 @@ import Path (parseAbsDir, parseRelDir, relfile, toFilePath, (</>))
 import Path.IO (doesFileExist)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Nvim.Api.IO (bufferGetOption, vimGetCurrentBuffer)
-import Ribosome.Test.Unit (tempDir)
 import Test.Framework
 
 import Config (vars)

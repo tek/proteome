@@ -9,7 +9,6 @@ import Path (Abs, File, Path, absdir, parseAbsDir, relfile, toFilePath, (</>))
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
-import Ribosome.Test.Unit (fixture, tempDir)
 import Test.Framework
 
 import Config (vars)

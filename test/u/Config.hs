@@ -1,6 +1,5 @@
 module Config where
 
-import Ribosome.Test.Embed (TestConfig(tcVariables), Vars, Vars(..), varsFromList, varsUnion)
 import qualified Ribosome.Test.Embed as E (defaultTestConfig, defaultTestConfigWith)
 import System.Directory (getCurrentDirectory)
 

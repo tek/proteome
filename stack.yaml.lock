@@ -5,13 +5,6 @@
 
 packages:
 - completed:
-    hackage: base-noprelude-4.12.0.0@sha256:dcd5ece10257f79fa16e207d558b31ab3467b205adae5d1976abdee28b1c8b4a,6845
-    pantry-tree:
-      size: 158
-      sha256: 1e4118716a2078385341d7df2f876b616744c3a8f945247766e60f48e32b3d1d
-  original:
-    hackage: base-noprelude-4.12.0.0@sha256:dcd5ece10257f79fa16e207d558b31ab3467b205adae5d1976abdee28b1c8b4a,6845
-- completed:
     hackage: filepattern-0.1.1@sha256:984f43798572e325e9509b3b59fd4ccc2b0f94b8b065585e0505570c98aa1016,2480
     pantry-tree:
       size: 998
@@ -63,9 +56,6 @@ packages:
 - completed:
     size: 70648
     url: https://github.com/neovimhaskell/nvim-hs/archive/6eb110f11a3875da1be9415515014d574834391b.tar.gz
-    cabal-file:
-      size: 7516
-      sha256: ce02fc6c087ba1e33efb932850654922fb85b1d9050341fc8249ed5b2486a03f
     name: nvim-hs
     version: 2.1.0.3
     sha256: 6550fd22871e401b350ecee252d7678b47b3db65bbe33d1760581c2b684ab6df
@@ -77,9 +67,6 @@ packages:
 - completed:
     size: 7086
     url: https://github.com/tek/cornea/archive/28c9cc8f2c4beb19f3adaa5aa5cf4aeca5699a7e.tar.gz
-    cabal-file:
-      size: 3106
-      sha256: e78e64a217261b096859d2c44623ce7de2f6f87ba7fd6bf3579be059857f2176
     name: cornea
     version: 0.2.2.0
     sha256: 3c4674bfbc48b32d5c5952932cafdb0b7620247e05e544a6c1b4f2f424a3df68
@@ -91,9 +78,6 @@ packages:
 - completed:
     size: 33101
     url: https://github.com/tek/chiasma/archive/25578d92b19beba962f8e163805a42da94715a8e.tar.gz
-    cabal-file:
-      size: 5755
-      sha256: 82c289bc61938947afd1a08496fd6ae11a77af73eabedaf26937b7e5b33aea15
     name: chiasma
     version: 0.1.0.0
     sha256: c239bc2ee2ee952dea5e6ecf859151d2c00bb0b72f034f7bfd07e62acfb1dad0
@@ -103,41 +87,6 @@ packages:
   original:
     url: https://github.com/tek/chiasma/archive/25578d92b19beba962f8e163805a42da94715a8e.tar.gz
 - completed:
-    size: 74901
-    subdir: modules/core
-    url: https://github.com/tek/ribosome/archive/a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7.tar.gz
-    cabal-file:
-      size: 6215
-      sha256: 3d69476eb3229b1f1258d21ebcd04ec4dedeaa41d2e269184e4e1ba5bc7bc942
-    name: ribosome
-    version: 0.3.0.1
-    sha256: a6d924c4d7f037ab30e0cb0bd607d3a5737163fd892677140e1fd14dcc9ee618
-    pantry-tree:
-      size: 8431
-      sha256: 1a5546ba7b8b4c8221e3e44689a471522811b0311e4dd1cc3af6c42c3d1a62fa
-  original:
-    subdir: modules/core
-    url: https://github.com/tek/ribosome/archive/a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7.tar.gz
-- completed:
-    size: 74901
-    subdir: modules/test
-    url: https://github.com/tek/ribosome/archive/a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7.tar.gz
-    cabal-file:
-      size: 2373
-      sha256: 41f5bb0defad9abb96ed7d46235478b47893115abfac43ef85f5961bb1f06c51
-    name: ribosome-test
-    version: 0.3.0.1
-    sha256: a6d924c4d7f037ab30e0cb0bd607d3a5737163fd892677140e1fd14dcc9ee618
-    pantry-tree:
-      size: 972
-      sha256: c5ce2bcfd53176d1c1bfa4938008adfd2c821e3a107849cca27870079f54d84b
-  original:
-    subdir: modules/test
-    url: https://github.com/tek/ribosome/archive/a5f03a7d00e002bae2a5eaf6df2ec07698fae6e7.tar.gz
-- completed:
-    cabal-file:
-      size: 2827
-      sha256: 98609b4bc65209eb5e17f4ec7bba9ee55f7268391f179455cd2c452cb32c734a
     name: codex
     version: 0.5.1.2
     git: /home/tek/code/ext/haskell/codex
@@ -150,7 +99,7 @@ packages:
     commit: 79f7e03a5839371558ea7abbc495019a45ce33ad
 snapshots:
 - completed:
-    size: 524996
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/27.yaml
-    sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
-  original: lts-14.27
+    size: 532380
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/16.yaml
+    sha256: d6b004b095fe2a0b8b14fbc30014ee97e58843b9c9362ddb9244273dda62649e
+  original: lts-16.16

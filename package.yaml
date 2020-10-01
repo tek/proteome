@@ -42,60 +42,62 @@ tests:
     - HTF
 
 dependencies:
-- Glob
-- aeson
-- ansi-terminal
-- attoparsec
-- base-noprelude >= 4.7 && < 5
-- bytestring
-- chiasma
-- composition
-- composition-extra
-- conduit
-- conduit-extra
-- containers
-- cornea
-- data-default-class
-- deepseq
-- directory
-- either
-- exceptions
-- extra
-- filepath
-- filepattern
-- hslogger
-- lens
-- lifted-async
-- lifted-base
-- messagepack
-- mono-traversable
-- mtl
-- neat-interpolation
-- nvim-hs
-- parsers
-- path
-- path-io
-- pretty-terminal
-- prettyprinter
-- raw-strings-qq
-- regex-with-pcre
-- relude
-- resourcet
-- ribosome
-- split
-- stm
-- stm-conduit
-- template-haskell
-- text
-- time
-- transformers
-- typed-process
-- utf8-string
-- ribosome-test
-- HTF
+  - Glob
+  - aeson
+  - ansi-terminal
+  - attoparsec
+  - name: base
+    version: '>= 4 && < 5'
+    mixin:
+      hiding (Prelude)
+  - bytestring
+  - chiasma
+  - composition
+  - composition-extra
+  - conduit
+  - conduit-extra
+  - containers
+  - cornea
+  - data-default-class
+  - deepseq
+  - directory
+  - either
+  - exceptions
+  - extra
+  - filepath
+  - filepattern
+  - hslogger
+  - lens
+  - lifted-async
+  - lifted-base
+  - messagepack
+  - mono-traversable
+  - mtl
+  - neat-interpolation
+  - nvim-hs
+  - parsers
+  - path
+  - path-io
+  - pretty-terminal
+  - prettyprinter
+  - raw-strings-qq
+  - regex-with-pcre
+  - relude
+  - resourcet
+  - ribosome
+  - split
+  - stm
+  - stm-conduit
+  - template-haskell
+  - text
+  - time
+  - transformers
+  - typed-process
+  - utf8-string
+  - ribosome-test
+  - HTF
 
 default-extensions:
-- AutoDeriveTypeable
 - BangPatterns
 - BinaryLiterals
 - ConstraintKinds
@@ -119,7 +121,6 @@ default-extensions:
 - InstanceSigs
 - KindSignatures
 - LambdaCase
-- MonadFailDesugaring
 - MultiParamTypeClasses
 - MultiWayIf
 - NamedFieldPuns

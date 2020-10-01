@@ -5,7 +5,7 @@ import qualified Control.Lens as Lens (view)
 import Data.Composition ((.:))
 import qualified Data.Text as Text (intercalate, replace)
 import GHC.IO.Exception (ExitCode(..))
-import Path (File, Path, Rel, toFilePath, (<.>), (</>))
+import Path (File, Path, Rel, addExtension, toFilePath, (</>))
 import Path.IO (doesFileExist, removeFile, renameFile)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Control.Exception (catchAnyAs)
@@ -51,7 +51,7 @@ tempname ::
   Path Rel File ->
   m (Path Rel File)
 tempname name =
-  hoistEitherAs err (name <.> "tmp")
+  hoistEitherAs err (addExtension ".tmp" name)
   where
     err =
       TagsError.Path "appending tempname suffix"

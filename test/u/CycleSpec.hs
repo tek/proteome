@@ -6,7 +6,6 @@ import Control.Monad.Catch (MonadThrow)
 import Path (Abs, Dir, Path, parseAbsDir, parseRelDir, (</>))
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Test.Unit (fixture)
 import Test.Framework
 
 import Config (vars)

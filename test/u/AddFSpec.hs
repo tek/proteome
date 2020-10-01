@@ -8,8 +8,6 @@ import Path (parseAbsDir, reldir, (</>))
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Control.Ribosome (newRibosome)
 import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand, vimSetVar)
-import Ribosome.Test.Embed (integrationSpecDef)
-import Ribosome.Test.Unit (fixture)
 import Test.Framework
 
 import Proteome.Data.Env (Proteome)

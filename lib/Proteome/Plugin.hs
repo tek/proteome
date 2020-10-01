@@ -1,6 +1,5 @@
 module Proteome.Plugin where
 
-import Data.Default.Class (Default(def))
 import Neovim (CommandOption(CmdBang), Neovim, NeovimPlugin, Plugin, wrapPlugin)
 import Ribosome.Control.Monad.Ribo (Ribo)
 import Ribosome.Control.Ribosome (Ribosome)

@@ -6,7 +6,6 @@ module TagsSpec (htf_thisModulesTests) where
 import Path (Abs, Dir, Path, parseAbsDir, relfile, (</>))
 import Path.IO (doesFileExist)
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Test.Unit (tempDir)
 import Test.Framework
 
 import Config (vars)

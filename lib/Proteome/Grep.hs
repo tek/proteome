@@ -6,7 +6,6 @@ import Control.Monad.Catch (MonadThrow)
 import Control.Monad.Trans.Resource (MonadResource)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
-import qualified Data.Text as Text (null)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Register (setregLine)
