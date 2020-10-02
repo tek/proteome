@@ -31,9 +31,10 @@ import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
 import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Data.ReplaceError (ReplaceError)
 import Proteome.Grep.Line (uniqueGrepLines)
 import Proteome.Grep.Process (grepCmdline, grepMenuItems)
-import Proteome.Grep.Replace (replaceBuffer)
+import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import qualified Proteome.Settings as Settings (grepCmdline)
 
@@ -90,7 +91,25 @@ replaceResult menu _ =
   check (markedMenuItems menu) menu
   where
     check (Just items) =
-      menuQuitWith $ replaceBuffer items
+      menuQuitWith (replaceBuffer items)
+    check Nothing =
+      menuContinue
+
+deleteResult ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
+  MonadDeepError e DecodeError m =>
+  MonadDeepError e ReplaceError m =>
+  Menu GrepOutputLine ->
+  Prompt ->
+  m (MenuConsumerAction m (), Menu GrepOutputLine)
+deleteResult menu _ =
+  check (markedMenuItems menu) menu
+  where
+    check (Just items) =
+      menuQuitWith (deleteLines (MenuItem._meta <$> toList items))
     check Nothing =
       menuContinue
 
@@ -120,6 +139,7 @@ proGrepWith ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e ReplaceError m =>
   PromptConfig m ->
   Text ->
   Text ->
@@ -132,7 +152,7 @@ proGrepWith promptConfig path patt opt = do
     scratchOptions =
       scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
     handler =
-      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult)])
+      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult), ("d", deleteResult)])
 
 proGrepIn ::
   NvimE e m =>
@@ -144,6 +164,7 @@ proGrepIn ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e ReplaceError m =>
   Text ->
   Text ->
   m ()
@@ -160,6 +181,7 @@ proGrepOpt ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e ReplaceError m =>
   Text ->
   Text ->
   m ()
@@ -177,6 +199,7 @@ proGrepOptIn ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e ReplaceError m =>
   Text ->
   Text ->
   Text ->
@@ -202,6 +225,7 @@ proGrep ::
   MonadDeepError e GrepError m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
+  MonadDeepError e ReplaceError m =>
   Maybe Text ->
   m ()
 proGrep patt = do

@@ -27,8 +27,8 @@ unique =
   consume Set.empty
   where
     consume seen =
-      traverse_ (rec seen) =<< await
-    rec seen as =
+      traverse_ (spin seen) =<< await
+    spin seen as =
       yield (Set.toList uniques) *>
       consume (Set.union uniques seen)
       where

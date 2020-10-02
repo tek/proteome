@@ -11,6 +11,7 @@ import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEve
 import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
 import Ribosome.Nvim.Api.IO (vimGetBuffers)
 import Test.Framework
+import Text.RE.PCRE.Text (ed, (*=~/))
 
 import Proteome.Data.Env (Proteome)
 import Proteome.Grep (proGrepWith)
@@ -42,7 +43,7 @@ replacement =
 
 replaceChars :: [Text]
 replaceChars =
-  ["space", "space", "space", "r"]
+  ["*", "r"]
 
 file1Lines :: [Text]
 file1Lines =
@@ -58,6 +59,24 @@ file2Lines =
   [
     "garbage 2",
     "and target"
+  ]
+
+file3Lines :: [Text]
+file3Lines =
+  [
+    "delete me target 1",
+    "",
+    "keep me 1",
+    "",
+    "delete me target 2",
+    "",
+    "keep me 2",
+    "delete me target 3",
+    "keep me 3",
+    "",
+    "keep me 4",
+    "delete me target 4",
+    ""
   ]
 
 file1Target :: [Text]
@@ -76,24 +95,82 @@ file2Target =
     "and replaced"
   ]
 
+file3Target :: [Text]
+file3Target =
+  [
+    "keep me 1",
+    "",
+    "keep me 2",
+    "keep me 3",
+    "",
+    "keep me 4"
+  ]
+
+checkContent ::
+  AssertM m =>
+  MonadIO m =>
+  FilePath ->
+  [Text] ->
+  FilePath ->
+  m ()
+checkContent dir target name =
+  gassertEqual target . lines . toText =<< readFile (dir <> "/" <> name)
+
 grepReplaceSpec :: Proteome ()
 grepReplaceSpec = do
   dir <- tempDir "grep/replace"
   writeFile (dir <> "/file1") (toString $ unlines file1Lines)
   writeFile (dir <> "/file2") (toString $ unlines file2Lines)
+  writeFile (dir <> "/file3") (toString $ unlines file3Lines)
   proGrepWith (promptConfig replaceChars) (toText dir) pat []
   replaceContent <- currentBufferContent
-  gassertEqual 3 (length replaceContent)
-  setCurrentBufferContent $ Text.replace pat replacement <$> replaceContent
+  gassertEqual 7 (length replaceContent)
+  setCurrentBufferContent $ (*=~/ [ed|^delete me.*$///|]) . Text.replace pat replacement <$> replaceContent
   proReplaceSave
   proReplaceQuit
   gassertEqual 2 . length =<< filterM buflisted =<< vimGetBuffers
   checkContent dir file1Target "file1"
   checkContent dir file2Target "file2"
-  where
-    checkContent dir target name =
-      gassertEqual target . lines . toText =<< readFile (dir <> "/" <> name)
+  checkContent dir file3Target "file3"
 
 test_grepReplace :: IO ()
 test_grepReplace =
   tmuxSpec grepReplaceSpec
+
+deleteChars :: [Text]
+deleteChars =
+  ["k", "space", "k", "space", "d"]
+
+deleteFile1Lines :: [Text]
+deleteFile1Lines =
+  [
+    "target 0",
+    "",
+    "target 1",
+    "",
+    "garbage",
+    "target 2",
+    "target 4",
+    "garbage"
+  ]
+
+deleteFile1Target :: [Text]
+deleteFile1Target =
+  [
+    "target 0",
+    "",
+    "garbage",
+    "target 2",
+    "garbage"
+  ]
+
+grepDeleteSpec :: Proteome ()
+grepDeleteSpec = do
+  dir <- tempDir "grep/delete"
+  writeFile (dir <> "/file1") (toString $ unlines deleteFile1Lines)
+  proGrepWith (promptConfig deleteChars) (toText dir) pat []
+  checkContent dir deleteFile1Target "file1"
+
+test_grepDelete :: IO ()
+test_grepDelete =
+  tmuxSpec grepDeleteSpec

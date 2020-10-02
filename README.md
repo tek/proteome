@@ -161,6 +161,9 @@ Mappings:
 * `<cr>` to jump to a match
 * `y` to yank the matching line
 * `r` to start replace mode
+* `d` to delete the matching line
+
+Deleting a line will compensate for resulting double empty lines.
 
 `ProGrepIn(path, pattern)` allows you to specify the directory to search.
 
@@ -200,7 +203,9 @@ let g:proteome_grep_cmdline = 'rg --vimgrep --no-heading --multiline'
 When starting replace mode, all marked lines are loaded into a scratch buffer.
 When this buffer is saved, the modified lines will be written to the
 corresponding files.
-If a line is left empty, it will be deleted.
+
+If a line is left empty, it will be deleted, along with the line taking its
+place, if both surrounding lines are either whitespace or the buffer edge.
 
 # Buffers
 
