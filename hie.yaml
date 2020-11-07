@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./lib"
+      component: "proteome:lib"
+
+    - path: "./app/Main.hs"
+      component: "proteome:exe:proteome"
+
+    - path: "./app/Paths_proteome.hs"
+      component: "proteome:exe:proteome"
+
+    - path: "./test/u"
+      component: "proteome:test:proteome-unit"
