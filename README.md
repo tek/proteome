@@ -256,14 +256,18 @@ containing directory.
 If you want to move something to the top level directory, prefix the argument
 with `./`.
 
+If the old file name had an extension and the new one doesn't, the old
+extension is added.
+
+
 The command `ProRemove` moves the current file to a trash dir, located in
 `$XDG_CACHE_DIR/proteome/trash`.
 
 Convenient aliases could be:
 
 ```vim
-command! -nargs=+ Mv ProMove <args>
-command! -nargs=+ Cp ProCopy <args>
+command! -nargs=+ -complete=file Mv ProMove <args>
+command! -nargs=+ -complete=file Cp ProCopy <args>
 command! Rm ProRemove
 ```
 
