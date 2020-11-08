@@ -17,6 +17,10 @@ extra-source-files:
 library:
   source-dirs: lib
 
+ghc-options:
+  - -Wall
+  - -fwarn-redundant-constraints
+
 executables:
   proteome:
     main: Main.hs
@@ -52,6 +56,7 @@ dependencies:
       hiding (Prelude)
   - bytestring
   - chiasma
+  - chronos
   - composition
   - composition-extra
   - conduit

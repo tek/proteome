@@ -1,6 +1,7 @@
 module Proteome.Plugin where
 
-import Neovim (CommandOption(CmdBang), Neovim, NeovimPlugin, Plugin, wrapPlugin)
+import Neovim (CommandOption (CmdBang), Neovim, NeovimPlugin, Plugin, wrapPlugin)
+import Neovim.Plugin.Classes (CommandOption(CmdComplete))
 import Ribosome.Control.Monad.Ribo (Ribo)
 import Ribosome.Control.Ribosome (Ribosome)
 import Ribosome.Error.Report (reportError)
@@ -13,6 +14,7 @@ import Proteome.Config (proReadConfig)
 import Proteome.Data.Env (Env, Proteome)
 import Proteome.Data.Error (Error)
 import Proteome.Diag (proDiag)
+import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
@@ -47,6 +49,9 @@ rpcHandlers =
     $(rpcHandler (cmd []) 'proFiles),
     $(rpcHandler (cmd []) 'proNext),
     $(rpcHandler (cmd []) 'proPrev),
+    $(rpcHandler (cmd [CmdComplete "file"]) 'proMove),
+    $(rpcHandler (cmd [CmdComplete "file"]) 'proCopy),
+    $(rpcHandler (cmd []) 'proRemove),
     $(rpcHandlerDef 'proReadConfig),
     $(rpcHandler (cmd []) 'proDiag),
     $(rpcHandler (autocmd "BufEnter") 'bufEnter),

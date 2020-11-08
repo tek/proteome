@@ -11,6 +11,7 @@ import {-@ HTF_TESTS @-} BuffersSpec
 import {-@ HTF_TESTS @-} ConfigSpec
 import {-@ HTF_TESTS @-} CycleSpec
 import {-@ HTF_TESTS @-} DiagSpec
+import {-@ HTF_TESTS @-} FilenameSpec
 import {-@ HTF_TESTS @-} FilesSpec
 import {-@ HTF_TESTS @-} GrepSpec
 import {-@ HTF_TESTS @-} InitSpec

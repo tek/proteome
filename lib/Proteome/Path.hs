@@ -6,8 +6,10 @@ import Path (
   Dir,
   File,
   Path,
+  Rel,
   parseAbsDir,
   parseAbsFile,
+  parseRelDir,
   parseRelFile,
   toFilePath,
   (</>),
@@ -26,6 +28,40 @@ parseAbsDirMaybe ::
   Maybe (Path Abs Dir)
 parseAbsDirMaybe =
   parsePathMaybe parseAbsDir
+
+parseAbsFileMaybe ::
+  Text ->
+  Maybe (Path Abs File)
+parseAbsFileMaybe =
+  parsePathMaybe parseAbsFile
+
+parseRelDirMaybe ::
+  Text ->
+  Maybe (Path Rel Dir)
+parseRelDirMaybe =
+  parsePathMaybe parseRelDir
+
+parseRelFileMaybe ::
+  Text ->
+  Maybe (Path Rel File)
+parseRelFileMaybe =
+  parsePathMaybe parseRelFile
+
+absoluteParseDir ::
+  Path Abs Dir ->
+  Text ->
+  Maybe (Path Abs Dir)
+absoluteParseDir cwd spec =
+  tryAbsolute <|> tryRelative
+  where
+    specS =
+      toString spec
+    tryAbsolute =
+      rightToMaybe (parseAbsDir specS)
+    tryRelative =
+      makeAbsolute <$> rightToMaybe (parseRelDir specS)
+    makeAbsolute path =
+      cwd </> path
 
 absoluteParse ::
   Path Abs Dir ->

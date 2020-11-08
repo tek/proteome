@@ -246,6 +246,27 @@ Config:
 
 The regexes are matches against the entire path.
 
+# File Paths
+
+The commands `ProMove` and `ProCopy` move or copy the current buffer's files to
+the specified location, considering whether the destination is a directory.
+
+If the argument does not contain any slashes, the file is renamed, keeping its
+containing directory.
+If you want to move something to the top level directory, prefix the argument
+with `./`.
+
+The command `ProRemove` moves the current file to a trash dir, located in
+`$XDG_CACHE_DIR/proteome/trash`.
+
+Convenient aliases could be:
+
+```vim
+command! -nargs=+ Mv ProMove <args>
+command! -nargs=+ Cp ProCopy <args>
+command! Rm ProRemove
+```
+
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
 [ribosome]: https://github.com/tek/ribosome

@@ -6,6 +6,7 @@ import Ribosome.Data.RiboError (RiboError)
 import Ribosome.Error.Report.Class (ReportError(..))
 
 import Proteome.Data.AddError (AddError)
+import Proteome.Data.FilenameError (FilenameError)
 import Proteome.Data.FilesError (FilesError)
 import Proteome.Data.GrepError (GrepError)
 import Proteome.Data.ReplaceError (ReplaceError)
@@ -26,6 +27,8 @@ data Error =
   Resolve ResolveError
   |
   Files FilesError
+  |
+  Filename FilenameError
   deriving (Show, Generic, ReportError)
 
 deepPrisms ''Error

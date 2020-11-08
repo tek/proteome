@@ -40,10 +40,8 @@ unsafeStoreBuffers ::
   NvimE e m =>
   MonadRibo m =>
   MonadThrow m =>
-  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
   Path Abs Dir ->
   Path Rel Dir ->
   m ()
