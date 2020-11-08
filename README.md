@@ -248,7 +248,7 @@ The regexes are matches against the entire path.
 
 # File Paths
 
-The commands `ProMove` and `ProCopy` move or copy the current buffer's files to
+The commands `ProMove` and `ProCopy` move or copy the current buffer's file to
 the specified location, considering whether the destination is a directory.
 
 If the argument does not contain any slashes, the file is renamed, keeping its
