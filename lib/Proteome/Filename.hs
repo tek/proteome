@@ -7,6 +7,7 @@ import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
 import Ribosome.Api.Buffer (currentBufferName, wipeBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.SettingError (SettingError)
+import Ribosome.Nvim.Api.IO (vimCommand)
 
 import Control.Monad (foldM)
 import Control.Monad.Catch (MonadThrow)
@@ -220,6 +221,7 @@ updateBuffer ::
 updateBuffer path = do
   buf <- vimGetCurrentBuffer
   bufferSetName buf (pathText path)
+  vimCommand "write!"
 
 relocate ::
   NvimE e m =>

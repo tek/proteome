@@ -259,7 +259,6 @@ with `./`.
 If the old file name had an extension and the new one doesn't, the old
 extension is added.
 
-
 The command `ProRemove` moves the current file to a trash dir, located in
 `$XDG_CACHE_DIR/proteome/trash`.
 

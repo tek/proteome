@@ -30,6 +30,7 @@ filenameSpec cmd changedRel = do
   edit (toFilePath initial)
   vimCommand "write"
   cmd baseRel
+  vimCommand "write"
   gassertBool =<< doesFileExist changed
   gassertEqual (pathText changed) =<< currentBufferName
   doesFileExist initial
