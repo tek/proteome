@@ -4,10 +4,10 @@ import qualified Chronos
 import qualified Data.Text as Text
 import Path (Abs, Dir, File, Path, Rel, addExtension, filename, parent, parseAbsDir, reldir, splitExtension, (</>))
 import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
-import Ribosome.Api.Buffer (currentBufferName, wipeBuffer)
+import Ribosome.Api.Buffer (currentBufferName)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Nvim.Api.IO (vimCommand)
+import Ribosome.Nvim.Api.IO (bufferGetNumber, vimCommand)
 
 import Control.Monad (foldM)
 import Control.Monad.Catch (MonadThrow)
@@ -283,4 +283,5 @@ proRemove ::
 proRemove = do
   move =<< trashModification
   buf <- vimGetCurrentBuffer
-  wipeBuffer buf
+  number <- bufferGetNumber buf
+  vimCommand ("silent! noautocmd bwipeout! " <> show number)
