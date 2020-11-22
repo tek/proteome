@@ -11,10 +11,10 @@ import Ribosome.Config.Settings (persistenceDir)
 import Ribosome.Nvim.Api.IO (vimCommand)
 import Test.Framework
 
-import Unit (tmuxSpec)
 import Proteome.Data.Env (Proteome)
 import Proteome.Filename (proCopy, proMove)
 import Proteome.Path (pathText)
+import Unit (tmuxSpec)
 
 filenameSpec ::
   (Text -> Proteome ()) ->

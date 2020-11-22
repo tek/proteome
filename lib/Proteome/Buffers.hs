@@ -11,7 +11,6 @@ import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Config.Setting (settingOr)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
-import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
@@ -48,7 +47,6 @@ import qualified Proteome.Settings as Settings (buffersCurrentLast)
 
 action ::
   NvimE e m =>
-  MonadRibo m =>
   (MenuItem ListedBuffer -> m ()) ->
   Menu ListedBuffer ->
   m (MenuConsumerAction m (), Menu ListedBuffer)
@@ -67,7 +65,6 @@ loadListedBuffer (ListedBuffer buffer number _) =
 
 load ::
   NvimE e m =>
-  MonadRibo m =>
   Menu ListedBuffer ->
   Prompt ->
   m (MenuConsumerAction m (), Menu ListedBuffer)
@@ -104,7 +101,6 @@ deleteListedBuffersWith deleter bufs =
 
 deleteWith ::
   NvimE e m =>
-  MonadRibo m =>
   Text ->
   Menu ListedBuffer ->
   Prompt ->
@@ -165,7 +161,6 @@ buffers = do
 
 actions ::
   NvimE e m =>
-  MonadRibo m =>
   [(Text, Menu ListedBuffer -> Prompt -> m (MenuConsumerAction m (), Menu ListedBuffer))]
 actions =
   [
@@ -174,7 +169,7 @@ actions =
     ("D", deleteWith "bdelete!"),
     ("w", deleteWith "bwipeout"),
     ("W", deleteWith "bwipeout!")
-    ]
+  ]
 
 buffersWith ::
   NvimE e m =>
@@ -183,7 +178,6 @@ buffersWith ::
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
   PromptConfig m ->
   m ()
 buffersWith promptConfig = do
@@ -202,7 +196,6 @@ proBuffers ::
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
   m ()
 proBuffers =
   buffersWith (defaultPrompt [])

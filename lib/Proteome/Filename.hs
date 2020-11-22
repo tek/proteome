@@ -1,16 +1,32 @@
 module Proteome.Filename where
 
 import qualified Chronos
-import qualified Data.Text as Text
-import Path (Abs, Dir, File, Path, Rel, addExtension, filename, parent, parseAbsDir, reldir, splitExtension, (</>))
-import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
-import Ribosome.Api.Buffer (currentBufferName)
-import Ribosome.Api.Path (nvimCwd)
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Nvim.Api.IO (bufferGetNumber, vimCommand)
-
 import Control.Monad (foldM)
 import Control.Monad.Catch (MonadThrow)
+import Data.MessagePack (Object)
+import qualified Data.Text as Text
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  addExtension,
+  filename,
+  parent,
+  parseAbsDir,
+  reldir,
+  splitExtension,
+  toFilePath,
+  (</>),
+  )
+import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
+import Ribosome.Api.Buffer (currentBufferName, edit)
+import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Data.SettingError (SettingError)
+import Ribosome.Nvim.Api.IO (vimCallFunction, bufferGetNumber, bufferSetName, vimCommand, vimGetCurrentBuffer)
+import Ribosome.Persist (persistencePath)
+
 import Proteome.Data.Env (Proteome)
 import qualified Proteome.Data.FilenameError as FilenameError
 import Proteome.Data.FilenameError (FilenameError)
@@ -23,8 +39,6 @@ import Proteome.Path (
   parseRelFileMaybe,
   pathText,
   )
-import Ribosome.Nvim.Api.IO (bufferSetName, vimGetCurrentBuffer)
-import Ribosome.Persist (persistencePath)
 
 data Modification =
   Filename (Path Rel File) Int
@@ -221,7 +235,7 @@ updateBuffer ::
 updateBuffer path = do
   buf <- vimGetCurrentBuffer
   bufferSetName buf (pathText path)
-  vimCommand "write!"
+  vimCommand "silent write!"
 
 relocate ::
   NvimE e m =>
@@ -229,13 +243,12 @@ relocate ::
   MonadBaseControl IO m =>
   MonadDeepError e FilenameError m =>
   Text ->
-  (Path Abs File -> Path Abs File -> m ()) ->
   Modification ->
+  (Path Abs File -> Path Abs File -> m ()) ->
   m ()
-relocate action run mod' = do
+relocate action mod' run = do
   (bufPath, destPath) <- pathsForMod mod'
   tryHoistAny (FilenameError.ActionFailed action . show) (run bufPath destPath)
-  updateBuffer destPath
 
 moveFile ::
   MonadIO m =>
@@ -253,8 +266,10 @@ move ::
   MonadDeepError e FilenameError m =>
   Modification ->
   m ()
-move =
-  relocate "move" moveFile
+move mod' = do
+  relocate "move" mod' \ buf dest -> do
+    moveFile buf dest
+    updateBuffer dest
 
 copy ::
   NvimE e m =>
@@ -263,8 +278,12 @@ copy ::
   MonadDeepError e FilenameError m =>
   Modification ->
   m ()
-copy =
-  relocate "copy" copyFile
+copy mod' =
+  relocate "copy" mod' \ src dest -> do
+    copyFile src dest
+    view :: Object <- vimCallFunction "winsaveview" []
+    edit (toFilePath dest)
+    vimCallFunction "winrestview" [view]
 
 proMove ::
   Text ->
