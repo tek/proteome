@@ -302,5 +302,6 @@ proRemove ::
 proRemove = do
   move =<< trashModification
   buf <- vimGetCurrentBuffer
-  number <- bufferGetNumber buf
-  vimCommand ("silent! noautocmd bwipeout! " <> show number)
+  ignoreError @RpcError do
+    number <- bufferGetNumber buf
+    vimCommand ("silent! noautocmd bwipeout! " <> show number)
