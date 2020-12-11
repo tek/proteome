@@ -87,6 +87,32 @@ packages:
   original:
     url: https://github.com/tek/chiasma/archive/25578d92b19beba962f8e163805a42da94715a8e.tar.gz
 - completed:
+    size: 77200
+    subdir: modules/core
+    url: https://github.com/tek/ribosome/archive/793eaa96792eb059cd3d7fd39fba0e70d7936301.tar.gz
+    name: ribosome
+    version: 0.3.0.1
+    sha256: fc1adca0829dfe588edb6ccdaf4e364ee88417330741886aa84ea773ee77dd10
+    pantry-tree:
+      size: 8484
+      sha256: f5816ea2560b03daa61b930b6bcf7f2ae9f01d5abfcdff1cbef5806af98c3761
+  original:
+    subdir: modules/core
+    url: https://github.com/tek/ribosome/archive/793eaa96792eb059cd3d7fd39fba0e70d7936301.tar.gz
+- completed:
+    size: 77200
+    subdir: modules/test
+    url: https://github.com/tek/ribosome/archive/793eaa96792eb059cd3d7fd39fba0e70d7936301.tar.gz
+    name: ribosome-test
+    version: 0.3.0.1
+    sha256: fc1adca0829dfe588edb6ccdaf4e364ee88417330741886aa84ea773ee77dd10
+    pantry-tree:
+      size: 979
+      sha256: b512a1c5d83a982348981c30b50d424e50f5e979e4453ee9a5c570150b2113e9
+  original:
+    subdir: modules/test
+    url: https://github.com/tek/ribosome/archive/793eaa96792eb059cd3d7fd39fba0e70d7936301.tar.gz
+- completed:
     name: codex
     version: 0.5.1.2
     git: /home/tek/code/ext/haskell/codex
