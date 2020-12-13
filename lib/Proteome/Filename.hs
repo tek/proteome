@@ -89,7 +89,7 @@ modification ::
   Path Abs Dir ->
   Text ->
   m Modification
-modification cwd spec = do
+modification cwd (Text.strip -> spec) = do
   existingDir <- maybeDir cwd spec
   hoistMaybe (FilenameError.InvalidPathSpec spec) (cons existingDir spec)
   where
