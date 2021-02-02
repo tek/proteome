@@ -27,7 +27,7 @@ instance ReportError FilenameError where
     InvalidPathSpec spec ->
       ErrorReport [qt|invalid path: ${spec}|] ["FilenameError.InvalidPathSpec:", spec] NOTICE
     BufferPathInvalid ->
-      ErrorReport "current buffer is not an existinng file" ["FilenameError.BufferPathInvalid"] NOTICE
+      ErrorReport "current buffer is not an existing file" ["FilenameError.BufferPathInvalid"] NOTICE
     CreateDir dir ->
       ErrorReport [qt|could not create directory ${dir}|] ["FilenameError.CreateDir:", dir] NOTICE
     Exists file ->
