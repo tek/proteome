@@ -1,0 +1,42 @@
+name: proteome
+synopsis: Neovim Project Manager
+<<: !include shared/meta.yaml
+defaults:
+  local: shared/defaults.yaml
+
+extra-source-files:
+  - changelog.md
+  - readme.md
+
+dependencies:
+  - Glob
+  - attoparsec
+  - chronos
+  - conduit-extra
+  - extra
+  - filepattern
+  - mono-traversable
+  - parsers
+  - raw-strings-qq
+  - regex-with-pcre
+  - stm-conduit
+  - string-interpolate
+
+library:
+  source-dirs: lib
+  other-modules: Prelude
+  generated-other-modules: Paths_proteome
+
+executables:
+  proteome:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - name: proteome
+        mixin:
+          - hiding (Proteome.Prelude)
+          - (Proteome.Prelude as Prelude)
