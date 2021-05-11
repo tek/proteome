@@ -6,27 +6,8 @@ It provides project-specific configuration file loading and performs runtime tas
 
 # Install
 
-There are two alternative methods for integrating this plugin into your Neovim.
-In both cases, the plugin will bootstrap your machine with [stack] and install itself on startup, as well as rebuild
-when the repository is updated.
-
-**Note** that at the moment, most of the plugin's functionality is dependent on using the **chromatin** installation method.
-
-## nvim-hs
-
-The basic variant is to use the built-in package management facility of the rplugin provider.
-In this case, you have to include [nvim-hs.vim]:
-
-```vim
-Plug 'neovimhaskell/nvim-hs.vim'
-Plug 'tek/proteome'
-```
-
-## chromatin
-
-The author maintains a manager for [ribosome]-based plugins called [chromatin] that has additional features.
-You will be presented with a terminal buffer containing the output of the installation routines whenever something is
-built.
+This plugin depends on the Haskell plugin manager [chromatin] and [nix].
+To install, request both *chromatin* and *proteome* from your Neovim plugin manager:
 
 ```vim
 Plug 'tek/chromatin'
@@ -276,4 +257,4 @@ command! Rm ProRemove
 [chromatin]: https://github.com/tek/chromatin
 [nvim-hs]: https://github.com/neovimhaskell/nvim-hs
 [nvim-hs.vim]: https://github.com/neovimhaskell/nvim-hs.vim
-[stack]: https://docs.haskellstack.org/en/stable/README
+[nix]: https://nixos.org
