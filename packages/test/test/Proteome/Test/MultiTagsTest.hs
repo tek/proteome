@@ -1,7 +1,7 @@
 module Proteome.Test.MultiTagsTest where
 
 import Hedgehog ((===))
-import Path (parseAbsDir, parseRelDir, relfile, toFilePath, (</>))
+import Path (File, Rel, parseAbsDir, parseRelDir, relfile, toFilePath, (</>))
 import Path.IO (doesFileExist)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Nvim.Api.IO (bufferGetOption, vimGetCurrentBuffer)
@@ -10,8 +10,8 @@ import Ribosome.Test.Unit (tempDir)
 
 import Proteome.Add (proAdd)
 import Proteome.BufEnter (bufEnter)
-import Proteome.Data.AddOptions (AddOptions(AddOptions))
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Data.AddOptions (AddOptions (AddOptions))
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
 import qualified Proteome.Settings as Settings (projectConfig, tagsArgs, tagsCommand, tagsFork)
 import Proteome.Tags (proTags)
 import Proteome.Test.Config (vars)

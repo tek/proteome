@@ -1,7 +1,7 @@
 module Proteome.Test.FilenameTest where
 
 import Hedgehog ((===))
-import Path (File, Path, Rel, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>))
+import Path (Dir, File, Path, Rel, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>))
 import Path.IO (doesFileExist, getCurrentDir, listDir)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Config.Setting (updateSetting)

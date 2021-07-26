@@ -1,7 +1,7 @@
 module Proteome.Test.AddFTest where
 
 import qualified Data.Map as Map (fromList)
-import Path (parseAbsDir, reldir, (</>))
+import Path (Dir, Rel, parseAbsDir, reldir, (</>))
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Control.Ribosome (newRibosome)
 import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand, vimSetVar)
@@ -11,7 +11,7 @@ import Ribosome.Test.Run (UnitTest)
 import Ribosome.Test.Unit (fixture)
 
 import Proteome.Data.Env (Proteome)
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
 import Proteome.Plugin (plugin')
 import Proteome.Test.Unit (ProteomeTest)
 

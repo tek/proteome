@@ -9,7 +9,9 @@ import Hedgehog ((===))
 import Path (
   Abs,
   Dir,
+  File,
   Path,
+  Rel,
   isProperPrefixOf,
   parseAbsDir,
   parseAbsFile,
@@ -22,17 +24,17 @@ import Path.IO (createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName)
 import Ribosome.Config.Setting (updateSetting)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (abbreviated)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig), PromptFlag(StartInsert))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptFlag (StartInsert))
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
-import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
+import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent (..))
 import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
 import Ribosome.Test.Run (UnitTest, unitTest)
-import Ribosome.Test.Tmux (tmuxSpecDef)
+import Ribosome.Test.Tmux (tmuxTestDef)
 import Ribosome.Test.Unit (fixture, tempDir)
 import Test.Tasty (TestTree, testGroup)
 import Text.RE.PCRE.Text (re)
 
-import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
+import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Files (filesWith)
 import Proteome.Files.Source (files)
 import qualified Proteome.Settings as Settings
@@ -110,7 +112,7 @@ filesCreateSpec = do
 
 test_filesCreate :: UnitTest
 test_filesCreate =
-  tmuxSpecDef filesCreateSpec
+  tmuxTestDef filesCreateSpec
 
 filesMultiDirSpec :: Bool -> UnitTest
 filesMultiDirSpec rg = do
