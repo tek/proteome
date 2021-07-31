@@ -268,6 +268,7 @@ move ::
   m ()
 move mod' = do
   relocate "move" mod' \ buf dest -> do
+    vimCommand "silent write!"
     moveFile buf dest
     updateBuffer dest
 
