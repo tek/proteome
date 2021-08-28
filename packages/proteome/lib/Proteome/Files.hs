@@ -16,25 +16,25 @@ import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Config.Setting (setting)
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
-import Ribosome.Data.Setting (Setting(Setting))
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
+import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Action (menuContinue, menuQuitWith, menuUpdatePrompt)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.Prompt (Prompt(Prompt))
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag(StartInsert, OnlyInsert))
+import Ribosome.Menu.Prompt.Data.Prompt (Prompt (Prompt))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag (OnlyInsert, StartInsert))
 import Ribosome.Menu.Run (nvimMenu)
 import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimGetOption)
 import Text.RE.PCRE.Text (RE, compileRegex)
 
-import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
+import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Data.FilesError (FilesError)
-import qualified Proteome.Data.FilesError as FilesError (FilesError(..))
+import qualified Proteome.Data.FilesError as FilesError (FilesError (..))
 import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
 import qualified Proteome.Settings as Settings
@@ -254,7 +254,11 @@ filesWith promptConfig cwd paths = do
     absPaths =
       mapMaybe (parsePath cwd) paths
     scratchOptions =
-      scratchSyntax [filesSyntax] . defaultScratchOptions $ "proteome-files"
+      def {
+        _name = "proteome-files",
+        _syntax = [filesSyntax],
+        _filetype = Just "proteome.files"
+      }
     handler =
       defaultMenu (Map.fromList (actions nePaths))
 

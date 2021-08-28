@@ -10,11 +10,11 @@ import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Config.Setting (settingOr)
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
-import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
@@ -41,7 +41,7 @@ import Ribosome.Nvim.Api.IO (
 import Proteome.Buffers.Syntax (buffersSyntax)
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (buffers)
-import Proteome.Data.ListedBuffer (ListedBuffer(ListedBuffer))
+import Proteome.Data.ListedBuffer (ListedBuffer (ListedBuffer))
 import qualified Proteome.Data.ListedBuffer as ListedBuffer (buffer, number)
 import qualified Proteome.Settings as Settings (buffersCurrentLast)
 
@@ -185,7 +185,11 @@ buffersWith promptConfig = do
   void $ strictNvimMenu scratchOptions bufs handler promptConfig Nothing
   where
     scratchOptions =
-      scratchSyntax [buffersSyntax] . defaultScratchOptions $ "proteome-buffers"
+      def {
+        _name = "proteome-buffers",
+        _syntax = [buffersSyntax],
+        _filetype = Just "proteome.buffers"
+      }
     handler =
       defaultMenu (Map.fromList actions)
 

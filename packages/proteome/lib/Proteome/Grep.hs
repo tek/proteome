@@ -11,14 +11,14 @@ import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Register (setregLine)
 import Ribosome.Api.Window (setCurrentCursor)
 import Ribosome.Config.Setting (setting)
-import qualified Ribosome.Data.Register as Register (Register(Special))
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSize, scratchSyntax)
+import qualified Ribosome.Data.Register as Register (Register (Special))
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu.Action (menuContinue, menuQuitWith)
 import Ribosome.Menu.Data.Menu (Menu)
 import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
+import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Ribosome.Menu.Prompt (defaultPrompt)
 import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
@@ -29,8 +29,8 @@ import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
 
 import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
-import qualified Proteome.Data.GrepError as GrepError (GrepError(EmptyPattern))
-import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyPattern))
+import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.ReplaceError (ReplaceError)
 import Proteome.Grep.Line (uniqueGrepLines)
 import Proteome.Grep.Process (grepCmdline, grepMenuItems)
@@ -147,7 +147,12 @@ proGrepWith promptConfig path patt opt = do
   void $ nvimMenu scratchOptions items handler promptConfig Nothing
   where
     scratchOptions =
-      scratchSize 1 . scratchSyntax [grepSyntax] . defaultScratchOptions $ "proteome-grep"
+      def {
+        _name = "proteome-grep",
+        _syntax = [grepSyntax],
+        _size = Just 1,
+        _filetype = Just "proteome.grep"
+      }
     handler =
       defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult), ("d", deleteResult)])
 

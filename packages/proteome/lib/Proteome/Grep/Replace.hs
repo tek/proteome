@@ -7,10 +7,10 @@ import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
 import Ribosome.Api.Window (closeWindow)
-import Ribosome.Data.FloatOptions (FloatOptions(FloatOptions))
-import Ribosome.Data.Scratch (Scratch(Scratch))
-import qualified Ribosome.Data.Scratch as Scratch (Scratch(scratchBuffer))
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchFocus, scratchModify)
+import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
+import Ribosome.Data.Scratch (Scratch (Scratch))
+import qualified Ribosome.Data.Scratch as Scratch (Scratch (scratchBuffer))
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Menu.Data.MenuItem (MenuItem)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Msgpack.Error (DecodeError)
@@ -20,11 +20,11 @@ import Ribosome.Scratch (createFloat, showInScratch)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (replace)
-import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
+import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
 import qualified Proteome.Data.GrepOutputLine as GrepOutputLine (content)
-import Proteome.Data.Replace (Replace(Replace))
+import Proteome.Data.Replace (Replace (Replace))
 import Proteome.Data.ReplaceError (ReplaceError)
-import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError(BadReplacement, CouldntLoadBuffer))
+import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
 
 scratchName :: Text
 scratchName =
@@ -51,7 +51,12 @@ replaceBuffer items = do
     lines' =
       view MenuItem.meta <$> items
     options =
-      scratchModify . scratchFocus . defaultScratchOptions $ scratchName
+      def {
+        _name = scratchName,
+        _modify = True,
+        _focus = True,
+        _filetype = Just "proteome.replace"
+      }
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.
 -- First check whether the line number of the deleted line was line 0 and its content is now empty.
@@ -107,7 +112,7 @@ lineNumberDesc (_, GrepOutputLine _ number _ _) =
 
 replaceFloatOptions :: FloatOptions
 replaceFloatOptions =
-  FloatOptions def 1 1 0 0 True def Nothing
+  FloatOptions def 1 1 0 0 True def Nothing def False
 
 withReplaceFloat ::
   NvimE e m =>
