@@ -5,15 +5,14 @@
 
   outputs = { ribosome, ... }:
   let
-    inherit (ribosome.inputs) chiasma;
-    inherit (chiasma.inputs) hix;
+    inherit (ribosome.inputs) chiasma hix;
     overrides = { hackage, source, minimal, configure, pkgs, ... }: {
       cornea = hackage "0.4.0.0" "1w9rkf6f861kknkskywb8fczlk7az8m56i3hvmg6a5inpvqf6p7i";
       chiasma = source.package chiasma "chiasma";
       proteome-test = drv: drv.overrideAttrs (old: {
         buildInputs = old.buildInputs ++ [pkgs.neovim pkgs.tmux pkgs.ripgrep];
       });
-      ribosome = configure "--extra-prog-path=${pkgs.neovim}/bin" (minimal (source.package ribosome "ribosome"));
+      ribosome = configure "--extra-prog-path=${pkgs.neovim}/bin" (source.package ribosome "ribosome");
       ribosome-test = minimal (source.package ribosome "test");
     };
 
