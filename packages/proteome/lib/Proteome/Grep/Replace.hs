@@ -55,7 +55,7 @@ replaceBuffer items = do
         _name = scratchName,
         _modify = True,
         _focus = True,
-        _filetype = Just "proteome.replace"
+        _filetype = Just scratchName
       }
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.

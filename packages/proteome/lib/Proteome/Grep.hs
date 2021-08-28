@@ -148,11 +148,13 @@ proGrepWith promptConfig path patt opt = do
   where
     scratchOptions =
       def {
-        _name = "proteome-grep",
+        _name = name,
         _syntax = [grepSyntax],
         _size = Just 1,
-        _filetype = Just "proteome.grep"
+        _filetype = Just name
       }
+    name =
+      "proteome-grep"
     handler =
       defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult), ("d", deleteResult)])
 

@@ -255,10 +255,12 @@ filesWith promptConfig cwd paths = do
       mapMaybe (parsePath cwd) paths
     scratchOptions =
       def {
-        _name = "proteome-files",
+        _name = name,
         _syntax = [filesSyntax],
-        _filetype = Just "proteome.files"
+        _filetype = Just name
       }
+    name =
+      "proteome-files"
     handler =
       defaultMenu (Map.fromList (actions nePaths))
 

@@ -186,10 +186,12 @@ buffersWith promptConfig = do
   where
     scratchOptions =
       def {
-        _name = "proteome-buffers",
+        _name = name,
         _syntax = [buffersSyntax],
-        _filetype = Just "proteome.buffers"
+        _filetype = Just name
       }
+    name =
+      "proteome-buffers"
     handler =
       defaultMenu (Map.fromList actions)
 
