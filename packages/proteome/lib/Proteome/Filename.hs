@@ -5,6 +5,7 @@ import Control.Monad (foldM)
 import Control.Monad.Catch (MonadThrow)
 import Data.MessagePack (Object)
 import qualified Data.Text as Text
+import Neovim (CommandArguments (CommandArguments))
 import Path (
   Abs,
   Dir,
@@ -50,7 +51,7 @@ data Modification =
 
 dotsInPath :: Text -> Int
 dotsInPath path =
-  Text.length (Text.filter (== '.') path)
+  Text.length (Text.filter (== '.') (Text.drop 1 path))
 
 absoluteDir :: Text -> Maybe Modification
 absoluteDir =
@@ -126,29 +127,35 @@ extensions num path =
 
 renameInplace ::
   MonadDeepError e FilenameError m =>
+  Bool ->
   Path Abs File ->
   Path Rel File ->
   Int ->
   m (Path Abs File)
-renameInplace bufPath newName dots = do
-  withExt <- hoistMaybe FilenameError.BufferPathInvalid (foldM (flip addExtension) newName extraExtensions)
-  pure ((parent bufPath) </> withExt)
+renameInplace handleExtension bufPath newName dots = do
+  withExt <- if handleExtension then withExtension else pure newName
+  pure (parent bufPath </> withExt)
   where
+    withExtension =
+      hoistMaybe FilenameError.BufferPathInvalid (foldM (flip addExtension) newName extraExtensions)
     extraExtensions =
-      extensions diffDots (filename bufPath)
+      extensions diffDots bufName
     diffDots =
       bufDots - dots
     bufDots =
-      dotsInPath (pathText bufPath)
+      dotsInPath (pathText bufName)
+    bufName = 
+      filename bufPath
 
 assemblePath ::
   MonadDeepError e FilenameError m =>
+  Bool ->
   Path Abs File ->
   Modification ->
   m (Path Abs File)
-assemblePath bufPath = \case
+assemblePath handleExtension bufPath = \case
   Filename newName dots ->
-    renameInplace bufPath newName dots
+    renameInplace handleExtension bufPath newName dots
   Dir dir ->
     pure (dir </> (filename bufPath))
   File file ->
@@ -219,12 +226,13 @@ pathsForMod ::
   MonadIO m =>
   MonadBaseControl IO m =>
   MonadDeepError e FilenameError m =>
+  Bool ->
   Modification ->
   m (Path Abs File, Path Abs File)
-pathsForMod mod' = do
+pathsForMod handleExtension mod' = do
   cwd <- getCwd
   bufPath <- checkBufferPath cwd
-  path <- assemblePath bufPath mod'
+  path <- assemblePath handleExtension bufPath mod'
   prepareDestination path
   pure (bufPath, path)
 
@@ -242,12 +250,13 @@ relocate ::
   MonadIO m =>
   MonadBaseControl IO m =>
   MonadDeepError e FilenameError m =>
+  Bool ->
   Text ->
   Modification ->
   (Path Abs File -> Path Abs File -> m ()) ->
   m ()
-relocate action mod' run = do
-  (bufPath, destPath) <- pathsForMod mod'
+relocate handleExtension action mod' run = do
+  (bufPath, destPath) <- pathsForMod handleExtension mod'
   tryHoistAny (FilenameError.ActionFailed action . show) (run bufPath destPath)
 
 moveFile ::
@@ -264,10 +273,11 @@ move ::
   MonadIO m =>
   MonadBaseControl IO m =>
   MonadDeepError e FilenameError m =>
+  Bool ->
   Modification ->
   m ()
-move mod' = do
-  relocate "move" mod' \ buf dest -> do
+move handleExtension mod' = do
+  relocate handleExtension "move" mod' \ buf dest -> do
     vimCommand "silent write!"
     moveFile buf dest
     updateBuffer dest
@@ -277,31 +287,34 @@ copy ::
   MonadIO m =>
   MonadBaseControl IO m =>
   MonadDeepError e FilenameError m =>
+  Bool ->
   Modification ->
   m ()
-copy mod' =
-  relocate "copy" mod' \ src dest -> do
+copy handleExtension mod' =
+  relocate handleExtension "copy" mod' \ src dest -> do
     copyFile src dest
     view :: Object <- vimCallFunction "winsaveview" []
     edit (toFilePath dest)
     vimCallFunction "winrestview" [view]
 
 proMove ::
+  CommandArguments ->
   Text ->
   Proteome ()
-proMove =
-  move <=< smartModification
+proMove (CommandArguments bang _ _ _) =
+  move (not (fromMaybe False bang)) <=< smartModification
 
 proCopy ::
+  CommandArguments ->
   Text ->
   Proteome ()
-proCopy =
-  copy <=< smartModification
+proCopy (CommandArguments bang _ _ _) =
+  copy (not (fromMaybe False bang)) <=< smartModification
 
 proRemove ::
   Proteome ()
 proRemove = do
-  move =<< trashModification
+  move False =<< trashModification
   buf <- vimGetCurrentBuffer
   ignoreError @RpcError do
     number <- bufferGetNumber buf

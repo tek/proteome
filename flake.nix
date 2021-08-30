@@ -26,6 +26,7 @@
     };
     main = "proteome";
     versionFile = "ops/hpack/packages/meta.yaml";
+    ghcid.easy-hls = false;
     runConfig = p: { extraShellInputs = [p.pkgs.neovim]; };
     modify = _: outputs: rec {
       apps.proteome = {
