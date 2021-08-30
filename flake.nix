@@ -12,7 +12,7 @@
       proteome-test = drv: drv.overrideAttrs (old: {
         buildInputs = old.buildInputs ++ [pkgs.neovim pkgs.tmux pkgs.ripgrep];
       });
-      ribosome = configure "--extra-prog-path=${pkgs.neovim}/bin" (source.package ribosome "ribosome");
+      ribosome = configure "--extra-prog-path=${pkgs.neovim}/bin" (minimal (source.package ribosome "ribosome"));
       ribosome-test = minimal (source.package ribosome "test");
     };
 
