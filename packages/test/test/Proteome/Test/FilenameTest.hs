@@ -1,9 +1,9 @@
 module Proteome.Test.FilenameTest where
 
 import Neovim (CommandArguments (bang))
-import Hedgehog ((===))
-import Path (Dir, File, Path, Rel, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>))
-import Path.IO (doesFileExist, getCurrentDir, listDir)
+import Hedgehog ((===), assert)
+import Path (Dir, File, Path, Rel, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>), parent)
+import Path.IO (doesFileExist, getCurrentDir, listDir, createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
@@ -30,12 +30,13 @@ filenameTest origRel changedRel origExist cmd = do
   let
     initial = base </> origRel
     changed = base </> changedRel
+  createDirIfMissing True (parent initial)
   edit (toFilePath initial)
   vimCommand "write"
   lift (cmd baseRel)
   vimCommand "write"
   (pathText changed ===) =<< currentBufferName
-  (True ===) =<< doesFileExist changed
+  assert =<< doesFileExist changed
   (origExist ===) =<< doesFileExist initial
 
 basic ::
@@ -98,6 +99,14 @@ test_multiExt :: UnitTest
 test_multiExt =
   tmuxTest multiExtTest
 
+renameDirTest :: ProteomeTest ()
+renameDirTest = do
+  filenameTest [relfile|dir1/dir2/file|] [relfile|dir3/dir2/file|] False \ _ -> proMove def "^^dir3"
+
+test_renameDir :: UnitTest
+test_renameDir =
+  tmuxTest renameDirTest
+
 copyRenameTest :: ProteomeTest ()
 copyRenameTest = do
   basic [relfile|Changed.hs|] True \ _ -> proCopy def "Changed"
@@ -134,6 +143,7 @@ test_filename =
     unitTest "rename a file with leading dot" test_moveDot,
     unitTest "rename a file without dot analysis" test_moveNoDots,
     unitTest "rename a file with three extensions" test_multiExt,
+    unitTest "rename a containing directory" test_renameDir,
     unitTest "copy a file" test_copyRename,
     unitTest "remove a file" test_remove
   ]

@@ -240,6 +240,11 @@ with `./`.
 If the old file name had an extension and the new one doesn't, the old
 extension is added.
 
+The special pattern that starts with a number of _N_ `^` characters causes the _Nth_ directory segment from the right to
+be replaced by what follows.
+For example, with a buffer path of `dir1/dir2/dir3/dir4/file`, the pattern `^^^new` will result in the path
+`dir1/new/dir3/dir4/file`.
+
 The command `ProRemove` moves the current file to a trash dir, located in
 `$XDG_CACHE_DIR/proteome/trash`.
 

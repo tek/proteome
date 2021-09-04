@@ -1,21 +1,21 @@
 module Proteome.Test.Unit where
 
-import Chiasma.Native.Api (TmuxNative(TmuxNative))
+import Chiasma.Native.Api (TmuxNative (TmuxNative))
+import Hedgehog (TestT)
 import Neovim.Plugin (Plugin)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (tmuxSocket)
+import Ribosome.Control.Ribosome (Ribosome)
 import qualified Ribosome.Test.Embed as Ribosome (integrationTest)
+import Ribosome.Test.Embed (TestConfig, Vars)
 import Ribosome.Test.Orphans ()
 import qualified Ribosome.Test.Tmux as Ribosome (tmuxGuiTest, tmuxTest)
+import Ribosome.Test.Tmux (RiboTesting)
+import Ribosome.Test.Unit (unitTest)
 
 import Proteome.Data.Env (Env, Proteome)
-import Proteome.Test.Config (defaultTestConfig, defaultTestConfigWith, withVars)
-import Hedgehog (TestT)
 import Proteome.Data.Error (Error)
-import Ribosome.Test.Tmux (RiboTesting)
-import Ribosome.Control.Ribosome (Ribosome)
-import Ribosome.Test.Embed (TestConfig, Vars)
-import Ribosome.Test.Unit (unitTest)
+import Proteome.Test.Config (defaultTestConfig, defaultTestConfigWith, withVars)
 
 type ProteomeTest a =
   TestT (Ribo Env Error) a

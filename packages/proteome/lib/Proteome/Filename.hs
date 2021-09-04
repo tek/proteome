@@ -13,9 +13,11 @@ import Path (
   Path,
   Rel,
   addExtension,
+  dirname,
   filename,
   parent,
   parseAbsDir,
+  parseRelDir,
   reldir,
   splitExtension,
   toFilePath,
@@ -47,6 +49,8 @@ data Modification =
   Dir (Path Abs Dir)
   |
   File (Path Abs File)
+  |
+  Container Int (Path Rel Dir)
   deriving (Eq, Show)
 
 dotsInPath :: Text -> Int
@@ -84,13 +88,13 @@ maybeDir ::
 maybeDir cwd spec =
   fromMaybe False <$> traverse doesDirExist (absoluteParseDir cwd spec)
 
-modification ::
+regularModification ::
   MonadIO m =>
   MonadDeepError e FilenameError m =>
   Path Abs Dir ->
   Text ->
   m Modification
-modification cwd (Text.strip -> spec) = do
+regularModification cwd spec = do
   existingDir <- maybeDir cwd spec
   hoistMaybe (FilenameError.InvalidPathSpec spec) (cons existingDir spec)
   where
@@ -105,6 +109,25 @@ modification cwd (Text.strip -> spec) = do
       Text.take 1 spec == "/"
     explicitDir =
       Text.takeEnd 1 spec == "/"
+
+directorySelector :: Text -> (Int, Text)
+directorySelector =
+  first Text.length . Text.span ('^' ==)
+
+modification ::
+  MonadIO m =>
+  MonadDeepError e FilenameError m =>
+  Bool ->
+  Path Abs Dir ->
+  Text ->
+  m Modification
+modification raw cwd (Text.strip -> spec) =
+  case directorySelector spec of
+    (n, _) | n == 0 || raw ->
+      regularModification cwd spec
+    (n, name) -> do
+      dir <- hoistMaybe (FilenameError.InvalidPathSpec name) (parseRelDir (toString name))
+      pure (Container n dir)
 
 checkBufferPath ::
   NvimE e m =>
@@ -132,8 +155,8 @@ renameInplace ::
   Path Rel File ->
   Int ->
   m (Path Abs File)
-renameInplace handleExtension bufPath newName dots = do
-  withExt <- if handleExtension then withExtension else pure newName
+renameInplace raw bufPath newName dots = do
+  withExt <- if raw then pure newName else withExtension
   pure (parent bufPath </> withExt)
   where
     withExtension =
@@ -147,19 +170,39 @@ renameInplace handleExtension bufPath newName dots = do
     bufName = 
       filename bufPath
 
+replaceDir ::
+  MonadDeepError e FilenameError m =>
+  Int ->
+  Path Rel Dir ->
+  Path Abs File ->
+  m (Path Abs File)
+replaceDir index name file = do
+  dir <- spin (parent file) index
+  pure (dir </> filename file)
+  where
+    spin d _ | parent d == d =
+      throwHoist (FilenameError.InvalidPathSpec "not enough directory segments in buffer path")
+    spin d i | i <= 1 =
+      pure (parent d </> name)
+    spin d i = do
+      sub <- spin (parent d) (i - 1)
+      pure (sub </> dirname d)
+
 assemblePath ::
   MonadDeepError e FilenameError m =>
   Bool ->
   Path Abs File ->
   Modification ->
   m (Path Abs File)
-assemblePath handleExtension bufPath = \case
+assemblePath raw bufPath = \case
   Filename newName dots ->
-    renameInplace handleExtension bufPath newName dots
+    renameInplace raw bufPath newName dots
   Dir dir ->
-    pure (dir </> (filename bufPath))
+    pure (dir </> filename bufPath)
   File file ->
     pure file
+  Container index name ->
+    replaceDir index name bufPath
 
 ensureDestinationEmpty ::
   MonadIO m =>
@@ -196,11 +239,12 @@ smartModification ::
   NvimE e m =>
   MonadIO m =>
   MonadDeepError e FilenameError m =>
+  Bool ->
   Text ->
   m Modification
-smartModification spec = do
+smartModification raw spec = do
   cwd <- getCwd
-  modification cwd spec
+  modification raw cwd spec
 
 trashModification ::
   NvimE e m =>
@@ -229,10 +273,10 @@ pathsForMod ::
   Bool ->
   Modification ->
   m (Path Abs File, Path Abs File)
-pathsForMod handleExtension mod' = do
+pathsForMod raw mod' = do
   cwd <- getCwd
   bufPath <- checkBufferPath cwd
-  path <- assemblePath handleExtension bufPath mod'
+  path <- assemblePath raw bufPath mod'
   prepareDestination path
   pure (bufPath, path)
 
@@ -255,8 +299,8 @@ relocate ::
   Modification ->
   (Path Abs File -> Path Abs File -> m ()) ->
   m ()
-relocate handleExtension action mod' run = do
-  (bufPath, destPath) <- pathsForMod handleExtension mod'
+relocate raw action mod' run = do
+  (bufPath, destPath) <- pathsForMod raw mod'
   tryHoistAny (FilenameError.ActionFailed action . show) (run bufPath destPath)
 
 moveFile ::
@@ -276,8 +320,8 @@ move ::
   Bool ->
   Modification ->
   m ()
-move handleExtension mod' = do
-  relocate handleExtension "move" mod' \ buf dest -> do
+move raw mod' = do
+  relocate raw "move" mod' \ buf dest -> do
     vimCommand "silent write!"
     moveFile buf dest
     updateBuffer dest
@@ -290,8 +334,8 @@ copy ::
   Bool ->
   Modification ->
   m ()
-copy handleExtension mod' =
-  relocate handleExtension "copy" mod' \ src dest -> do
+copy raw mod' =
+  relocate raw "copy" mod' \ src dest -> do
     copyFile src dest
     view :: Object <- vimCallFunction "winsaveview" []
     edit (toFilePath dest)
@@ -302,14 +346,20 @@ proMove ::
   Text ->
   Proteome ()
 proMove (CommandArguments bang _ _ _) =
-  move (not (fromMaybe False bang)) <=< smartModification
+  move raw <=< smartModification raw
+  where
+    raw =
+      fromMaybe False bang
 
 proCopy ::
   CommandArguments ->
   Text ->
   Proteome ()
 proCopy (CommandArguments bang _ _ _) =
-  copy (not (fromMaybe False bang)) <=< smartModification
+  copy raw <=< smartModification raw
+  where
+    raw =
+      fromMaybe False bang
 
 proRemove ::
   Proteome ()
