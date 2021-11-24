@@ -8,6 +8,6 @@ data ListedBuffer =
     _number :: Int,
     _name :: Text
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 makeClassy 'ListedBuffer

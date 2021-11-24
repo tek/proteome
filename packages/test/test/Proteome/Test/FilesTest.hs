@@ -1,8 +1,7 @@
 module Proteome.Test.FilesTest where
 
-import Conduit (ConduitT, runConduit, sinkList, yield, yieldMany, (.|))
 import Control.Lens (view)
-import qualified Data.Conduit.Combinators as Conduit (concat)
+import Control.Monad.Catch (MonadThrow)
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Set as Set (fromList)
 import Hedgehog ((===))
@@ -23,14 +22,16 @@ import Path (
 import Path.IO (createDirIfMissing)
 import Ribosome.Api.Buffer (currentBufferName)
 import Ribosome.Config.Setting (updateSetting)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (abbreviated)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptFlag (StartInsert))
-import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
-import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent (..))
-import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptFlag (StartInsert), PromptInput (PromptInput))
+import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
+import Ribosome.Menu.Prompt.Run (noPromptRenderer)
+import Ribosome.Menu.Prompt.Transition (basicTransition)
 import Ribosome.Test.Run (UnitTest, unitTest)
 import Ribosome.Test.Tmux (tmuxTestDef)
 import Ribosome.Test.Unit (fixture, tempDir)
+import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
+import Streamly.Prelude (serial)
 import Test.Tasty (TestTree, testGroup)
 import Text.RE.PCRE.Text (re)
 
@@ -43,21 +44,26 @@ import Proteome.Test.Unit (ProteomeTest, testDef)
 promptInput ::
   MonadIO m =>
   [Text] ->
-  ConduitT () PromptEvent m ()
+  PromptInput m
 promptInput chars' =
-  sleep 0.1 *>
-  yieldMany (PromptEvent.Character <$> chars')
+  PromptInput \ _ ->
+    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
 
 slowPromptInput ::
   MonadIO m =>
+  MonadBaseControl IO m =>
+  MonadThrow m =>
   [Text] ->
-  ConduitT () PromptEvent m ()
+  PromptInput m
 slowPromptInput chars' =
-  sleep 0.1 *>
-  traverse_ send (PromptEvent.Character <$> chars')
+  PromptInput \ _ ->
+    serial (Streamly.nilM (sleep 0.1)) (Streamly.unfoldrM send chars')
   where
-    send c =
-      sleep 0.1 *> yield c
+    send = \case
+      c : cs ->
+        Just (PromptInputEvent.Character c, cs) <$ sleep 0.1
+      [] ->
+        pure Nothing
 
 promptConfig ::
   MonadIO m =>
@@ -74,8 +80,8 @@ editChars :: [Text]
 editChars =
   ["k", "k", "k", "cr"]
 
-filesEditSpec :: ProteomeTest ()
-filesEditSpec = do
+filesEditTest :: ProteomeTest ()
+filesEditTest = do
   updateSetting Settings.filesUseRg False
   dir <- parseAbsDir =<< fixture "files"
   filesWith (promptConfig editChars) dir (toText . toFilePath <$> NonEmpty.toList (paths dir))
@@ -83,7 +89,7 @@ filesEditSpec = do
 
 test_filesEdit :: UnitTest
 test_filesEdit =
-  testDef filesEditSpec
+  testDef filesEditTest
 
 conf :: FilesConfig
 conf =
@@ -92,14 +98,14 @@ conf =
 test_filesExclude :: UnitTest
 test_filesExclude = do
   dir <- parseAbsDir =<< fixture "files"
-  (3 ===) . length =<< runConduit (files conf (paths dir) .| Conduit.concat .| sinkList)
+  (3 ===) . length =<< Streamly.toList (files conf (paths dir))
 
 createChars :: [Text]
 createChars =
   ["p", "tab", "t", "tab", "d", "tab", "f", "i", "l", "e", "c-y"]
 
-filesCreateSpec :: ProteomeTest ()
-filesCreateSpec = do
+filesCreateTest :: ProteomeTest ()
+filesCreateTest = do
   updateSetting Settings.filesUseRg False
   base <- parseAbsDir =<< tempDir "files/create"
   let targetDir = base </> [reldir|path/to/dir|]
@@ -112,10 +118,10 @@ filesCreateSpec = do
 
 test_filesCreate :: UnitTest
 test_filesCreate =
-  tmuxTestDef filesCreateSpec
+  tmuxTestDef filesCreateTest
 
-filesMultiDirSpec :: Bool -> UnitTest
-filesMultiDirSpec rg = do
+filesMultiDirTest :: Bool -> UnitTest
+filesMultiDirTest rg = do
   dir1 <- parseAbsDir =<< tempDir "files/multi/dir1"
   dir2 <- parseAbsDir =<< tempDir "files/multi/dir2"
   createDirIfMissing True dir1
@@ -124,7 +130,7 @@ filesMultiDirSpec rg = do
   writeFile (toFilePath (dir2 </> [relfile|file2|])) "content"
   writeFile (toFilePath (dir1 </> [relfile|file.foo|])) "content"
   writeFile (toFilePath (dir1 </> [relfile|file.bar|])) "content"
-  fs <- fmap (view MenuItem.abbreviated) . join <$> runConduit (files conf' (dir1 :| [dir2]) .| sinkList)
+  fs <- fmap (view MenuItem.truncated) <$> Streamly.toList (files conf' (dir1 :| [dir2]))
   target === Set.fromList fs
   where
     conf' =
@@ -134,11 +140,11 @@ filesMultiDirSpec rg = do
 
 test_filesMultiDirNative :: UnitTest
 test_filesMultiDirNative =
-  filesMultiDirSpec False
+  filesMultiDirTest False
 
 test_filesMultiDirRg :: UnitTest
 test_filesMultiDirRg =
-  filesMultiDirSpec True
+  filesMultiDirTest True
 
 test_files :: TestTree
 test_files =

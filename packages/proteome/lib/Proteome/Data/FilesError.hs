@@ -14,7 +14,7 @@ data FilesError =
   InvalidFilePath Text
   |
   CouldntCreateDir Text
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 deepPrisms ''FilesError
 

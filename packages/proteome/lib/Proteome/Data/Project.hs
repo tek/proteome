@@ -1,8 +1,8 @@
 module Proteome.Data.Project where
 
-import Proteome.Data.ProjectLang (ProjectLang(ProjectLang))
+import Proteome.Data.ProjectLang (ProjectLang (ProjectLang))
 import Proteome.Data.ProjectMetadata (ProjectMetadata)
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 
 data Project =
   Project {
@@ -11,7 +11,8 @@ data Project =
     _lang :: Maybe ProjectLang,
     _langs :: [ProjectLang]
   }
-  deriving (Eq, Show, Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)
 
 makeClassy ''Project
 

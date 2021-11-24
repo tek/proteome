@@ -1,16 +1,17 @@
 module Proteome.Test.ReplaceTest where
 
-import Conduit (ConduitT, yieldMany)
 import qualified Data.Text as Text (replace)
 import Hedgehog (TestT, (===))
 import Ribosome.Api.Buffer (buflisted, currentBufferContent, setCurrentBufferContent)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
-import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
-import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
-import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
+import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
+import Ribosome.Menu.Prompt.Run (noPromptRenderer)
+import Ribosome.Menu.Prompt.Transition (basicTransition)
 import Ribosome.Nvim.Api.IO (vimGetBuffers)
 import Ribosome.Test.Run (UnitTest)
 import Ribosome.Test.Unit (tempDir)
+import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
+import Streamly.Prelude (serial)
 import Text.RE.PCRE.Text (ed, (*=~/))
 
 import Proteome.Grep (proGrepWith)
@@ -20,10 +21,10 @@ import Proteome.Test.Unit (ProteomeTest, tmuxTest)
 promptInput ::
   MonadIO m =>
   [Text] ->
-  ConduitT () PromptEvent m ()
+  PromptInput m
 promptInput chars' =
-  sleep 0.1 *>
-  yieldMany (PromptEvent.Character <$> chars')
+  PromptInput \ _ ->
+    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
 
 promptConfig ::
   MonadIO m =>
@@ -122,7 +123,7 @@ grepReplaceTest = do
   writeFile (dir <> "/file3") (toString $ unlines file3Lines)
   proGrepWith (promptConfig replaceChars) (toText dir) pat []
   replaceContent <- currentBufferContent
-  (7 ===) (length replaceContent)
+  7 === length replaceContent
   setCurrentBufferContent $ (*=~/ [ed|^delete me.*$///|]) . Text.replace pat replacement <$> replaceContent
   proReplaceSave
   proReplaceQuit

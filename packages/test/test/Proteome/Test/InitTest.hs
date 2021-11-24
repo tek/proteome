@@ -5,8 +5,8 @@ import Ribosome.Config.Setting (setting)
 import Ribosome.Nvim.Api.IO (vimCommand, vimGetVar)
 import Ribosome.Test.Run (UnitTest)
 
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Init (proteomeStage2, resolveAndInitMain)
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Config (vars)

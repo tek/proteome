@@ -10,4 +10,5 @@ data ActiveProject =
     tpe :: ProjectType,
     lang :: Maybe ProjectLang
   }
-  deriving (Eq, Show, Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)

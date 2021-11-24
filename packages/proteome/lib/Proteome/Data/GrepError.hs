@@ -14,7 +14,7 @@ data GrepError =
   NoSuchDestination Text
   |
   EmptyPattern
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 deepPrisms ''GrepError
 

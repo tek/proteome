@@ -26,6 +26,7 @@ data Error =
   Files FilesError
   |
   Filename FilenameError
-  deriving (Show, Generic, ReportError)
+  deriving stock (Show, Generic)
+  deriving anyclass (ReportError)
 
 deepPrisms ''Error

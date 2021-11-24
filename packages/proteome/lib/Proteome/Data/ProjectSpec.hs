@@ -14,4 +14,5 @@ data ProjectSpec =
     lang :: Maybe ProjectLang,
     langs :: [ProjectLang]
   }
-  deriving (Show, Eq, Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)

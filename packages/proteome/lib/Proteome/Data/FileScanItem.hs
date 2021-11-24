@@ -8,4 +8,4 @@ data FileScanItem =
     _baseIndicator :: Maybe Text,
     _path :: Path Abs File
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)

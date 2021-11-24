@@ -51,7 +51,7 @@ data Modification =
   File (Path Abs File)
   |
   Container Int (Path Rel Dir)
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 dotsInPath :: Text -> Int
 dotsInPath path =
@@ -167,7 +167,7 @@ renameInplace raw bufPath newName dots = do
       bufDots - dots
     bufDots =
       dotsInPath (pathText bufName)
-    bufName = 
+    bufName =
       filename bufPath
 
 replaceDir ::

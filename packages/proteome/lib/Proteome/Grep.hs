@@ -1,9 +1,7 @@
 module Proteome.Grep where
 
-import Conduit (ConduitT, runConduit, sinkList, (.|))
 import Control.Lens (view)
-import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Trans.Resource (MonadResource)
+import Control.Monad.Catch (MonadCatch)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
 import Ribosome.Api.Buffer (edit)
@@ -14,25 +12,25 @@ import Ribosome.Config.Setting (setting)
 import qualified Ribosome.Data.Register as Register (Register (Special))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Menu.Action (menuContinue, menuQuitWith)
-import Ribosome.Menu.Data.Menu (Menu)
-import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
+import qualified Ribosome.Menu.Consumer as Consumer
+import Ribosome.Menu.Data.MenuConsumer (MenuWidget)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
+import Ribosome.Menu.Items (withFocusM, withSelectionM)
 import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
 import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, markedMenuItems, selectedMenuItem)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand)
+import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
+import Streamly.Prelude (IsStream, SerialT)
 
 import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyPattern))
+import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.ReplaceError (ReplaceError)
-import Proteome.Grep.Line (uniqueGrepLines)
 import Proteome.Grep.Process (grepCmdline, grepMenuItems)
 import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
@@ -52,29 +50,21 @@ navigate path line col = do
 
 selectResult ::
   NvimE e m =>
-  Menu GrepOutputLine ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu GrepOutputLine)
-selectResult menu _ =
-  check $ selectedMenuItem menu
-  where
-    check (Just (MenuItem (GrepOutputLine path line col _) _ _)) =
-      menuQuitWith (navigate path line col) menu
-    check Nothing =
-      menuContinue menu
+  MonadIO m =>
+  MonadBaseControl IO m =>
+  MenuWidget m GrepOutputLine ()
+selectResult = do
+  withFocusM \ (GrepOutputLine path line col _) ->
+    navigate path line col
 
 yankResult ::
   NvimE e m =>
-  Menu GrepOutputLine ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu GrepOutputLine)
-yankResult menu _ =
-  check $ selectedMenuItem menu
-  where
-    check (Just (MenuItem (GrepOutputLine _ _ _ text') _ _)) =
-      menuQuitWith (setregLine (Register.Special "\"") [text']) menu
-    check Nothing =
-      menuContinue menu
+  MonadIO m =>
+  MonadBaseControl IO m =>
+  MenuWidget m GrepOutputLine ()
+yankResult =
+  withFocusM \ (GrepOutputLine _ _ _ txt) ->
+    setregLine (Register.Special "\"") [txt]
 
 replaceResult ::
   NvimE e m =>
@@ -82,16 +72,9 @@ replaceResult ::
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
-  Menu GrepOutputLine ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu GrepOutputLine)
-replaceResult menu _ =
-  check (markedMenuItems menu) menu
-  where
-    check (Just items) =
-      menuQuitWith (replaceBuffer items)
-    check Nothing =
-      menuContinue
+  MenuWidget m GrepOutputLine ()
+replaceResult =
+  withSelectionM replaceBuffer
 
 deleteResult ::
   NvimE e m =>
@@ -99,38 +82,78 @@ deleteResult ::
   MonadBaseControl IO m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e ReplaceError m =>
-  Menu GrepOutputLine ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu GrepOutputLine)
-deleteResult menu _ =
-  check (markedMenuItems menu) menu
+  MenuWidget m GrepOutputLine ()
+deleteResult =
+  withSelectionM (deleteLines . toList)
+
+menuItemSameLine :: MenuItem GrepOutputLine -> MenuItem GrepOutputLine -> Bool
+menuItemSameLine (MenuItem l _ _) (MenuItem r _ _) =
+  GrepOutputLine.sameLine l r
+
+uniqBy ::
+  Monad m =>
+  IsStream t =>
+  (a -> a -> Bool) ->
+  t m a ->
+  t m a
+uniqBy f =
+  Streamly.catMaybes .
+  Streamly.smapM (flip check) (pure Nothing)
   where
-    check (Just items) =
-      menuQuitWith (deleteLines (MenuItem._meta <$> toList items))
-    check Nothing =
-      menuContinue
+    check new =
+      pure . \case
+        Just old | f old new ->
+          (Just old, Nothing)
+        Just _ ->
+          (Just new, Just new)
+        Nothing ->
+          (Just new, Just new)
+
+uniqueGrepLines ::
+  Monad m =>
+  IsStream t =>
+  t m (MenuItem GrepOutputLine) ->
+  t m (MenuItem GrepOutputLine)
+uniqueGrepLines =
+  uniqBy menuItemSameLine
 
 grepItems ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
+  MonadCatch m =>
+  MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e SettingError m =>
   Text ->
   Text ->
   [Text] ->
-  m (ConduitT () [MenuItem GrepOutputLine] m ())
+  m (SerialT m (MenuItem GrepOutputLine))
 grepItems path patt opt = do
   grepper <- setting Settings.grepCmdline
   cwd <- toText <$> nvimCwd
   (exe, args) <- grepCmdline grepper patt cwd path opt
-  pure (grepMenuItems cwd exe args .| uniqueGrepLines)
+  pure (uniqueGrepLines (grepMenuItems cwd exe args))
+
+actions ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  MonadDeepState s Env m =>
+  MonadDeepError e DecodeError m =>
+  MonadDeepError e ReplaceError m =>
+  [(Text, MenuWidget m GrepOutputLine ())]
+actions =
+  [
+    ("cr", selectResult),
+    ("y", yankResult),
+    ("r", replaceResult),
+    ("d", deleteResult)
+  ]
 
 proGrepWith ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
@@ -144,7 +167,7 @@ proGrepWith ::
   m ()
 proGrepWith promptConfig path patt opt = do
   items <- grepItems path patt opt
-  void $ nvimMenu scratchOptions items handler promptConfig Nothing
+  void $ nvimMenu scratchOptions items handler promptConfig
   where
     scratchOptions =
       def {
@@ -156,13 +179,12 @@ proGrepWith promptConfig path patt opt = do
     name =
       "proteome-grep"
     handler =
-      defaultMenu (Map.fromList [("cr", selectResult), ("y", yankResult), ("r", replaceResult), ("d", deleteResult)])
+      Consumer.withMappings (Map.fromList actions)
 
 proGrepIn ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
@@ -178,8 +200,7 @@ proGrepIn path patt =
 proGrepOpt ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
@@ -196,8 +217,7 @@ proGrepOpt opt patt = do
 proGrepOptIn ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
@@ -222,8 +242,7 @@ askPattern = do
 proGrep ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e GrepError m =>
@@ -239,7 +258,8 @@ proGrep patt = do
 proGrepList ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
+  MonadCatch m =>
+  MonadBaseControl IO m =>
   MonadDeepError e GrepError m =>
   MonadDeepError e SettingError m =>
   Text ->
@@ -248,4 +268,4 @@ proGrepList ::
   m [GrepOutputLine]
 proGrepList path opt patt = do
   items <- grepItems path patt (Text.words opt)
-  fmap (view MenuItem.meta) . concat <$> runConduit (items .| sinkList)
+  fmap (view MenuItem.meta) <$> Streamly.toList items

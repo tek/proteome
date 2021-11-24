@@ -10,6 +10,6 @@ data Replace =
     _scratch :: Scratch,
     _lines :: NonEmpty GrepOutputLine
   }
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 makeClassy ''Replace

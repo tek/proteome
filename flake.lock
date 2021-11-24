@@ -124,11 +124,11 @@
         "thax": "thax_2"
       },
       "locked": {
-        "lastModified": 1637154859,
-        "narHash": "sha256-GLDPmPLf4S167dLqZ8hoiZkrAf9j8UAP7EYUjSM8pRk=",
+        "lastModified": 1638032792,
+        "narHash": "sha256-5/G5bnMINgTIZY3YxT4obwEYH8ISA/ryvTckd8CNVRU=",
         "owner": "tek",
         "repo": "hix",
-        "rev": "f5fc3543a19be01fb92b90c5a312e8ffcfd65374",
+        "rev": "6c60b6e1d10df29e424d2d7ca1ccaab636189ee8",
         "type": "github"
       },
       "original": {
@@ -383,22 +383,35 @@
         "hix": "hix_2"
       },
       "locked": {
-        "lastModified": 1637200565,
-        "narHash": "sha256-Gama377dlXE+EFNpzp4F3kd70N3jwCafOQzjzQnqZmE=",
-        "owner": "tek",
-        "repo": "ribosome",
-        "rev": "b0d476b393fd0651e44cbd06cc1b4ae43362e61f",
-        "type": "github"
+        "narHash": "sha256-Zkqu1PKFxTciCI0Hjs7mVc0qXTDFqVgB+/XqB84DlRQ=",
+        "path": "/home/tek/code/tek/haskell/ribosome",
+        "type": "path"
       },
       "original": {
-        "owner": "tek",
-        "repo": "ribosome",
-        "type": "github"
+        "path": "/home/tek/code/tek/haskell/ribosome",
+        "type": "path"
       }
     },
     "root": {
       "inputs": {
-        "ribosome": "ribosome"
+        "ribosome": "ribosome",
+        "streamly-process": "streamly-process"
+      }
+    },
+    "streamly-process": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1638399624,
+        "narHash": "sha256-lXpZLSIBOROY8LMjPT9X4T9k9D2QvBeXYf4CC3JvwQA=",
+        "owner": "tek",
+        "repo": "streamly-process",
+        "rev": "7486c1080e9ba16410ffe0406ef21ff579a868b7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tek",
+        "repo": "streamly-process",
+        "type": "github"
       }
     },
     "thax": {

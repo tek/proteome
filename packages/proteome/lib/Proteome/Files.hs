@@ -1,14 +1,12 @@
 module Proteome.Files where
 
-import Control.Lens (_1, view)
+import Control.Lens (_1, use, view)
 import Control.Monad (foldM)
-import Control.Monad.Catch (MonadThrow)
-import Control.Monad.Trans.Resource (MonadResource)
+import Control.Monad.Catch (MonadCatch)
 import Data.Composition ((.:))
 import Data.List.Extra (dropEnd)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import Data.List.NonEmpty.Extra (maximumOn1)
-import qualified Data.Map as Map (fromList)
 import qualified Data.Sequences as Sequences (filterM)
 import qualified Data.Text as Text
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
@@ -19,15 +17,17 @@ import Ribosome.Config.Setting (setting)
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Menu.Action (menuContinue, menuQuitWith, menuUpdatePrompt)
-import Ribosome.Menu.Data.Menu (Menu)
-import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
+import Ribosome.Menu.Action (menuOk, menuSuccess, menuUpdatePrompt)
+import qualified Ribosome.Menu.Consumer as Consumer
+import qualified Ribosome.Menu.Data.Menu as Menu
+import Ribosome.Menu.Data.MenuConsumer (MenuWidget, MenuWidgetM)
+import Ribosome.Menu.Items (withSelectionM)
 import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.Prompt (Prompt (Prompt))
+import qualified Ribosome.Menu.Prompt.Data.Prompt as Prompt
+import Ribosome.Menu.Prompt.Data.Prompt (Prompt (Prompt), PromptText (PromptText))
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag (OnlyInsert, StartInsert))
+import Ribosome.Menu.Prompt.Data.PromptState (PromptState)
 import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimGetOption)
 import Text.RE.PCRE.Text (RE, compileRegex)
@@ -38,21 +38,15 @@ import qualified Proteome.Data.FilesError as FilesError (FilesError (..))
 import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
 import qualified Proteome.Settings as Settings
+import Ribosome.Menu.Data.MenuState (menuRead)
 
 editFile ::
   NvimE e m =>
-  Menu (Path Abs File) ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu (Path Abs File))
-editFile menu _ =
-  action menu
-  where
-    action =
-      maybe menuContinue quit marked
-    quit =
-      menuQuitWith . traverse_ (edit . toFilePath)
-    marked =
-      fmap (view MenuItem.meta) <$> markedMenuItems menu
+  MonadIO m =>
+  MonadBaseControl IO m =>
+  MenuWidget m (Path Abs t) ()
+editFile =
+  withSelectionM (traverse_ (edit . toFilePath))
 
 matchingDirs ::
   MonadIO m =>
@@ -97,21 +91,34 @@ commonPrefix (h : t) =
 commonPrefix a =
   listToMaybe a
 
+tabComplete ::
+  MonadIO m =>
+  [Path Abs Dir] ->
+  Text ->
+  m (Maybe Text)
+tabComplete bases promptText = do
+  existingBases <- Sequences.filterM doesDirExist bases
+  (subpath, paths) <- matchingPaths existingBases promptText
+  pure (mappend subpath <$> commonPrefix (toText . toFilePath <$> paths))
+
+tabUpdatePrompt ::
+  PromptState ->
+  Text ->
+  Prompt
+tabUpdatePrompt st prefix =
+  Prompt (Text.length prefix) st (PromptText prefix)
+
 tab ::
   MonadIO m =>
   [Path Abs Dir] ->
-  Menu (Path Abs File) ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu (Path Abs File))
-tab bases menu (Prompt _ state' text') = do
-  existingBases <- Sequences.filterM doesDirExist bases
-  (subpath, paths) <- matchingPaths existingBases text'
-  action subpath (commonPrefix (toText . toFilePath <$> paths)) menu
-  where
-    action subpath =
-      maybe menuContinue (update . (subpath <>))
-    update prefix =
-      menuUpdatePrompt (Prompt (Text.length prefix) state' prefix)
+  MenuWidgetM m (Path Abs t) ()
+tab bases = do
+  Prompt _ promptState (PromptText promptText) <- use Menu.prompt
+  lift (tabComplete bases promptText) >>= \case
+    Just prefix ->
+      menuUpdatePrompt (tabUpdatePrompt promptState prefix)
+    Nothing ->
+      menuOk
 
 createAndEditFile ::
   NvimE e m =>
@@ -155,21 +162,22 @@ createFile ::
   MonadBaseControl IO m =>
   MonadDeepError e FilesError m =>
   NonEmpty (Path Abs Dir) ->
-  Menu (Path Abs File) ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu (Path Abs File))
-createFile bases menu (Prompt _ _ text') = do
-  subdirCounts <- traverse (existingSubdirCount dirSegments) bases
-  menuQuitWith (maybe err createAndEditFile (parse subdirCounts)) menu
+  MenuWidgetM m (Path Abs t) ()
+createFile bases = do
+  PromptText promptText <- use (Menu.prompt . Prompt.text)
+  menuSuccess do
+    let
+      parse counts =
+        (base counts </>) <$> parseRelFile (toString promptText)
+    subdirCounts <- traverse (existingSubdirCount (dirSegments promptText)) bases
+    maybe (err promptText) createAndEditFile (parse subdirCounts)
   where
-    parse counts =
-      (base counts </>) <$> parseRelFile (toString text')
     base counts =
       fst $ maximumOn1 snd (NonEmpty.zip bases counts)
     dirSegments =
-      dropEnd 1 $ Text.splitOn "/" text'
+      dropEnd 1 . Text.splitOn "/"
     err =
-      throwHoist (FilesError.InvalidFilePath text')
+      throwHoist . FilesError.InvalidFilePath
 
 actions ::
   NvimE e m =>
@@ -177,13 +185,13 @@ actions ::
   MonadBaseControl IO m =>
   MonadDeepError e FilesError m =>
   NonEmpty (Path Abs Dir) ->
-  [(Text, Menu (Path Abs File) -> Prompt -> m (MenuConsumerAction m (), Menu (Path Abs File)))]
+  Map Text (MenuWidget m (Path Abs File) ())
 actions bases =
   [
     ("cr", editFile),
-    ("tab", tab (NonEmpty.toList bases)),
-    ("c-y", createFile bases)
-    ]
+    ("tab", menuRead (tab (NonEmpty.toList bases))),
+    ("c-y", menuRead (createFile bases))
+  ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
 parsePath _ path | Text.take 1 path == "/" =
@@ -235,8 +243,7 @@ filesConfig =
 filesWith ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>
@@ -247,7 +254,7 @@ filesWith ::
   m ()
 filesWith promptConfig cwd paths = do
   conf <- filesConfig
-  void $ nvimMenu scratchOptions (files conf nePaths) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (files conf nePaths) handler promptConfig
   where
     nePaths =
       fromMaybe (cwd :| []) $ nonEmpty absPaths
@@ -262,13 +269,12 @@ filesWith promptConfig cwd paths = do
     name =
       "proteome-files"
     handler =
-      defaultMenu (Map.fromList (actions nePaths))
+      Consumer.withMappings (actions nePaths)
 
 proFiles ::
   NvimE e m =>
   MonadRibo m =>
-  MonadThrow m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e SettingError m =>

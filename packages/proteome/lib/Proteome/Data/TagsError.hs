@@ -6,7 +6,7 @@ import System.Log (Priority(NOTICE))
 
 newtype TagsError =
   Path Text
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 deepPrisms ''TagsError
 

@@ -1,20 +1,19 @@
 module Proteome.Grep.Process where
 
-import Conduit (ConduitT, mapC, (.|))
-import Control.Monad.Catch (MonadThrow)
-import Data.Composition ((.:))
-import qualified Data.Conduit.Combinators as Conduit (chunksOfE, decodeUtf8, linesUnbounded)
-import qualified Data.Conduit.List as Conduit (mapMaybeM)
-import Data.Conduit.Process.Typed (createSource)
+import Control.Monad.Catch (MonadCatch)
 import qualified Data.Text as Text
 import Data.Text (isInfixOf)
 import Path (Abs, File, Path, parseAbsDir, parseAbsFile, toFilePath)
 import Path.IO (isLocationOccupied)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
-import System.Process.Typed (Process, getStdout, proc, setStdout, startProcess)
+import qualified Streamly.Data.Fold as Fold
+import qualified Streamly.Internal.Unicode.Stream as Streamly
+import qualified Streamly.Prelude as Streamly
+import Streamly.Prelude (IsStream, MonadAsync)
+import qualified Streamly.System.Process as Process
 
 import Proteome.Data.GrepError (GrepError)
-import qualified Proteome.Data.GrepError as GrepError (GrepError(..))
+import qualified Proteome.Data.GrepError as GrepError (GrepError (..))
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
 import Proteome.Grep.Parse (parseGrepOutput)
 import Proteome.System.Path (findExe)
@@ -75,36 +74,37 @@ grepCmdline cmdline patt cwd destination opt = do
     destError =
       GrepError.NoSuchDestination destination
 
-grepProcess ::
-  MonadIO m =>
+processOutput ::
+  IsStream t =>
+  MonadAsync m =>
+  MonadCatch m =>
   Text ->
   [Text] ->
-  m (Process () (ConduitT () ByteString m ()) ())
-grepProcess exe args =
-  startProcess (config (toString exe) (toString <$> args))
-  where
-    config =
-      setStdout createSource .: proc
+  t m Word8
+processOutput exe args =
+  Process.toBytes (toString exe) (toString <$> args)
 
-grep ::
-  MonadIO m =>
-  MonadThrow m =>
+processLines ::
+  IsStream t =>
+  MonadAsync m =>
+  MonadCatch m =>
   Text ->
   [Text] ->
-  ConduitT () Text m ()
-grep exe args = do
-  prc <- lift $ grepProcess exe args
-  getStdout prc .| Conduit.decodeUtf8 .| Conduit.linesUnbounded
+  t m Text
+processLines exe args =
+  Streamly.lines (toText <$> Fold.toList) $
+  Streamly.decodeUtf8 $
+  processOutput exe args
 
 grepMenuItems ::
   MonadRibo m =>
-  MonadThrow m =>
+  IsStream t =>
+  MonadAsync m =>
+  MonadCatch m =>
   Text ->
   Text ->
   [Text] ->
-  ConduitT () [MenuItem GrepOutputLine] m ()
+  t m (MenuItem GrepOutputLine)
 grepMenuItems cwd exe args =
-  grep exe args .| parse .| mapC pure .| Conduit.chunksOfE 100
-  where
-    parse =
-      Conduit.mapMaybeM (parseGrepOutput cwd)
+  Streamly.mapMaybeM (parseGrepOutput cwd) $
+  processLines exe args

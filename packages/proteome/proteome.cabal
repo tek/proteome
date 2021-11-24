@@ -65,7 +65,6 @@ library
       Proteome.Files.Source
       Proteome.Files.Syntax
       Proteome.Grep
-      Proteome.Grep.Line
       Proteome.Grep.Parse
       Proteome.Grep.Process
       Proteome.Grep.Replace
@@ -148,7 +147,7 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wsimplifiable-class-constraints
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages
   build-depends:
       Glob
     , aeson
@@ -167,6 +166,7 @@ library
     , directory
     , either
     , exceptions
+    , exon
     , extra
     , filepath
     , filepattern
@@ -192,6 +192,8 @@ library
     , resourcet
     , ribosome
     , stm-conduit
+    , streamly >=0.8
+    , streamly-process >=0.1
     , string-interpolate
     , template-haskell
     , text
@@ -267,7 +269,7 @@ executable proteome
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wsimplifiable-class-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Glob
     , aeson
@@ -286,6 +288,7 @@ executable proteome
     , directory
     , either
     , exceptions
+    , exon
     , extra
     , filepath
     , filepattern
@@ -312,6 +315,8 @@ executable proteome
     , resourcet
     , ribosome
     , stm-conduit
+    , streamly >=0.8
+    , streamly-process >=0.1
     , string-interpolate
     , template-haskell
     , text

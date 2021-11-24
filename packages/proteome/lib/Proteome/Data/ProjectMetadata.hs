@@ -1,6 +1,6 @@
 module Proteome.Data.ProjectMetadata where
 
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot)
 import Proteome.Data.ProjectType (ProjectType)
 
@@ -10,10 +10,12 @@ data ProjectMetadata =
     root :: ProjectRoot,
     tpe :: Maybe ProjectType
   }
-  | VirtualProject {
+  |
+  VirtualProject {
     name :: ProjectName
   }
-  deriving (Eq, Show, Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)
 
 instance Default ProjectMetadata where
   def = VirtualProject (ProjectName "main")

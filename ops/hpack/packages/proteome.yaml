@@ -14,12 +14,15 @@ dependencies:
   - chronos
   - conduit-extra
   - extra
+  - exon
   - filepattern
   - mono-traversable
   - parsers
   - raw-strings-qq
   - regex-with-pcre
   - stm-conduit
+  - streamly >= 0.8
+  - streamly-process >= 0.1
   - string-interpolate
 
 library:

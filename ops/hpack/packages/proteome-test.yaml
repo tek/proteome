@@ -26,6 +26,7 @@ tests:
       - mono-traversable
       - regex-with-pcre
       - ribosome-test
+      - streamly
       - tasty
       - tasty-hedgehog
       - name: proteome

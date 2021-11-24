@@ -16,7 +16,7 @@ data FilenameError =
   Exists Text
   |
   ActionFailed Text Text
-  deriving (Eq, Show, Generic)
+  deriving stock (Eq, Show, Generic)
 
 deepPrisms ''FilenameError
 

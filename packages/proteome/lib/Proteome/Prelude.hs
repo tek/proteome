@@ -5,6 +5,7 @@ module Proteome.Prelude (
   module Cornea,
   module Data.Default,
   module Data.Foldable,
+  module Exon,
   module Relude,
   module Ribosome,
   dbg,
@@ -25,12 +26,13 @@ module Proteome.Prelude (
 ) where
 
 import Control.Lens (makeClassy)
-import Control.Monad.Trans.Control (MonadBaseControl(..))
+import Control.Monad.Trans.Control (MonadBaseControl (..))
 import Cornea
-import Data.Default (Default(def))
+import Data.Default (Default (def))
 import Data.Either.Combinators (mapLeft)
 import Data.Foldable (foldl, traverse_)
 import Data.String.Interpolate (i)
+import Exon (exon)
 import GHC.Err (undefined)
 import GHC.IO.Unsafe (unsafePerformIO)
 import Language.Haskell.TH.Quote (QuasiQuoter)

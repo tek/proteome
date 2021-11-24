@@ -1,41 +1,38 @@
 module Proteome.Add where
 
-import Conduit (ConduitT, yield)
 import Control.Lens (view)
-import Control.Monad.Trans.Resource (MonadResource)
+import Control.Monad.Catch (MonadCatch)
 import qualified Data.Map as Map (fromList)
 import qualified Data.Text as Text
-import Neovim (CommandArguments(CommandArguments))
+import Neovim (CommandArguments (CommandArguments))
 import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix)
 import Path.IO (listDir)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Menu.Action (menuContinue, menuQuitWith)
-import Ribosome.Menu.Data.Menu (Menu)
-import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
-import Ribosome.Menu.Data.MenuItem (MenuItem, MenuItem(MenuItem))
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
+import qualified Ribosome.Menu.Consumer as Consumer
+import Ribosome.Menu.Data.MenuConsumer (MenuWidget)
+import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
+import Ribosome.Menu.Items (traverseSelection_)
 import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag(StartInsert))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag (StartInsert))
 import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Menu.Simple (defaultMenu, markedMenuItems)
 import Ribosome.Msgpack.Error (DecodeError)
+import qualified Streamly.Prelude as Stream
 
 import Proteome.Add.Syntax (addSyntax)
 import Proteome.Data.AddError (AddError)
-import qualified Proteome.Data.AddError as AddError (AddError(InvalidProjectSpec))
-import Proteome.Data.AddItem (AddItem(AddItem))
-import Proteome.Data.AddOptions (AddOptions(AddOptions))
+import qualified Proteome.Data.AddError as AddError (AddError (InvalidProjectSpec))
+import Proteome.Data.AddItem (AddItem (AddItem))
+import Proteome.Data.AddOptions (AddOptions (AddOptions))
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (projects)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectConfig (ProjectConfig)
+import Proteome.Data.Project (Project (Project))
 import qualified Proteome.Data.ProjectConfig as ProjectConfig
-import Proteome.Data.ProjectMetadata (ProjectMetadata(VirtualProject))
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ProjectConfig (ProjectConfig)
+import Proteome.Data.ProjectMetadata (ProjectMetadata (VirtualProject))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Path (dropSlash, pathText)
 import Proteome.Project.Activate (selectProject)
@@ -43,6 +40,7 @@ import Proteome.Project.Resolve (resolveProjectFromConfig)
 import qualified Proteome.Settings as Settings
 
 add ::
+  ∀ s e m .
   NvimE e m =>
   MonadRibo m =>
   MonadBaseControl IO m =>
@@ -55,12 +53,12 @@ add ::
   m ()
 add name tpe activate = do
   addDirProject =<< resolveProjectFromConfig Nothing name tpe
-  when activate $ selectProject (-1)
+  when activate (selectProject (-1))
   where
     addDirProject (Project (VirtualProject _) _ _ _) =
-      return ()
+      pure ()
     addDirProject project =
-      modifyL @Env Env.projects (\p -> p ++ [project])
+      modifyL @Env Env.projects \ p -> p ++ [project]
 
 proAdd ::
   NvimE e m =>
@@ -136,34 +134,18 @@ availableProjects ::
 availableProjects (view ProjectConfig.baseDirs -> dirs) =
   join <$> traverse availableProjectsInBase dirs
 
-availableProjectsC ::
-  MonadIO m =>
-  ProjectConfig ->
-  ConduitT () [MenuItem AddItem] m ()
-availableProjectsC =
-  yield <=< lift . availableProjects
-
 menuAdd ::
+  ∀ s e m .
   NvimE e m =>
   MonadRibo m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e ResolveError m =>
-  Menu AddItem ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu AddItem)
-menuAdd menu _ =
-  action menu
-  where
-    action =
-      maybe menuContinue quit marked
-    quit =
-      menuQuitWith . traverse_ run
-    run (AddItem tpe name) =
-      add (ProjectName name) (Just (ProjectType tpe)) True
-    marked =
-      fmap (view MenuItem.meta) <$> markedMenuItems menu
+  MenuWidget m AddItem ()
+menuAdd =
+  traverseSelection_ \ (AddItem tpe name) ->
+    lift (add (ProjectName name) (Just (ProjectType tpe)) True)
 
 actions ::
   NvimE e m =>
@@ -172,7 +154,7 @@ actions ::
   MonadDeepError e SettingError m =>
   MonadDeepError e ResolveError m =>
   MonadBaseControl IO m =>
-  [(Text, Menu AddItem -> Prompt -> m (MenuConsumerAction m (), Menu AddItem))]
+  [(Text, MenuWidget m AddItem ())]
 actions =
   [
     ("cr", menuAdd)
@@ -181,7 +163,7 @@ actions =
 addMenuWith ::
   NvimE e m =>
   MonadRibo m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
@@ -191,17 +173,19 @@ addMenuWith ::
   m ()
 addMenuWith promptConfig = do
   projectConfig <- setting Settings.projectConfig
-  void $ nvimMenu scratchOptions (availableProjectsC projectConfig) handler promptConfig Nothing
+  void $ nvimMenu scratchOptions (mList (availableProjects projectConfig)) handler promptConfig
   where
+    mList =
+      Stream.fromList <=< Stream.fromEffect
     scratchOptions =
       scratchSyntax [addSyntax] . defaultScratchOptions $ "proteome-add"
     handler =
-      defaultMenu (Map.fromList actions)
+      Consumer.withMappings (Map.fromList actions)
 
 proAddMenu ::
   NvimE e m =>
   MonadRibo m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>

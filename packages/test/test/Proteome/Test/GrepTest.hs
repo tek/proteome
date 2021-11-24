@@ -1,32 +1,32 @@
 module Proteome.Test.GrepTest where
 
-import Conduit (ConduitT, runConduit, sinkList, yield, yieldMany, (.|))
 import Hedgehog ((===))
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
-import Ribosome.Menu.Data.MenuItem (MenuItem(MenuItem))
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
-import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
-import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
-import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
+import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
+import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
+import Ribosome.Menu.Prompt.Run (noPromptRenderer)
+import Ribosome.Menu.Prompt.Transition (basicTransition)
 import Ribosome.Test.Run (UnitTest, unitTest)
 import Ribosome.Test.Unit (fixture)
+import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
+import Streamly.Prelude (serial)
 import Test.Tasty (TestTree, testGroup)
 
-import Proteome.Data.GrepOutputLine (GrepOutputLine(GrepOutputLine))
-import Proteome.Grep (proGrepWith)
-import Proteome.Grep.Line (uniqueGrepLines)
+import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import Proteome.Grep (proGrepWith, uniqueGrepLines)
 import Proteome.Grep.Process (grepMenuItems)
 import Proteome.Test.Unit (ProteomeTest, testDef, tmuxTest)
 
 promptInput ::
   MonadIO m =>
   [Text] ->
-  ConduitT () PromptEvent m ()
+  PromptInput m
 promptInput chars' =
-  sleep 0.1 *>
-  yieldMany (PromptEvent.Character <$> chars')
+  PromptInput \ _ ->
+    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
 
 promptConfig ::
   MonadIO m =>
@@ -73,12 +73,12 @@ test_grepYank =
 grepDuplicatesTest :: ProteomeTest ()
 grepDuplicatesTest = do
   dir <- toText <$> fixture "grep/duplicates"
-  outputDupes <- runConduit $ proc dir .| sinkList
-  2 === length (join outputDupes)
-  outputUnique <- runConduit $ proc dir .| uniqueGrepLines .| sinkList
-  1 === length (join outputUnique)
-  output3 <- runConduit $ yield (item 1) *> yield (item 2) .| uniqueGrepLines .| sinkList
-  1 === length (join output3)
+  outputDupes <- Streamly.toList (proc dir)
+  2 === length outputDupes
+  outputUnique <- Streamly.toList (uniqueGrepLines (proc dir))
+  1 === length outputUnique
+  output3 <- Streamly.toList (uniqueGrepLines (Streamly.fromList (item 1 ++ item 2)))
+  1 === length output3
   where
     proc dir =
       grepMenuItems dir "rg" ["--vimgrep", "--no-heading", "target", dir]

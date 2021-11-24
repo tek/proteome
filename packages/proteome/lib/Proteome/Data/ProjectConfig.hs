@@ -15,6 +15,7 @@ data ProjectConfig =
     _langMap :: Map ProjectType ProjectLang,
     _langsMap :: Map ProjectLang [ProjectLang]
   }
-  deriving (Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)
 
 makeClassy ''ProjectConfig

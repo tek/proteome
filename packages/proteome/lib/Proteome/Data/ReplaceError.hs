@@ -8,7 +8,7 @@ data ReplaceError =
   BadReplacement
   |
   CouldntLoadBuffer Text
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 deepPrisms ''ReplaceError
 

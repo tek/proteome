@@ -17,7 +17,8 @@ data Env =
     _buffers :: [Buffer],
     _replace :: Maybe Replace
   }
-  deriving (Show, Generic, Default)
+  deriving stock (Show, Generic)
+  deriving anyclass (Default)
 
 deepLenses ''Env
 

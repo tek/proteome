@@ -6,7 +6,7 @@ import System.Log.Logger (Priority(NOTICE))
 
 newtype AddError =
   InvalidProjectSpec Text
-  deriving (Eq, Show)
+  deriving stock (Eq, Show)
 
 deepPrisms ''AddError
 

@@ -9,4 +9,5 @@ data AddOptions =
     tpe :: ProjectType,
     activate :: Maybe Bool
   }
-  deriving (Eq, Show, Generic, MsgpackDecode, MsgpackEncode)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (MsgpackDecode, MsgpackEncode)

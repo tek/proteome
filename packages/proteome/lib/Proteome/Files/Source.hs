@@ -1,10 +1,8 @@
 module Proteome.Files.Source where
 
-import Conduit (ConduitT, mapC, (.|))
 import Control.Concurrent.Async.Lifted (async, wait)
-import Control.Monad.Catch (MonadThrow)
-import qualified Data.Conduit.Combinators as Conduit
-import Data.Conduit.TMChan (TMChan, closeTMChan, newTMChan, sourceTMChan, writeTMChan)
+import Control.Monad.Catch (MonadCatch, MonadThrow)
+import Data.Conduit.TMChan (TMChan, closeTMChan, newTMChan, writeTMChan)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import qualified Data.Set as Set (fromList, toList)
 import qualified Data.Text as Text
@@ -24,14 +22,17 @@ import Path (
   toFilePath,
   )
 import Path.IO (findExecutable, walkDir)
-import qualified Path.IO as WalkAction (WalkAction(WalkExclude))
+import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
+import Ribosome.Data.Stream (chanStream)
 import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
+import qualified Streamly.Prelude as Streamly
+import Streamly.Prelude (SerialT)
 import System.FilePattern ((?==))
 import Text.RE.PCRE.Text (RE, anyMatches, (*=~))
 
-import Proteome.Data.FileScanItem (FileScanItem(FileScanItem))
-import Proteome.Data.FilesConfig (FilesConfig(FilesConfig))
-import Proteome.Grep.Process (grep)
+import Proteome.Data.FileScanItem (FileScanItem (FileScanItem))
+import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
+import Proteome.Grep.Process (processLines)
 import Proteome.Path (dropSlash)
 
 matchPath :: [RE] -> Path Abs t -> Bool
@@ -82,7 +83,7 @@ filterDirs excludeHidden patterns =
 scan ::
   MonadIO m =>
   FilesConfig ->
-  TMChan [FileScanItem] ->
+  TMChan (FileScanItem) ->
   Path Abs Dir ->
   Maybe Text ->
   m ()
@@ -90,8 +91,12 @@ scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir ba
   walkDir enqueue dir
   where
     enqueue _ dirs files' =
-      atomically (writeTMChan chan (cons <$> filterFiles excludeHidden ignoreFiles (toString <$> wildignore) files')) $>
-      WalkAction.WalkExclude (filterDirs excludeHidden ignoreDirs dirs)
+      exclude <$ atomically (traverse_ (writeTMChan chan) filtered)
+      where
+        filtered =
+          cons <$> filterFiles excludeHidden ignoreFiles (toString <$> wildignore) files'
+        exclude =
+          WalkAction.WalkExclude (filterDirs excludeHidden ignoreDirs dirs)
     cons =
       FileScanItem dir baseIndicator
 
@@ -105,7 +110,7 @@ runScanners ::
   MonadIO m =>
   MonadBaseControl IO m =>
   FilesConfig ->
-  TMChan [FileScanItem] ->
+  TMChan (FileScanItem) ->
   NonEmpty (Path Abs Dir, Maybe Text) ->
   m (NonEmpty ())
 runScanners conf chan paths = do
@@ -150,14 +155,15 @@ formatFileLine base baseIndicator path =
 
 filesNative ::
   MonadIO m =>
+  MonadThrow m =>
   MonadBaseControl IO m =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  ConduitT () [MenuItem (Path Abs File)] m ()
+  SerialT m (MenuItem (Path Abs File))
 filesNative conf paths = do
   chan <- atomically newTMChan
   void . lift . async $ runScanners conf chan (withBaseIndicators paths)
-  sourceTMChan chan .| mapC (fmap menuItem)
+  menuItem <$> chanStream chan
   where
     menuItem (FileScanItem base baseIndicator path) =
       simpleMenuItem path (formatFileLine base baseIndicator path)
@@ -187,12 +193,14 @@ rgMenuItem bases (toString -> pathText) = do
 
 filesRg ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadCatch m =>
+  MonadBaseControl IO m =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  ConduitT () [MenuItem (Path Abs File)] m ()
+  SerialT m (MenuItem (Path Abs File))
 filesRg conf paths =
-  grep "rg" ("--files" : excludes <> patterns) .| mapC item .| mapC maybeToList .| Conduit.chunksOfE 100
+  Streamly.mapMaybe item $
+  processLines "rg" ("--files" : excludes <> patterns)
   where
     patterns =
       toText . toFilePath <$> toList paths
@@ -203,10 +211,10 @@ filesRg conf paths =
 
 files ::
   MonadIO m =>
-  MonadThrow m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  ConduitT () [MenuItem (Path Abs File)] m ()
+  SerialT m (MenuItem (Path Abs File))
 files conf@(FilesConfig useRg _ _ _ _) paths =
   ifM ((useRg &&) <$> rgExists) (filesRg conf paths) (filesNative conf paths)

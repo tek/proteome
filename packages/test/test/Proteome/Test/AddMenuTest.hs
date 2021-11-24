@@ -1,23 +1,24 @@
 module Proteome.Test.AddMenuTest where
 
-import Conduit (ConduitT, yieldMany)
 import Hedgehog ((===))
 import Path (parseAbsDir, parseRelDir, (</>))
 import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig(PromptConfig))
-import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent)
-import qualified Ribosome.Menu.Prompt.Data.PromptEvent as PromptEvent (PromptEvent(..))
-import Ribosome.Menu.Prompt.Run (basicTransition, noPromptRenderer)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
+import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
+import Ribosome.Menu.Prompt.Run (noPromptRenderer)
+import Ribosome.Menu.Prompt.Transition (basicTransition)
 import Ribosome.Test.Run (UnitTest)
 import Ribosome.Test.Unit (fixture)
+import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
+import Streamly.Prelude (serial)
 
 import Proteome.Add (addMenuWith)
 import qualified Proteome.Data.Env as Env
 import Proteome.Data.Env (Env)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
-import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
-import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.Project (Project (Project))
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Project (flag, fn, hask, l, tp)
 import Proteome.Test.Unit (ProteomeTest, testDef)
@@ -25,10 +26,10 @@ import Proteome.Test.Unit (ProteomeTest, testDef)
 promptInput ::
   MonadIO m =>
   [Text] ->
-  ConduitT () PromptEvent m ()
+  PromptInput m
 promptInput chars' =
-  sleep 0.1 *>
-  yieldMany (PromptEvent.Character <$> chars')
+  PromptInput \ _ ->
+    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
 
 promptConfig ::
   MonadIO m =>

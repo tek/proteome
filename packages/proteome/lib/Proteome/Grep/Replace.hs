@@ -6,17 +6,15 @@ import qualified Data.Text as Text
 import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
-import Ribosome.Api.Window (closeWindow)
+import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
 import Ribosome.Data.Scratch (Scratch (Scratch))
 import qualified Ribosome.Data.Scratch as Scratch (Scratch (scratchBuffer))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
-import Ribosome.Menu.Data.MenuItem (MenuItem)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
 import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.Data (Buffer, Window)
-import Ribosome.Nvim.Api.IO (bufferGetLines, bufferSetLines, bufferSetOption, nvimWinSetBuf, vimCommand)
-import Ribosome.Scratch (createFloat, showInScratch)
+import Ribosome.Nvim.Api.Data (Buffer)
+import Ribosome.Nvim.Api.IO (bufferGetLines, bufferSetLines, bufferSetOption, vimCommand, vimCallFunction)
+import Ribosome.Scratch (showInScratch)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (replace)
@@ -36,9 +34,9 @@ replaceBuffer ::
   MonadBaseControl IO m =>
   MonadDeepError e DecodeError m =>
   MonadDeepState s Env m =>
-  NonEmpty (MenuItem GrepOutputLine) ->
+  NonEmpty GrepOutputLine ->
   m ()
-replaceBuffer items = do
+replaceBuffer lines' = do
   scratch <- showInScratch content options
   let buffer = Scratch.scratchBuffer scratch
   bufferSetOption buffer "buftype" (toMsgpack ("acwrite" :: Text))
@@ -48,8 +46,6 @@ replaceBuffer items = do
   where
     content =
       view GrepOutputLine.content <$> lines'
-    lines' =
-      view MenuItem.meta <$> items
     options =
       def {
         _name = scratchName,
@@ -88,18 +84,17 @@ replaceLine ::
   NvimE e m =>
   MonadDeepError e DecodeError m =>
   MonadDeepError e ReplaceError m =>
-  Window ->
   Text ->
   GrepOutputLine ->
   m (Maybe Buffer)
-replaceLine window updatedLine (GrepOutputLine path line _ _) = do
+replaceLine updatedLine (GrepOutputLine path line _ _) = do
   exists <- isJust <$> bufferForFile path
-  unless exists $ addBuffer path
+  unless exists (addBuffer path)
+  () <- vimCallFunction "bufload" [toMsgpack path]
   buffer <- hoistMaybe (ReplaceError.CouldntLoadBuffer path) =<< bufferForFile path
-  nvimWinSetBuf window buffer
   bufferSetLines buffer line (line + 1) False replacement
   deleteExtraBlankLine buffer line
-  return $ if exists then Nothing else Just buffer
+  pure (bool (Just buffer) Nothing exists)
   where
     replacement =
       if Text.null updatedLine
@@ -112,20 +107,18 @@ lineNumberDesc (_, GrepOutputLine _ number _ _) =
 
 replaceFloatOptions :: FloatOptions
 replaceFloatOptions =
-  FloatOptions def 1 1 0 0 True def Nothing def False
+  FloatOptions def 1 1 0 0 False def Nothing FloatBorder.None True False (Just def) (Just 1)
 
-withReplaceFloat ::
+withReplaceEnv ::
   NvimE e m =>
   MonadBaseControl IO m =>
-  (Window -> m [Maybe Buffer]) ->
+  m [Maybe Buffer] ->
   m ()
-withReplaceFloat consumer = do
-  (buffer, window) <- createFloat replaceFloatOptions
-  transient <- withOption "hidden" True (consumer window)
-  ignoreError @RpcError $ vimCommand "noautocmd wall"
-  traverse_ wipeBuffer (catMaybes transient)
-  closeWindow window
-  wipeBuffer buffer
+withReplaceEnv run = do
+  withOption "hidden" True do
+    transient <- run
+    ignoreError @RpcError $ vimCommand "noautocmd wall"
+    traverse_ wipeBuffer (catMaybes transient)
 
 replaceLines ::
   NvimE e m =>
@@ -137,10 +130,9 @@ replaceLines ::
   [(Text, GrepOutputLine)] ->
   m ()
 replaceLines scratchBuffer lines' = do
-  withReplaceFloat \ window -> do
-    transient <- traverse (uncurry (replaceLine window)) (sortOn lineNumberDesc lines')
-    bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
-    pure transient
+  bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
+  withReplaceEnv do
+    traverse (uncurry replaceLine) (sortOn lineNumberDesc lines')
   bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
   bufferSetOption scratchBuffer "modified" (toMsgpack False)
 
@@ -153,11 +145,8 @@ deleteLines ::
   [GrepOutputLine] ->
   m ()
 deleteLines lines' =
-  withReplaceFloat \ window ->
-    traverse (uncurry (replaceLine window)) withReplacement
-  where
-    withReplacement =
-      sortOn lineNumberDesc (zip (repeat "") lines')
+  withReplaceEnv do
+    traverse (uncurry replaceLine) (sortOn lineNumberDesc (zip (repeat "") lines'))
 
 replaceSave ::
   NvimE e m =>

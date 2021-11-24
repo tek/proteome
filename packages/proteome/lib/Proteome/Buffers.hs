@@ -1,32 +1,28 @@
 module Proteome.Buffers where
 
-import Control.Lens (each, elemOf, view)
-import Control.Monad.Trans.Resource (MonadResource)
+import Control.Lens (each, elemOf, uses, view)
+import Control.Monad.Catch (MonadCatch)
 import Data.Foldable (maximum)
-import qualified Data.List.NonEmpty as NonEmpty (toList)
-import qualified Data.Map as Map (fromList)
-import qualified Data.Text as Text (length, replicate, stripPrefix)
+import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map as Map
+import qualified Data.Text as Text
 import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Config.Setting (settingOr)
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
-import Ribosome.Menu.Action (menuContinue, menuFilter, menuQuitWith)
-import Ribosome.Menu.Data.Menu (Menu)
-import Ribosome.Menu.Data.MenuConsumerAction (MenuConsumerAction)
+import qualified Ribosome.Menu.Consumer as Consumer
+import qualified Ribosome.Menu.Data.MenuAction as MenuAction
+import Ribosome.Menu.Data.MenuConsumer (MenuWidget, MenuWidgetM)
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
+import Ribosome.Menu.Data.MenuState (menuWrite)
+import Ribosome.Menu.ItemLens (unselected)
+import Ribosome.Menu.Items (deleteSelected, withSelection')
+import Ribosome.Menu.Items.Read (withFocusM)
 import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.Prompt (Prompt)
 import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
-import Ribosome.Menu.Run (strictNvimMenu)
-import Ribosome.Menu.Simple (
-  defaultMenu,
-  deleteMarked,
-  markedMenuItems,
-  unmarkedMenuItems,
-  withSelectedMenuItem,
-  )
+import Ribosome.Menu.Run (staticNvimMenu)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (
   bufferGetName,
@@ -39,40 +35,26 @@ import Ribosome.Nvim.Api.IO (
   )
 
 import Proteome.Buffers.Syntax (buffersSyntax)
+import qualified Proteome.Data.Env as Env
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (buffers)
+import qualified Proteome.Data.ListedBuffer as ListedBuffer
 import Proteome.Data.ListedBuffer (ListedBuffer (ListedBuffer))
-import qualified Proteome.Data.ListedBuffer as ListedBuffer (buffer, number)
-import qualified Proteome.Settings as Settings (buffersCurrentLast)
-
-action ::
-  NvimE e m =>
-  (MenuItem ListedBuffer -> m ()) ->
-  Menu ListedBuffer ->
-  m (MenuConsumerAction m (), Menu ListedBuffer)
-action act menu =
-  withSelectedMenuItem quit menu
-  where
-    quit item =
-      menuQuitWith (act item) menu
+import qualified Proteome.Settings as Settings
 
 loadListedBuffer ::
   NvimE e m =>
   ListedBuffer ->
   m ()
 loadListedBuffer (ListedBuffer buffer number _) =
-  ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand $ "buffer " <> show number)
+  ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand [exon|buffer #{show number}|])
 
 load ::
+  MonadIO m =>
   NvimE e m =>
-  Menu ListedBuffer ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu ListedBuffer)
-load menu _ =
-  action quit menu
-  where
-    quit (MenuItem buf _ _) =
-      loadListedBuffer buf
+  MonadBaseControl IO m =>
+  MenuWidget m ListedBuffer ()
+load =
+  withFocusM loadListedBuffer
 
 compensateForMissingActiveBuffer ::
   NvimE e m =>
@@ -94,7 +76,7 @@ deleteListedBuffersWith ::
   NonEmpty ListedBuffer ->
   m ()
 deleteListedBuffersWith deleter bufs =
-  vimCommand $ deleter <> " " <> numbers
+  vimCommand [exon|#{deleter} #{numbers}|]
   where
     numbers =
       unwords (show . view ListedBuffer.number <$> NonEmpty.toList bufs)
@@ -102,20 +84,14 @@ deleteListedBuffersWith deleter bufs =
 deleteWith ::
   NvimE e m =>
   Text ->
-  Menu ListedBuffer ->
-  Prompt ->
-  m (MenuConsumerAction m (), Menu ListedBuffer)
-deleteWith deleter menu _ =
-  maybe (menuContinue menu) delete marked
-  where
-    marked =
-      fmap (view MenuItem.meta) <$> markedMenuItems menu
-    remaining =
-      view MenuItem.meta <$> unmarkedMenuItems menu
-    delete bufs = do
-      compensateForMissingActiveBuffer bufs remaining
-      deleteListedBuffersWith deleter bufs
-      menuFilter (deleteMarked menu)
+  MenuWidgetM m ListedBuffer ()
+deleteWith deleter =
+  withSelection' \ delete -> do
+    keep <- uses unselected (fmap  MenuItem._meta)
+    compensateForMissingActiveBuffer delete keep
+    deleteListedBuffersWith deleter delete
+    deleteSelected
+    pure MenuAction.Render
 
 moveCurrentLast ::
   NvimE e m =>
@@ -160,21 +136,23 @@ buffers = do
       fromMaybe name $ Text.stripPrefix cwd name
 
 actions ::
+  MonadIO m =>
   NvimE e m =>
-  [(Text, Menu ListedBuffer -> Prompt -> m (MenuConsumerAction m (), Menu ListedBuffer))]
+  MonadBaseControl IO m =>
+  [(Text, MenuWidget m ListedBuffer ())]
 actions =
   [
     ("cr", load),
-    ("d", deleteWith "bdelete"),
-    ("D", deleteWith "bdelete!"),
-    ("w", deleteWith "bwipeout"),
-    ("W", deleteWith "bwipeout!")
+    ("d", menuWrite (deleteWith "bdelete")),
+    ("D", menuWrite (deleteWith "bdelete!")),
+    ("w", menuWrite (deleteWith "bwipeout")),
+    ("W", menuWrite (deleteWith "bwipeout!"))
   ]
 
 buffersWith ::
   NvimE e m =>
   MonadRibo m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
@@ -182,7 +160,7 @@ buffersWith ::
   m ()
 buffersWith promptConfig = do
   bufs <- buffers
-  void $ strictNvimMenu scratchOptions bufs handler promptConfig Nothing
+  void $ staticNvimMenu scratchOptions bufs handler promptConfig
   where
     scratchOptions =
       def {
@@ -193,12 +171,12 @@ buffersWith promptConfig = do
     name =
       "proteome-buffers"
     handler =
-      defaultMenu (Map.fromList actions)
+      Consumer.withMappings (Map.fromList actions)
 
 proBuffers ::
   NvimE e m =>
   MonadRibo m =>
-  MonadResource m =>
+  MonadCatch m =>
   MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e DecodeError m =>
