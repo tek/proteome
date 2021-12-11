@@ -7,10 +7,11 @@ import Path (Abs, File, Path, parseAbsDir, parseAbsFile, toFilePath)
 import Path.IO (isLocationOccupied)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
 import qualified Streamly.Data.Fold as Fold
-import qualified Streamly.Internal.Unicode.Stream as Streamly
-import qualified Streamly.Prelude as Streamly
+import qualified Streamly.Internal.Unicode.Stream as Stream
+import qualified Streamly.Prelude as Stream
 import Streamly.Prelude (IsStream, MonadAsync)
 import qualified Streamly.System.Process as Process
+import Streamly.System.Process (ProcessFailure)
 
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError (..))
@@ -92,8 +93,8 @@ processLines ::
   [Text] ->
   t m Text
 processLines exe args =
-  Streamly.lines (toText <$> Fold.toList) $
-  Streamly.decodeUtf8 $
+  Stream.lines (toText <$> Fold.toList) $
+  Stream.decodeUtf8 $
   processOutput exe args
 
 grepMenuItems ::
@@ -106,5 +107,9 @@ grepMenuItems ::
   [Text] ->
   t m (MenuItem GrepOutputLine)
 grepMenuItems cwd exe args =
-  Streamly.mapMaybeM (parseGrepOutput cwd) $
+  Stream.handle processFailure $
+  Stream.mapMaybeM (parseGrepOutput cwd) $
   processLines exe args
+  where
+    processFailure (_ :: ProcessFailure) =
+      Stream.nil

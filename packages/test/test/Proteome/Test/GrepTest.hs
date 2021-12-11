@@ -89,10 +89,19 @@ test_grepDuplicates :: UnitTest
 test_grepDuplicates =
   testDef grepDuplicatesTest
 
+test_noResults :: UnitTest
+test_noResults =
+  testDef @_ @(Ribo _ _) do
+    dir <- fixture "grep/pro"
+    proGrepWith (promptConfig []) (toText dir) "nonexistent" []
+    l <- currentBufferContent
+    [] === l
+
 test_grep :: TestTree
 test_grep =
   testGroup "grep" [
     unitTest "jump to a result" test_grepJump,
     unitTest "yank a result" test_grepYank,
-    unitTest "filter duplicates" test_grepDuplicates
+    unitTest "filter duplicates" test_grepDuplicates,
+    unitTest "no results" test_noResults
   ]
