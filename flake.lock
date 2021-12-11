@@ -383,7 +383,7 @@
         "hix": "hix_2"
       },
       "locked": {
-        "narHash": "sha256-Zkqu1PKFxTciCI0Hjs7mVc0qXTDFqVgB+/XqB84DlRQ=",
+        "narHash": "sha256-WubiJ7OQItQzS81Xln9dRN8pE+hnPeJWv7gM+QYsUAg=",
         "path": "/home/tek/code/tek/haskell/ribosome",
         "type": "path"
       },
