@@ -1,13 +1,13 @@
 module Proteome.Settings where
 
 import Path (Abs, Dir, File, Path, Rel, relfile)
+import Ribosome.Data.Setting (Setting (Setting))
 
 import Proteome.Data.ActiveProject (ActiveProject)
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
 import Proteome.Data.ProjectName (ProjectName)
 import Proteome.Data.ProjectSpec (ProjectSpec)
 import Proteome.Data.ProjectType (ProjectType)
-import Ribosome.Data.Setting (Setting(Setting))
 
 mainProjectDir :: Setting (Path Abs Dir)
 mainProjectDir = Setting "main_project_dir" True Nothing
@@ -26,6 +26,9 @@ mainType = Setting "main_type" True Nothing
 
 active :: Setting ActiveProject
 active = Setting "active" True Nothing
+
+tagsEnable :: Setting Bool
+tagsEnable = Setting "tags_enable" True (Just True)
 
 tagsCommand :: Setting Text
 tagsCommand = Setting "tags_command" True (Just "ctags")

@@ -25,7 +25,7 @@ import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
 import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
 import Proteome.Data.TagsError (TagsError)
 import qualified Proteome.Data.TagsError as TagsError (TagsError(Path))
-import qualified Proteome.Settings as Settings (tagsArgs, tagsCommand, tagsFileName, tagsFork)
+import qualified Proteome.Settings as Settings (tagsArgs, tagsCommand, tagsFileName, tagsFork, tagsEnable)
 
 replaceFormatItem :: Text -> (Text, Text) -> Text
 replaceFormatItem original (placeholder, replacement) =
@@ -171,11 +171,12 @@ proTags ::
   MonadDeepError e TagsError m =>
   MonadDeepError e SettingError m =>
   m ()
-proTags = do
-  main <- getL @Env Env.mainProject
-  extra <- getL @Env Env.projects
-  wantFork <- setting Settings.tagsFork
-  runner wantFork main extra
+proTags =
+  whenM (setting Settings.tagsEnable) do
+    main <- getL @Env Env.mainProject
+    extra <- getL @Env Env.projects
+    wantFork <- setting Settings.tagsFork
+    runner wantFork main extra
   where
     runner wantFork =
       if wantFork then void . fork .: run else run
