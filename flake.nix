@@ -1,8 +1,7 @@
 {
   description = "Neovim Project Manager";
 
-  # inputs.ribosome.url = github:tek/ribosome;
-  inputs.ribosome.url = path:/home/tek/code/tek/haskell/ribosome;
+  inputs.ribosome.url = github:tek/ribosome;
   inputs.streamly-process = {
     flake = false;
     url = github:/tek/streamly-process;

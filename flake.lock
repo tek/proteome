@@ -383,13 +383,17 @@
         "hix": "hix_2"
       },
       "locked": {
-        "narHash": "sha256-VtnRlzJwilES7KFjKnji25kOThUKEHrXU6ELnqWqlIU=",
-        "path": "/home/tek/code/tek/haskell/ribosome",
-        "type": "path"
+        "lastModified": 1640198407,
+        "narHash": "sha256-Sxz4eaD9K8NcEWMrVkfxcUIfrn9vLGmZitTOEwpBnYY=",
+        "owner": "tek",
+        "repo": "ribosome",
+        "rev": "9a27373e768ef1d413be6c5cf967a3938cb79f7a",
+        "type": "github"
       },
       "original": {
-        "path": "/home/tek/code/tek/haskell/ribosome",
-        "type": "path"
+        "owner": "tek",
+        "repo": "ribosome",
+        "type": "github"
       }
     },
     "root": {
