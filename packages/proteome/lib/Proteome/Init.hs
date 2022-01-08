@@ -2,7 +2,7 @@ module Proteome.Init where
 
 import Control.Monad.Catch (MonadThrow)
 import Neovim (Neovim)
-import Neovim.Context.Internal (Config(customConfig), asks')
+import Neovim.Context.Internal (Config (customConfig), asks')
 import Ribosome.Api.Autocmd (uautocmd)
 import Ribosome.Config.Setting (settingMaybe, updateSetting)
 import Ribosome.Control.Monad.Ribo (RNeovim, runRibo)
@@ -11,36 +11,33 @@ import Ribosome.Data.PersistError (PersistError)
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Error.Report (reportError')
 import Ribosome.Internal.IO (retypeNeovim)
+import Ribosome.Log (showDebug)
 import Ribosome.Msgpack.Error (DecodeError)
 import Ribosome.Nvim.Api.IO (vimCallFunction)
-import System.Log.Logger (Priority(ERROR), setLevel, updateGlobalLogger)
+import System.Log.Logger (Priority (ERROR), setLevel, updateGlobalLogger)
 
 import Proteome.Config (logConfig, readConfig)
 import Proteome.Data.Env (Env, Proteome)
 import qualified Proteome.Data.Env as Env (mainProject)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectMetadata (ProjectMetadata(VirtualProject, DirProject))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
-import Proteome.Data.ResolveError (ResolveError)
+import Proteome.Data.Project (Project (Project))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.PersistBuffers (loadBuffers)
-import Proteome.Project (pathData)
 import Proteome.Project.Activate (activateProject)
-import Proteome.Project.Resolve (resolveProjectFromConfig)
+import Proteome.Project.Resolve (fromRootSettings)
 import qualified Proteome.Settings as Settings (mainName, mainProjectDir, mainType)
-import Ribosome.Log (showDebug)
 
 resolveMainProject ::
   NvimE e m =>
   MonadRibo m =>
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
   m Project
 resolveMainProject = do
   mainDir <- settingMaybe Settings.mainProjectDir
   vimCwd <- vimCallFunction "getcwd" []
-  let (root, name, tpe) = pathData (fromMaybe vimCwd mainDir)
-  resolveProjectFromConfig (Just root) name (Just tpe)
+  fromRootSettings (ProjectRoot (fromMaybe vimCwd mainDir))
 
 setMainProject ::
   MonadDeepState s Env m =>
@@ -86,7 +83,6 @@ resolveAndInitMain ::
   MonadRibo m =>
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
   MonadDeepState s Env m =>
   m ()
 resolveAndInitMain =

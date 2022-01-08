@@ -19,21 +19,26 @@ import Proteome.Test.Project (cil, cn, flag, fn, hask, prot, tp)
 import Proteome.Test.Unit (ProteomeTest, testWithDef)
 
 assertProject ::
+  HasCallStack =>
   NvimE e m =>
   MonadThrow m =>
   Path Abs Dir ->
   Text ->
   TestT m ()
-assertProject projectsDir n = do
-  cwd <- parseAbsDir =<< nvimCwd
-  haskPath <- parseRelDir (toString hask)
-  nPath <- parseRelDir (toString n)
-  projectsDir </> haskPath </> nPath === cwd
+assertProject projectsDir n =
+  withFrozenCallStack do
+    cwd <- parseAbsDir =<< nvimCwd
+    haskPath <- parseRelDir (toString hask)
+    nPath <- parseRelDir (toString n)
+    projectsDir </> haskPath </> nPath === cwd
 
 cycleTest :: ProteomeTest ()
 cycleTest = do
   projectsDir <- parseAbsDir =<< fixture "projects"
-  let assertDir = assertProject projectsDir
+  let
+    assertDir :: HasCallStack => Text -> ProteomeTest ()
+    assertDir =
+      withFrozenCallStack (assertProject projectsDir)
   haskPath <- parseRelDir (toString hask)
   protPath <- parseRelDir (toString prot)
   let mainDir = projectsDir </> haskPath </> protPath

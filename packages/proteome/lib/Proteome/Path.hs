@@ -7,6 +7,7 @@ import Path (
   File,
   Path,
   Rel,
+  parent,
   parseAbsDir,
   parseAbsFile,
   parseRelDir,
@@ -98,3 +99,9 @@ pathText =
 dropSlash :: Path b t -> Text
 dropSlash =
   Text.dropWhileEnd ('/' ==) . pathText
+
+rootPathSegment :: Path b Dir -> Path b Dir
+rootPathSegment p =
+  if parent (parent p) == parent p
+  then p
+  else rootPathSegment (parent p)

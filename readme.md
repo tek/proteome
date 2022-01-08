@@ -72,9 +72,9 @@ concrete paths.
 If the working directory is among the paths, the corresponding type will be
 chosen.
 
-The `baseDirs` variant assumes that your projects are arranged as `type/name`
+The `baseDirs` variant assumes that your projects are arranged as `type/.../name`
 subdirectories of a common base directory.
-If the working directory matches `basedir/type/name`, where `basedir` is one of
+If the working directory matches `basedir/type/.../name`, where `basedir` is one of
 the directories in this config option, the path segments will be used for type
 and name.
 

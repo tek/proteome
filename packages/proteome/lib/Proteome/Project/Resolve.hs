@@ -1,12 +1,14 @@
 module Proteome.Project.Resolve where
 
-import qualified Control.Lens as Lens (over, view)
+import qualified Control.Lens as Lens (over)
+import Control.Lens ((^.))
 import Control.Monad (foldM)
 import Control.Monad.Extra (firstJustM)
 import Data.List (nub)
+import Data.List.Extra (firstJust)
 import Data.Map.Strict ((!?))
 import qualified Data.Map.Strict as Map (toList, union)
-import Path (Abs, Dir, Path, parent, parseRelDir, toFilePath, (</>))
+import Path (Abs, Dir, Path, dirname, isProperPrefixOf, parent, parseRelDir, stripProperPrefix, toFilePath, (</>))
 import Path.IO (doesDirExist)
 import Ribosome.Config.Setting (setting)
 import Ribosome.Control.Exception (catchAnyAs)
@@ -17,19 +19,19 @@ import qualified System.FilePath.Glob as Glob (compile)
 import System.FilePattern.Directory (getDirectoryFiles)
 
 import Proteome.Config (defaultTypeMarkers)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
-import qualified Proteome.Data.ProjectConfig as ProjectConfig (baseDirs, typeMarkers)
-import Proteome.Data.ProjectLang (ProjectLang(ProjectLang))
-import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject, VirtualProject))
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
-import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
-import Proteome.Data.ProjectSpec (ProjectSpec(ProjectSpec))
-import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec(..))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.Project (Project (Project))
+import qualified Proteome.Data.ProjectConfig as ProjectConfig
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
+import Proteome.Data.ProjectLang (ProjectLang (ProjectLang))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot), unProjectRoot)
+import Proteome.Data.ProjectSpec (ProjectSpec (ProjectSpec))
+import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec (..))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Data.ResolveError (ResolveError)
-import qualified Proteome.Data.ResolveError as ResolveError (ResolveError(..))
-import Proteome.Path (parseAbsDirMaybe)
+import qualified Proteome.Data.ResolveError as ResolveError (ResolveError (..))
+import Proteome.Path (dropSlash, parseAbsDirMaybe, rootPathSegment)
 import Proteome.Project (pathData)
 import qualified Proteome.Settings as Settings (projectConfig, projects)
 
@@ -67,7 +69,7 @@ byProjectBaseSubpath n@(ProjectName name) t@(ProjectType tpe) base = do
   namePath <- hoistEitherAs (ResolveError.ParsePath name) $ parseRelDir (toString name)
   let root = base </> tpePath </> namePath
   exists <- doesDirExist root
-  return $ if exists then Just $ projectFromSegments t n (ProjectRoot root) else Nothing
+  pure $ if exists then Just $ projectFromSegments t n (ProjectRoot root) else Nothing
 
 byProjectBasesSubpath ::
   MonadIO m =>
@@ -79,11 +81,12 @@ byProjectBasesSubpath ::
 byProjectBasesSubpath baseDirs name tpe =
   foldM subpath Nothing baseDirs
   where
-    subpath (Just p) _ = return (Just p)
+    subpath (Just p) _ = pure (Just p)
     subpath Nothing a = byProjectBaseSubpath name tpe a
 
 virtualProject :: ProjectName -> Project
-virtualProject name = Project (VirtualProject name) [] Nothing []
+virtualProject name =
+  Project (VirtualProject name) [] Nothing []
 
 resolveByTypeAndPath :: [Path Abs Dir] -> ProjectName -> ProjectType -> ProjectRoot -> Maybe Project
 resolveByTypeAndPath baseDirs name tpe root =
@@ -94,16 +97,15 @@ resolveByType ::
   MonadDeepError e ResolveError m =>
   [Path Abs Dir] ->
   [ProjectSpec] ->
-  Maybe ProjectRoot ->
   ProjectName ->
   ProjectType ->
   m (Maybe Project)
-resolveByType baseDirs explicit root name tpe = do
+resolveByType baseDirs explicit name tpe = do
   byBaseSubpath <- byProjectBasesSubpath baseDirs name tpe
-  return $ byPath <|> byBaseSubpath <|> fmap projectFromSpec byTypeName
+  pure (byBaseSubpath <|> projectFromSpec <$> byTypeName)
   where
-    byTypeName = byProjectTypeName explicit name tpe
-    byPath = root >>= resolveByTypeAndPath baseDirs name tpe
+    byTypeName =
+      byProjectTypeName explicit name tpe
 
 fromProjectRoot :: Path Abs Dir -> Project
 fromProjectRoot dir =
@@ -171,7 +173,7 @@ resolveByRoot ::
   ProjectRoot ->
   m (Maybe Project)
 resolveByRoot (ProjectConfig _ _ _ _ typeMarkers _ _) name explicit root =
-  maybe (resolveFromDirContents typeMarkers name root) (return . Just . projectFromSpec) fromExplicit
+  maybe (resolveFromDirContents typeMarkers name root) (pure . Just . projectFromSpec) fromExplicit
   where
     fromExplicit = find (hasProjectRoot root) explicit
 
@@ -185,8 +187,8 @@ augmentTypes :: ProjectConfig -> ProjectType -> [ProjectType] -> [ProjectType]
 augmentTypes (ProjectConfig _ _ _ typeMap _ _ _) =
   augment typeMap
 
-realLang :: ProjectConfig -> ProjectType -> ProjectLang
-realLang (ProjectConfig _ _ _ _ _ langMap _) t@(ProjectType tpe) =
+resolveLanguage :: ProjectConfig -> ProjectType -> ProjectLang
+resolveLanguage (ProjectConfig _ _ _ _ _ langMap _) t@(ProjectType tpe) =
   fromMaybe (ProjectLang tpe) (langMap !? t)
 
 augmentLangs :: ProjectConfig -> ProjectLang -> [ProjectLang] -> [ProjectLang]
@@ -195,35 +197,45 @@ augmentLangs (ProjectConfig _ _ _ _ _ _ langsMap) =
 
 augmentFromConfig :: ProjectConfig -> Project -> Project
 augmentFromConfig config (Project meta@(DirProject _ _ (Just tpe)) types lang langs) =
-  Project meta (augmentTypes config tpe types) (Just realLang') (augmentLangs config realLang' langs)
+  Project meta (augmentTypes config tpe types) (Just lang') (augmentLangs config lang' langs)
   where
-    realLang' = fromMaybe (realLang config tpe) lang
-augmentFromConfig _ project = project
+    lang' = fromMaybe (resolveLanguage config tpe) lang
+augmentFromConfig _ project =
+  project
 
-resolveProject ::
+fromName ::
+  NvimE e m =>
   MonadRibo m =>
-  MonadBaseControl IO m =>
   MonadDeepError e ResolveError m =>
   [ProjectSpec] ->
   ProjectConfig ->
-  Maybe ProjectRoot ->
   ProjectName ->
   Maybe ProjectType ->
   m Project
-resolveProject explicit config root name tpe = do
-  byType <- join <$> traverse (resolveByType baseDirs explicit root name) tpe
-  byName <- if isJust root then return Nothing else resolveByName baseDirs name
-  byRoot <- join <$> traverse (resolveByRoot config name explicit) root
+fromName explicit config name tpe = do
+  let baseDirs = config ^. ProjectConfig.baseDirs
+  byType <- join <$> traverse (resolveByType baseDirs explicit name) tpe
+  byName <- resolveByName baseDirs name
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
-  let byTypeOrName = fromMaybe byNameOrVirtual byType
-  let project = fromMaybe byTypeOrName byRoot
-  logDebug @Text $ logMsg byType byName byRoot
-  return $ augmentFromConfig config project
+  let project = fromMaybe byNameOrVirtual byType
+  logDebug @Text $ logMsg byType byName
+  pure (augmentFromConfig config project)
   where
-    baseDirs =
-      Lens.view ProjectConfig.baseDirs config
-    logMsg byType byName byRoot =
-      "resolved project: byType(" <> show byType <> ") byName(" <> show byName <> ") byRoot(" <> show byRoot <> ")"
+    logMsg byType byName =
+      [exon|resolved project: byType(#{show byType}) byName(#{show byName})|]
+
+fromNameSettings ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadDeepError e ResolveError m =>
+  MonadDeepError e SettingError m =>
+  ProjectName ->
+  Maybe ProjectType ->
+  m Project
+fromNameSettings name tpe = do
+  explicit <- setting Settings.projects
+  config <- projectConfig
+  fromName explicit config name tpe
 
 projectConfig ::
   NvimE e m =>
@@ -233,17 +245,97 @@ projectConfig ::
 projectConfig =
   Lens.over ProjectConfig.typeMarkers (`Map.union` defaultTypeMarkers) <$> setting Settings.projectConfig
 
-resolveProjectFromConfig ::
+rootExplicit :: [ProjectSpec] -> ProjectRoot -> Maybe Project
+rootExplicit explicit root =
+  projectFromSpec <$> find (hasProjectRoot root) explicit
+
+rootProjectTypes ::
+  Map ProjectType [Path Abs Dir] ->
+  ProjectName ->
+  ProjectRoot ->
+  Maybe Project
+rootProjectTypes tpes name root@(ProjectRoot rootDir) =
+  cons . fst <$> find (elem rootDir . snd) (Map.toList tpes)
+  where
+    cons tpe =
+      projectFromSegments tpe name root
+
+rootTypeDirs ::
+  Map ProjectType [Path Abs Dir] ->
+  ProjectName ->
+  ProjectRoot ->
+  Maybe Project
+rootTypeDirs types name root@(ProjectRoot rootDir) =
+  cons . fst <$> find (matchType . snd) (Map.toList types)
+  where
+    cons tpe =
+      projectFromSegments tpe name root
+    matchType =
+      any match
+    match base = do
+      isProperPrefixOf base rootDir
+
+rootBaseDirs ::
+  [Path Abs Dir] ->
+  ProjectName ->
+  ProjectRoot ->
+  Maybe Project
+rootBaseDirs bases name root@(ProjectRoot rootDir) =
+  firstJust match bases
+  where
+    match base = do
+      rel <- stripProperPrefix base rootDir
+      let tpe = rootPathSegment (parent rel)
+      if rel /= tpe
+      then Just (projectFromSegments (ProjectType (dropSlash tpe)) name root)
+      else Nothing
+
+projectName :: ProjectRoot -> ProjectName
+projectName =
+  ProjectName . dropSlash . dirname . unProjectRoot
+
+firstJustMOr ::
+  Monad m =>
+  a ->
+  [m (Maybe a)] ->
+  m a
+firstJustMOr fallback =
+  fmap (fromMaybe fallback) . runMaybeT . asum @[] . fmap MaybeT
+
+fromRoot ::
+  NvimE e m =>
+  MonadRibo m =>
+  MonadBaseControl IO m =>
+  [ProjectSpec] ->
+  ProjectConfig ->
+  ProjectRoot ->
+  m Project
+fromRoot explicit config root = do
+  let
+    byRoot =
+      asum @[] [
+        rootExplicit explicit root,
+        rootProjectTypes (config ^. ProjectConfig.projectTypes) name root,
+        rootTypeDirs (config ^. ProjectConfig.typeDirs) name root,
+        rootBaseDirs (config ^. ProjectConfig.baseDirs) name root
+        ]
+  project <- firstJustMOr (virtualProject name) [
+    pure byRoot,
+    resolveFromDirContents (config ^. ProjectConfig.typeMarkers) name root
+    ]
+  pure (augmentFromConfig config project)
+  where
+    name =
+      projectName root
+
+fromRootSettings ::
   NvimE e m =>
   MonadRibo m =>
   MonadBaseControl IO m =>
   MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
-  Maybe ProjectRoot ->
-  ProjectName ->
-  Maybe ProjectType ->
+  ProjectRoot ->
   m Project
-resolveProjectFromConfig root name tpe = do
+fromRootSettings root = do
   explicit <- setting Settings.projects
   config <- projectConfig
-  resolveProject explicit config root name tpe
+  fromRoot explicit config root

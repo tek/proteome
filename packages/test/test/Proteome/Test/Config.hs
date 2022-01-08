@@ -1,7 +1,7 @@
 module Proteome.Test.Config where
 
 import qualified Ribosome.Test.Embed as E (defaultTestConfig, defaultTestConfigWith)
-import Ribosome.Test.Embed (TestConfig(tcVariables), Vars, varsFromList, varsUnion)
+import Ribosome.Test.Embed (TestConfig (tcVariables), Vars, varsFromList, varsUnion)
 import System.Directory (getCurrentDirectory)
 
 defaultTestConfigWith :: Vars -> TestConfig
@@ -16,8 +16,8 @@ vars ::
 vars = do
   base <- liftIO getCurrentDirectory
   pure $ varsFromList [
-    ("proteome_project_base_dirs", toMsgpack @[String] [base <> "/test/fixtures/projects"]),
-    ("proteome_main_project_dir", toMsgpack $ base <> "/test/fixtures/projects/haskell/flagellum")
+    ("proteome_project_config", toMsgpack @(Map String [String]) [("baseDirs", [base <> "/test/fixtures/projects"])]),
+    ("proteome_main_project_dir", toMsgpack (base <> "/test/fixtures/projects/haskell/flagellum"))
     ]
 
 withVars :: TestConfig -> IO TestConfig

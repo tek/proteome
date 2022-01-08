@@ -36,14 +36,13 @@ import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Path (dropSlash, pathText)
 import Proteome.Project.Activate (selectProject)
-import Proteome.Project.Resolve (resolveProjectFromConfig)
+import Proteome.Project.Resolve (fromNameSettings)
 import qualified Proteome.Settings as Settings
 
 add ::
   ∀ s e m .
   NvimE e m =>
   MonadRibo m =>
-  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e ResolveError m =>
@@ -52,7 +51,7 @@ add ::
   Bool ->
   m ()
 add name tpe activate = do
-  addDirProject =<< resolveProjectFromConfig Nothing name tpe
+  addDirProject =<< fromNameSettings name tpe
   when activate (selectProject (-1))
   where
     addDirProject (Project (VirtualProject _) _ _ _) =
@@ -63,7 +62,6 @@ add name tpe activate = do
 proAdd ::
   NvimE e m =>
   MonadRibo m =>
-  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e ResolveError m =>
@@ -75,7 +73,6 @@ proAdd (AddOptions name tpe activate) =
 addFromName ::
   NvimE e m =>
   MonadRibo m =>
-  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e ResolveError m =>
@@ -88,7 +85,6 @@ addFromName name =
 proAddCmd ::
   NvimE e m =>
   MonadRibo m =>
-  MonadBaseControl IO m =>
   MonadDeepState s Env m =>
   MonadDeepError e SettingError m =>
   MonadDeepError e AddError m =>
