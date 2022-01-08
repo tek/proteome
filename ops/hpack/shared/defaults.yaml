@@ -10,7 +10,6 @@ dependencies:
   - chiasma
   - composition
   - composition-extra
-  - conduit
   - containers
   - cornea
   - data-default

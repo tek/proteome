@@ -95,7 +95,6 @@ library
     , chiasma
     , composition
     , composition-extra
-    , conduit
     , containers
     , cornea
     , data-default
@@ -227,7 +226,6 @@ test-suite proteome-unit
     , chiasma
     , composition
     , composition-extra
-    , conduit
     , containers
     , cornea
     , data-default

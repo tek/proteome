@@ -158,8 +158,6 @@ library
     , chronos
     , composition
     , composition-extra
-    , conduit
-    , conduit-extra
     , containers
     , cornea
     , data-default
@@ -191,7 +189,7 @@ library
     , relude >=0.7 && <1.2
     , resourcet
     , ribosome
-    , stm-conduit
+    , stm-chans
     , streamly >=0.8
     , streamly-process >=0.1
     , string-interpolate
@@ -280,8 +278,6 @@ executable proteome
     , chronos
     , composition
     , composition-extra
-    , conduit
-    , conduit-extra
     , containers
     , cornea
     , data-default
@@ -314,7 +310,7 @@ executable proteome
     , relude >=0.7 && <1.2
     , resourcet
     , ribosome
-    , stm-conduit
+    , stm-chans
     , streamly >=0.8
     , streamly-process >=0.1
     , string-interpolate

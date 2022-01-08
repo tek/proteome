@@ -1,8 +1,8 @@
 module Proteome.Files.Source where
 
 import Control.Concurrent.Async.Lifted (async, wait)
+import Control.Concurrent.STM.TMChan (TMChan, closeTMChan, newTMChan, writeTMChan)
 import Control.Monad.Catch (MonadCatch, MonadThrow)
-import Data.Conduit.TMChan (TMChan, closeTMChan, newTMChan, writeTMChan)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import qualified Data.Set as Set (fromList, toList)
 import qualified Data.Text as Text
