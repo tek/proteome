@@ -1,9 +1,9 @@
 module Proteome.Test.FilenameTest where
 
+import Hedgehog (assert, (===))
 import Neovim (CommandArguments (bang))
-import Hedgehog ((===), assert)
-import Path (Dir, File, Path, Rel, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>), parent)
-import Path.IO (doesFileExist, getCurrentDir, listDir, createDirIfMissing)
+import Path (Dir, File, Path, Rel, parent, parseAbsDir, reldir, relfile, stripProperPrefix, toFilePath, (</>))
+import Path.IO (createDirIfMissing, doesFileExist, getCurrentDir, listDir)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Config.Setting (updateSetting)
 import Ribosome.Config.Settings (persistenceDir)
@@ -15,7 +15,7 @@ import Test.Tasty (TestTree, testGroup)
 import Proteome.Data.Env (Proteome)
 import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Path (pathText)
-import Proteome.Test.Unit (ProteomeTest, tmuxTest)
+import Proteome.Test.Unit (ProteomeTest, testDef)
 
 filenameTest ::
   Path Rel File ->
@@ -47,92 +47,71 @@ basic ::
 basic =
   filenameTest [relfile|File.hs|]
 
-moveRelDirTest :: ProteomeTest ()
-moveRelDirTest = do
-  basic [relfile|sub/dir/File.hs|] False \ b -> proMove def [text|#{b}/sub/dir/|]
-
 test_moveRelDir :: UnitTest
 test_moveRelDir =
-  tmuxTest moveRelDirTest
-
-moveRenameTest :: ProteomeTest ()
-moveRenameTest =
-  basic [relfile|Changed.hs|] False \ _ -> proMove def "Changed"
+  testDef do
+    basic [relfile|sub/dir/File.hs|] False \ b -> proMove def [text|#{b}/sub/dir/|]
 
 test_moveRename :: UnitTest
 test_moveRename =
-  tmuxTest moveRenameTest
-
-moveExtTest :: ProteomeTest ()
-moveExtTest =
-  basic [relfile|Changed.md|] False \ _ -> proMove def "Changed.md"
+  testDef do
+    basic [relfile|Changed.hs|] False \ _ -> proMove def "Changed"
 
 test_moveExt :: UnitTest
 test_moveExt =
-  tmuxTest moveExtTest
-
-moveDotTest :: ProteomeTest ()
-moveDotTest = do
-  filenameTest [relfile|.conf.json|] [relfile|conf.json|] False \ _ -> proMove def "conf.json"
-  filenameTest [relfile|.conf.json|] [relfile|.conf.md|] False \ _ -> proMove def ".conf.md"
-  filenameTest [relfile|.conf.json|] [relfile|conf.md|] False \ _ -> proMove def "conf.md"
+  testDef do
+    basic [relfile|Changed.md|] False \ _ -> proMove def "Changed.md"
 
 test_moveDot :: UnitTest
 test_moveDot =
-  tmuxTest moveDotTest
-
-moveNoDotsTest :: ProteomeTest ()
-moveNoDotsTest =
-  filenameTest [relfile|conf.file.json|] [relfile|conf.json|] False \ _ ->
-    proMove def { bang = Just True } "conf.json"
+  testDef do
+    filenameTest [relfile|.conf.json|] [relfile|conf.json|] False \ _ -> proMove def "conf.json"
+    filenameTest [relfile|.conf.json|] [relfile|.conf.md|] False \ _ -> proMove def ".conf.md"
+    filenameTest [relfile|.conf.json|] [relfile|conf.md|] False \ _ -> proMove def "conf.md"
 
 test_moveNoDots :: UnitTest
 test_moveNoDots =
-  tmuxTest moveNoDotsTest
-
-multiExtTest :: ProteomeTest ()
-multiExtTest = do
-  filenameTest [relfile|a.b.c.d|] [relfile|x.y.z.q|] False \ _ -> proMove def "x.y.z.q"
-  filenameTest [relfile|a.b.c.d|] [relfile|x.y.z.d|] False \ _ -> proMove def "x.y.z"
+  testDef do
+    filenameTest [relfile|conf.file.json|] [relfile|conf.json|] False \ _ ->
+      proMove def { bang = Just True } "conf.json"
 
 test_multiExt :: UnitTest
 test_multiExt =
-  tmuxTest multiExtTest
+  testDef do
+    filenameTest [relfile|a.b.c.d|] [relfile|x.y.z.q|] False \ _ -> proMove def "x.y.z.q"
+    filenameTest [relfile|a.b.c.d|] [relfile|x.y.z.d|] False \ _ -> proMove def "x.y.z"
 
-renameDirTest :: ProteomeTest ()
-renameDirTest = do
-  filenameTest [relfile|dir1/dir2/file|] [relfile|dir3/dir2/file|] False \ _ -> proMove def "^^dir3"
+test_renameExt :: UnitTest
+test_renameExt =
+  testDef do
+    filenameTest [relfile|a.b.c.d|] [relfile|a.b.z.q|] False \ _ -> proMove def "*.z.q"
+    basic [relfile|File.md|] False \ _ -> proMove def "*.md"
 
 test_renameDir :: UnitTest
 test_renameDir =
-  tmuxTest renameDirTest
-
-copyRenameTest :: ProteomeTest ()
-copyRenameTest = do
-  basic [relfile|Changed.hs|] True \ _ -> proCopy def "Changed"
+  testDef do
+    filenameTest [relfile|dir1/dir2/file|] [relfile|dir3/dir2/file|] False \ _ -> proMove def "^^dir3"
 
 test_copyRename :: UnitTest
 test_copyRename =
-  tmuxTest copyRenameTest
-
-removeTest :: ProteomeTest ()
-removeTest = do
-  persistDir <- parseAbsDir =<< tempDir "rename/persist"
-  updateSetting persistenceDir (toFilePath persistDir)
-  base <- parseAbsDir =<< tempDir "rename"
-  let
-    initial = base </> [relfile|File.hs|]
-  edit (toFilePath initial)
-  vimCommand "write"
-  lift proRemove
-  ("" ===) =<< currentBufferName
-  (True ===) . not =<< doesFileExist initial
-  trash <- listDir (persistDir </> [reldir|proteome/trash|])
-  1 === length trash
+  testDef do
+    basic [relfile|Changed.hs|] True \ _ -> proCopy def "Changed"
 
 test_remove :: UnitTest
 test_remove = do
-  tmuxTest removeTest
+  testDef do
+    persistDir <- parseAbsDir =<< tempDir "rename/persist"
+    updateSetting persistenceDir (toFilePath persistDir)
+    base <- parseAbsDir =<< tempDir "rename"
+    let
+      initial = base </> [relfile|File.hs|]
+    edit (toFilePath initial)
+    vimCommand "write"
+    lift proRemove
+    ("" ===) =<< currentBufferName
+    (True ===) . not =<< doesFileExist initial
+    trash <- listDir (persistDir </> [reldir|proteome/trash|])
+    1 === length trash
 
 test_filename :: TestTree
 test_filename =
@@ -143,6 +122,7 @@ test_filename =
     unitTest "rename a file with leading dot" test_moveDot,
     unitTest "rename a file without dot analysis" test_moveNoDots,
     unitTest "rename a file with three extensions" test_multiExt,
+    unitTest "rename an extension" test_renameExt,
     unitTest "rename a containing directory" test_renameDir,
     unitTest "copy a file" test_copyRename,
     unitTest "remove a file" test_remove

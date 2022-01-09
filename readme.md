@@ -245,6 +245,10 @@ be replaced by what follows.
 For example, with a buffer path of `dir1/dir2/dir3/dir4/file`, the pattern `^^^new` will result in the path
 `dir1/new/dir3/dir4/file`.
 
+If the new file name starts with a `*` and is followed by a number of extensions, only the extensions will be renamed.
+If the buffer path has more extensions than the new file name, only the matching extensions at the end are affected.
+For example, with a buffer file name of `file.a.b.c`, the pattern `*.x.y` will result in `file.a.x.y`.
+
 The command `ProRemove` moves the current file to a trash dir, located in
 `$XDG_CACHE_DIR/proteome/trash`.
 

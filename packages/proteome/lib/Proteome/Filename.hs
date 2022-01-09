@@ -1,7 +1,6 @@
 module Proteome.Filename where
 
 import qualified Chronos
-import Control.Monad (foldM)
 import Control.Monad.Catch (MonadThrow)
 import Data.MessagePack (Object)
 import qualified Data.Text as Text
@@ -19,6 +18,7 @@ import Path (
   parseAbsDir,
   parseRelDir,
   reldir,
+  relfile,
   splitExtension,
   toFilePath,
   (</>),
@@ -43,8 +43,29 @@ import Proteome.Path (
   pathText,
   )
 
+data BufPath =
+  BufPath (Path Abs File) [Text]
+  deriving stock (Eq, Show)
+
+bufDir :: BufPath -> Path Abs Dir
+bufDir (BufPath f _) =
+  parent f
+
+data NameSpec =
+  Star (Path Rel File)
+  |
+  Literal (Path Rel File)
+  deriving stock (Eq, Show)
+
+rawNameSpec ::
+  NameSpec ->
+  Path Rel File
+rawNameSpec = \case
+  Star f -> f
+  Literal f -> f
+
 data Modification =
-  Filename (Path Rel File) Int
+  Filename (Path Rel File) (Path Rel Dir) NameSpec [Text]
   |
   Dir (Path Abs Dir)
   |
@@ -52,6 +73,10 @@ data Modification =
   |
   Container Int (Path Rel Dir)
   deriving stock (Eq, Show)
+
+nameSpec :: Path Rel File -> NameSpec
+nameSpec p =
+  if p == [relfile|*|] then Star p else Literal p
 
 dotsInPath :: Text -> Int
 dotsInPath path =
@@ -75,10 +100,27 @@ relativeFile cwd spec = do
   rel <- parseRelFileMaybe spec
   pure (File (cwd </> rel))
 
+splitExtensions :: Path b File -> (Path b File, [Text])
+splitExtensions =
+  spin []
+  where
+    spin exts f =
+      case splitExtension f of
+        Just (f', e) -> spin (toText e : exts) f'
+        Nothing -> (f, exts)
+
+addExtensions ::
+  Path b File ->
+  [Text] ->
+  Maybe (Path b File)
+addExtensions name exts =
+  foldlM (flip addExtension) name (toString <$> exts)
+
 nameOnly :: Text -> Maybe Modification
 nameOnly spec = do
   rel <- parseRelFileMaybe spec
-  Just (Filename rel (dotsInPath spec))
+  let (name, exts) = splitExtensions (filename rel)
+  Just (Filename rel (parent rel) (nameSpec name) exts)
 
 maybeDir ::
   MonadIO m =>
@@ -140,35 +182,32 @@ checkBufferPath cwd = do
   path <- hoistMaybe FilenameError.BufferPathInvalid (absoluteParse cwd name)
   ifM (doesFileExist path) (pure path) (throwHoist FilenameError.BufferPathInvalid)
 
-extensions :: Int -> Path Rel File -> [String]
-extensions 0 _ =
-  []
-extensions num path =
-  case splitExtension path of
-    Just (prefix, ext) -> ext : extensions (num - 1) prefix
-    Nothing -> []
+withExtension ::
+  BufPath ->
+  [Text] ->
+  NameSpec ->
+  Maybe (Path Rel File)
+withExtension (BufPath bufName bufExts) exts = \case
+  Star _ ->
+    addExtensions (filename bufName) (take (length bufExts - length exts) bufExts ++ exts)
+  Literal name ->
+    addExtensions name (exts ++ drop (length exts) bufExts)
 
 renameInplace ::
   MonadDeepError e FilenameError m =>
   Bool ->
-  Path Abs File ->
   Path Rel File ->
-  Int ->
+  BufPath ->
+  Path Rel Dir ->
+  NameSpec ->
+  [Text] ->
   m (Path Abs File)
-renameInplace raw bufPath newName dots = do
-  withExt <- if raw then pure newName else withExtension
-  pure (parent bufPath </> withExt)
-  where
-    withExtension =
-      hoistMaybe FilenameError.BufferPathInvalid (foldM (flip addExtension) newName extraExtensions)
-    extraExtensions =
-      extensions diffDots bufName
-    diffDots =
-      bufDots - dots
-    bufDots =
-      dotsInPath (pathText bufName)
-    bufName =
-      filename bufPath
+renameInplace raw spec bufPath destDir newName exts = do
+  rel <-
+    if raw
+    then pure (destDir </> spec)
+    else hoistMaybe FilenameError.BufferPathInvalid (withExtension bufPath exts newName)
+  pure (bufDir bufPath </> rel)
 
 replaceDir ::
   MonadDeepError e FilenameError m =>
@@ -195,8 +234,8 @@ assemblePath ::
   Modification ->
   m (Path Abs File)
 assemblePath raw bufPath = \case
-  Filename newName dots ->
-    renameInplace raw bufPath newName dots
+  Filename rawSpec destDir newName exts ->
+    renameInplace raw rawSpec (uncurry BufPath (splitExtensions bufPath)) destDir newName exts
   Dir dir ->
     pure (dir </> filename bufPath)
   File file ->
