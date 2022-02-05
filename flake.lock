@@ -383,11 +383,11 @@
         "hix": "hix_2"
       },
       "locked": {
-        "lastModified": 1640198407,
-        "narHash": "sha256-Sxz4eaD9K8NcEWMrVkfxcUIfrn9vLGmZitTOEwpBnYY=",
+        "lastModified": 1644023469,
+        "narHash": "sha256-x1r4y/A12HuwDGrpT6G9507zfvu4JBrBrAWI/SatWXo=",
         "owner": "tek",
         "repo": "ribosome",
-        "rev": "9a27373e768ef1d413be6c5cf967a3938cb79f7a",
+        "rev": "9c1f4e396c2aa9614a19d606dc30b7e15fe3b877",
         "type": "github"
       },
       "original": {
