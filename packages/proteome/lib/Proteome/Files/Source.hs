@@ -21,8 +21,9 @@ import Path (
   stripProperPrefix,
   toFilePath,
   )
-import Path.IO (findExecutable, walkDir)
+import Path.IO (doesDirExist, findExecutable, walkDir)
 import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
+import Ribosome.Control.Exception (tryAny)
 import Ribosome.Data.Stream (chanStream)
 import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
 import qualified Streamly.Prelude as Streamly
@@ -82,13 +83,16 @@ filterDirs excludeHidden patterns =
 
 scan ::
   MonadIO m =>
+  MonadBaseControl IO m =>
   FilesConfig ->
   TMChan (FileScanItem) ->
   Path Abs Dir ->
   Maybe Text ->
   m ()
 scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir baseIndicator =
-  walkDir enqueue dir
+  void $ tryAny do
+    whenM (doesDirExist dir) do
+      walkDir enqueue dir
   where
     enqueue _ dirs files' =
       exclude <$ atomically (traverse_ (writeTMChan chan) filtered)
