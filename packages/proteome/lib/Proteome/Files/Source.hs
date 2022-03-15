@@ -91,8 +91,7 @@ scan ::
   m ()
 scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir baseIndicator =
   void $ tryAny do
-    whenM (doesDirExist dir) do
-      walkDir enqueue dir
+    walkDir enqueue dir
   where
     enqueue _ dirs files' =
       exclude <$ atomically (traverse_ (writeTMChan chan) filtered)
@@ -221,4 +220,8 @@ files ::
   NonEmpty (Path Abs Dir) ->
   SerialT m (MenuItem (Path Abs File))
 files conf@(FilesConfig useRg _ _ _ _) paths =
-  ifM ((useRg &&) <$> rgExists) (filesRg conf paths) (filesNative conf paths)
+  filterM doesDirExist (toList paths) >>= \case
+    [] ->
+      Streamly.fromList []
+    (p : ps) ->
+      ifM ((useRg &&) <$> rgExists) (filesRg conf paths) (filesNative conf (p :| ps))
