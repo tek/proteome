@@ -224,4 +224,4 @@ files conf@(FilesConfig useRg _ _ _ _) paths =
     [] ->
       Streamly.fromList []
     (p : ps) ->
-      ifM ((useRg &&) <$> rgExists) (filesRg conf paths) (filesNative conf (p :| ps))
+      ifM ((useRg &&) <$> rgExists) (filesRg conf (p :| ps)) (filesNative conf (p :| ps))
