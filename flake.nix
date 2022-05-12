@@ -34,12 +34,14 @@
     main = "proteome";
     versionFile = "ops/hpack/packages/meta.yaml";
     shellConfig = p: { buildInputs = [p.pkgs.neovim p.pkgs.ripgrep p.pkgs.tmux]; };
-    modify = _: outputs: rec {
-      apps.proteome = {
-        type = "app";
-        program = "${outputs.packages.proteome}/bin/proteome";
+    modify = _: outputs: {
+      apps = rec {
+        proteome = {
+          type = "app";
+          program = "${outputs.packages.proteome}/bin/proteome";
+        };
+        default = proteome;
       };
-      defaultApp = apps.proteome;
     };
   };
 }
