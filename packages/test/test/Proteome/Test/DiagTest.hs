@@ -1,19 +1,16 @@
 module Proteome.Test.DiagTest where
 
-import Hedgehog ((===))
+import Control.Lens ((.~))
 import Path (Abs, Dir, Path, absdir, toFilePath)
+import Polysemy.Test (UnitTest, (===))
 import Ribosome.Api.Buffer (currentBufferContent)
-import Ribosome.Test.Run (UnitTest)
 
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (configLog, mainProject)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
-import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.Project (Project (Project))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Diag (proDiag)
-import Proteome.Test.Config (vars)
 import Proteome.Test.Project (ag, flag, fn, hask, idr, l, la, li, ti, tp)
-import Proteome.Test.Unit (ProteomeTest, testWithDef)
+import Proteome.Test.Run (proteomeTest)
 
 root :: Path Abs Dir
 root = [absdir|/projects/flagellum|]
@@ -41,14 +38,11 @@ target = [
   "loaded config files:"
   ] <> confLog
 
-diagSpec :: ProteomeTest ()
-diagSpec = do
-  setL @Env Env.mainProject main
-  setL @Env Env.configLog confLog
-  proDiag def
-  content <- currentBufferContent
-  target === content
-
 test_diag :: UnitTest
 test_diag =
-  vars >>= testWithDef diagSpec
+  proteomeTest do
+    atomicModify' (#mainProject .~ main)
+    atomicModify' (#configLog .~ confLog)
+    proDiag
+    content <- currentBufferContent
+    target === content

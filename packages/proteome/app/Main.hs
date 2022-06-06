@@ -1,5 +1,7 @@
-import Neovim (neovim, plugins, defaultConfig)
-import Proteome.Plugin (plugin)
+module Main where
+
+import Proteome.Plugin (proteome)
 
 main :: IO ()
-main = neovim defaultConfig {plugins = [plugin]}
+main =
+  proteome

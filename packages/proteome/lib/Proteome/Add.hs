@@ -1,32 +1,36 @@
 module Proteome.Add where
 
-import Control.Lens (view)
-import Control.Monad.Catch (MonadCatch)
-import qualified Data.Map as Map (fromList)
+import Control.Lens ((<>~))
 import qualified Data.Text as Text
-import Neovim (CommandArguments (CommandArguments))
 import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix)
 import Path.IO (listDir)
-import Ribosome.Config.Setting (setting)
-import Ribosome.Data.ScratchOptions (defaultScratchOptions, scratchSyntax)
-import Ribosome.Data.SettingError (SettingError)
-import qualified Ribosome.Menu.Consumer as Consumer
-import Ribosome.Menu.Data.MenuConsumer (MenuWidget)
-import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import Ribosome.Menu.Items (traverseSelection_)
-import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig, PromptFlag (StartInsert))
-import Ribosome.Menu.Run (nvimMenu)
-import Ribosome.Msgpack.Error (DecodeError)
-import qualified Streamly.Prelude as Stream
+import Polysemy.Chronos (ChronosTime)
+import Ribosome (Handler, Rpc, RpcError, Scratch, SettingError, Settings, mapHandlerError, pathText, resumeHandlerError)
+import Ribosome.Data.PluginName (PluginName)
+import Ribosome.Data.ScratchOptions (defaultScratchOptions)
+import Ribosome.Errors (pluginHandlerErrors)
+import Ribosome.Host.Data.Bang (Bang (Bang))
+import Ribosome.Menu (
+  MenuItem (..),
+  MenuWidget,
+  MenuWrite,
+  PromptConfig,
+  PromptFlag (StartInsert),
+  defaultPrompt,
+  interpretMenu,
+  staticNvimMenuDef,
+  traverseSelection_,
+  withMappings,
+  )
+import Ribosome.Scratch (syntax)
+import qualified Ribosome.Settings as Settings
 
 import Proteome.Add.Syntax (addSyntax)
+import qualified Proteome.Data.AddError as AddError
 import Proteome.Data.AddError (AddError)
-import qualified Proteome.Data.AddError as AddError (AddError (InvalidProjectSpec))
 import Proteome.Data.AddItem (AddItem (AddItem))
 import Proteome.Data.AddOptions (AddOptions (AddOptions))
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (projects)
 import Proteome.Data.Project (Project (Project))
 import qualified Proteome.Data.ProjectConfig as ProjectConfig
 import Proteome.Data.ProjectConfig (ProjectConfig)
@@ -34,87 +38,71 @@ import Proteome.Data.ProjectMetadata (ProjectMetadata (VirtualProject))
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Data.ResolveError (ResolveError)
-import Proteome.Path (dropSlash, pathText)
+import Proteome.Path (dropSlash)
 import Proteome.Project.Activate (selectProject)
 import Proteome.Project.Resolve (fromNameSettings)
 import qualified Proteome.Settings as Settings
 
 add ::
-  ∀ s e m .
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
+  Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Embed IO] r =>
   ProjectName ->
   Maybe ProjectType ->
   Bool ->
-  m ()
+  Sem r ()
 add name tpe activate = do
   addDirProject =<< fromNameSettings name tpe
   when activate (selectProject (-1))
   where
     addDirProject (Project (VirtualProject _) _ _ _) =
-      pure ()
+      unit
     addDirProject project =
-      modifyL @Env Env.projects \ p -> p ++ [project]
+      atomicModify' (#projects <>~ [project])
 
 proAdd ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
+  Members [Settings !! SettingError, Rpc !! RpcError, AtomicState Env, Reader PluginName, Log, Embed IO] r =>
   AddOptions ->
-  m ()
+  Handler r ()
 proAdd (AddOptions name tpe activate) =
-  add name (Just tpe) (fromMaybe False activate)
+  resumeHandlerError @Settings $ resumeHandlerError @Rpc $ mapHandlerError do
+    add name (Just tpe) (fromMaybe False activate)
 
 addFromName ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
+  Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Embed IO] r =>
   ProjectName ->
   Bool ->
-  m ()
+  Sem r ()
 addFromName name =
   add name Nothing
 
 proAddCmd ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e AddError m =>
-  MonadDeepError e ResolveError m =>
-  CommandArguments ->
+  Members [Settings !! SettingError, Rpc !! RpcError, AtomicState Env, Reader PluginName, Log, Embed IO] r =>
+  Bang ->
   Text ->
-  m ()
-proAddCmd (CommandArguments bang _ _ _) spec =
-  process (Text.splitOn "/" spec)
+  Handler r ()
+proAddCmd bang spec =
+  resumeHandlerError @Settings $ resumeHandlerError @Rpc $ mapHandlerError @ResolveError $ mapHandlerError @AddError do
+    process (Text.splitOn "/" spec)
   where
     process [tpe, name] =
       add (ProjectName name) (Just (ProjectType tpe)) activate
     process [name] =
-      addFromName (ProjectName name) activate
+      addFromName (ProjectName name) (bang == Bang)
     process _ =
-      throwHoist (AddError.InvalidProjectSpec spec)
+      stop (AddError.InvalidProjectSpec spec)
     activate =
-      fromMaybe False bang
+      bang == Bang
 
 availableProjectsInBase ::
-  MonadIO m =>
+  Members [Stop AddError, Embed IO] r =>
   Path Abs Dir ->
-  m [MenuItem AddItem]
+  Sem r [MenuItem AddItem]
 availableProjectsInBase base =
   fmap (fmap cons . join) . traverse list =<< list base
   where
-    list =
-      fmap fst . listDir
+    list d =
+      stopEitherWith AddError.Directory =<< tryAny (fst <$> listDir d)
     cons proj =
-      MenuItem (AddItem tpe name) pt (fromMaybe pt (pathText <$> stripProperPrefix proj base))
+      MenuItem (AddItem tpe name) pt (maybe pt pathText (stripProperPrefix proj base))
       where
         tpe =
           dropSlash (dirname (parent proj))
@@ -124,69 +112,40 @@ availableProjectsInBase base =
           pathText proj
 
 availableProjects ::
-  MonadIO m =>
+  Members [Stop AddError, Embed IO] r =>
   ProjectConfig ->
-  m [MenuItem AddItem]
-availableProjects (view ProjectConfig.baseDirs -> dirs) =
+  Sem r [MenuItem AddItem]
+availableProjects (ProjectConfig.baseDirs -> dirs) =
   join <$> traverse availableProjectsInBase dirs
 
 menuAdd ::
-  ∀ s e m .
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
-  MenuWidget m AddItem ()
+  MenuWrite AddItem r =>
+  Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Resource, Embed IO] r =>
+  MenuWidget r ()
 menuAdd =
   traverseSelection_ \ (AddItem tpe name) ->
-    lift (add (ProjectName name) (Just (ProjectType tpe)) True)
-
-actions ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
-  MonadBaseControl IO m =>
-  [(Text, MenuWidget m AddItem ())]
-actions =
-  [
-    ("cr", menuAdd)
-    ]
+    add (ProjectName name) (Just (ProjectType tpe)) True
 
 addMenuWith ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
-  MonadDeepError e DecodeError m =>
-  PromptConfig m ->
-  m ()
-addMenuWith promptConfig = do
-  projectConfig <- setting Settings.projectConfig
-  void $ nvimMenu scratchOptions (mList (availableProjects projectConfig)) handler promptConfig
+  Members [Rpc !! RpcError, Rpc, Settings !! SettingError, Settings, Scratch, AtomicState Env, Reader PluginName] r =>
+  Members [Stop ResolveError, Mask res, Stop AddError, Log, Resource, Race, Embed IO, Final IO] r =>
+  PromptConfig ->
+  Sem r ()
+addMenuWith promptConfig =
+  interpretMenu $ withMappings [("cr", menuAdd)] do
+    projectConfig <- Settings.get Settings.projectConfig
+    projects <- sort <$> availableProjects projectConfig
+    void $ staticNvimMenuDef scratchOptions projects promptConfig
   where
-    mList =
-      Stream.fromList <=< Stream.fromEffect
     scratchOptions =
-      scratchSyntax [addSyntax] . defaultScratchOptions $ "proteome-add"
-    handler =
-      Consumer.withMappings (Map.fromList actions)
+      (defaultScratchOptions "proteome-add") {
+        syntax = [addSyntax]
+      }
 
 proAddMenu ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e ResolveError m =>
-  MonadDeepError e DecodeError m =>
-  m ()
+  Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, AtomicState Env, Reader PluginName] r =>
+  Members [ChronosTime, Mask res, Log, Resource, Race, Embed IO, Final IO] r =>
+  Handler r ()
 proAddMenu =
-  addMenuWith (defaultPrompt [StartInsert])
+  pluginHandlerErrors $ mapHandlerError @AddError $ mapHandlerError @ResolveError do
+    addMenuWith =<< defaultPrompt [StartInsert]

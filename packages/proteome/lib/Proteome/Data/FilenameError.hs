@@ -1,8 +1,8 @@
 module Proteome.Data.FilenameError where
 
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Error.Report.Class (ReportError(..))
-import System.Log.Logger (Priority(ERROR, NOTICE))
+import Exon (exon)
+import Log (Severity (Error, Warn))
+import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage (toErrorMessage))
 
 data FilenameError =
   BadCwd
@@ -16,21 +16,23 @@ data FilenameError =
   Exists Text
   |
   ActionFailed Text Text
+  |
+  Remove Text
   deriving stock (Eq, Show, Generic)
 
-deepPrisms ''FilenameError
-
-instance ReportError FilenameError where
-  errorReport = \case
+instance ToErrorMessage FilenameError where
+  toErrorMessage = \case
     BadCwd ->
-      ErrorReport "could not determine current directory" ["FilenameError.BadCwd"] ERROR
+      ErrorMessage "Could not determine current directory" ["FilenameError.BadCwd"] Error
     InvalidPathSpec spec ->
-      ErrorReport [text|invalid path: #{spec}|] ["FilenameError.InvalidPathSpec:", spec] NOTICE
+      ErrorMessage [exon|Invalid path: #{spec}|] ["FilenameError.InvalidPathSpec:", spec] Warn
     BufferPathInvalid ->
-      ErrorReport "current buffer is not an existing file" ["FilenameError.BufferPathInvalid"] NOTICE
+      ErrorMessage "Current buffer is not an existing file" ["FilenameError.BufferPathInvalid"] Warn
     CreateDir dir ->
-      ErrorReport [text|could not create directory #{dir}|] ["FilenameError.CreateDir:", dir] NOTICE
+      ErrorMessage [exon|Could not create directory #{dir}|] ["FilenameError.CreateDir:", dir] Warn
     Exists file ->
-      ErrorReport [text|file already exists: #{file}|] ["FilenameError.Exists:", file] NOTICE
+      ErrorMessage [exon|File already exists: #{file}|] ["FilenameError.Exists:", file] Warn
     ActionFailed action err ->
-      ErrorReport "filesystem error" ["FilenameError.ActionFailed:", action, err] NOTICE
+      ErrorMessage "File system error" ["FilenameError.ActionFailed:", action, err] Warn
+    Remove err ->
+      ErrorMessage "Couldn't remove the source file" ["FilenameError.Remove:", err] Warn

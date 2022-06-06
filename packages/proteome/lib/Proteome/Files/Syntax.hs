@@ -1,10 +1,10 @@
 module Proteome.Files.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
-import Ribosome.Data.Syntax (
-  HiLink(HiLink),
-  Syntax(Syntax),
-  SyntaxItem(siOptions, siParams),
+import Ribosome.Syntax (
+  HiLink (HiLink),
+  Syntax (Syntax),
+  SyntaxItem (siOptions, siParams),
   syntaxMatch,
   syntaxVerbatim,
   )

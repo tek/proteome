@@ -1,10 +1,8 @@
 module Proteome.Filename where
 
 import qualified Chronos
-import Control.Monad.Catch (MonadThrow)
-import Data.MessagePack (Object)
 import qualified Data.Text as Text
-import Neovim (CommandArguments (CommandArguments))
+import Exon (exon)
 import Path (
   Abs,
   Dir,
@@ -15,22 +13,22 @@ import Path (
   dirname,
   filename,
   parent,
-  parseAbsDir,
   parseRelDir,
   reldir,
   relfile,
   splitExtension,
-  toFilePath,
   (</>),
   )
 import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
+import Ribosome (Bang (Bang), Handler, HostError, Rpc, RpcError (RpcError), mapHandlerError, reportError, resumeHandlerError)
+import Ribosome.Api (bufferSetName, vimCallFunction, vimCommand, vimGetCurrentBuffer, wipeBuffer)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Api.Path (nvimCwd)
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Nvim.Api.IO (bufferGetNumber, bufferSetName, vimCallFunction, vimCommand, vimGetCurrentBuffer)
-import Ribosome.Persist (persistencePath)
+import Ribosome.Data.PersistPathError (PersistPathError)
+import Ribosome.Host.Modify (silent)
+import Ribosome (pathText)
+import Ribosome.Persist (PersistPath, persistPath)
 
-import Proteome.Data.Env (Proteome)
 import qualified Proteome.Data.FilenameError as FilenameError
 import Proteome.Data.FilenameError (FilenameError)
 import Proteome.Path (
@@ -40,7 +38,6 @@ import Proteome.Path (
   parseAbsFileMaybe,
   parseRelDirMaybe,
   parseRelFileMaybe,
-  pathText,
   )
 
 data BufPath =
@@ -123,28 +120,27 @@ nameOnly spec = do
   Just (Filename rel (parent rel) (nameSpec name) exts)
 
 maybeDir ::
-  MonadIO m =>
+  Member (Embed IO) r =>
   Path Abs Dir ->
   Text ->
-  m Bool
+  Sem r Bool
 maybeDir cwd spec =
   fromMaybe False <$> traverse doesDirExist (absoluteParseDir cwd spec)
 
 regularModification ::
-  MonadIO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Embed IO] r =>
   Path Abs Dir ->
   Text ->
-  m Modification
+  Sem r Modification
 regularModification cwd spec = do
   existingDir <- maybeDir cwd spec
-  hoistMaybe (FilenameError.InvalidPathSpec spec) (cons existingDir spec)
+  stopNote (FilenameError.InvalidPathSpec spec) (cons existingDir spec)
   where
-    cons existingDir =
-      if name then nameOnly else
-      if absolute
-      then if explicitDir || existingDir then absoluteDir else absoluteFile
-      else if explicitDir then (relativeDir cwd) else (relativeFile cwd)
+    cons existingDir
+      | name = nameOnly
+      | absolute = if explicitDir || existingDir then absoluteDir else absoluteFile
+      | explicitDir = relativeDir cwd
+      | otherwise = relativeFile cwd
     name =
       not (Text.any ('/' ==) spec)
     absolute =
@@ -157,30 +153,27 @@ directorySelector =
   first Text.length . Text.span ('^' ==)
 
 modification ::
-  MonadIO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Embed IO] r =>
   Bool ->
   Path Abs Dir ->
   Text ->
-  m Modification
+  Sem r Modification
 modification raw cwd (Text.strip -> spec) =
   case directorySelector spec of
     (n, _) | n == 0 || raw ->
       regularModification cwd spec
     (n, name) -> do
-      dir <- hoistMaybe (FilenameError.InvalidPathSpec name) (parseRelDir (toString name))
+      dir <- stopNote (FilenameError.InvalidPathSpec name) (parseRelDir (toString name))
       pure (Container n dir)
 
 checkBufferPath ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Rpc, Stop FilenameError, Embed IO] r =>
   Path Abs Dir ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 checkBufferPath cwd = do
   name <- currentBufferName
-  path <- hoistMaybe FilenameError.BufferPathInvalid (absoluteParse cwd name)
-  ifM (doesFileExist path) (pure path) (throwHoist FilenameError.BufferPathInvalid)
+  path <- stopNote FilenameError.BufferPathInvalid (absoluteParse cwd name)
+  ifM (doesFileExist path) (pure path) (stop FilenameError.BufferPathInvalid)
 
 withExtension ::
   BufPath ->
@@ -194,33 +187,33 @@ withExtension (BufPath bufName bufExts) exts = \case
     addExtensions name (exts ++ drop (length exts) bufExts)
 
 renameInplace ::
-  MonadDeepError e FilenameError m =>
+  Member (Stop FilenameError) r =>
   Bool ->
   Path Rel File ->
   BufPath ->
   Path Rel Dir ->
   NameSpec ->
   [Text] ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 renameInplace raw spec bufPath destDir newName exts = do
   rel <-
     if raw
     then pure (destDir </> spec)
-    else hoistMaybe FilenameError.BufferPathInvalid (withExtension bufPath exts newName)
+    else stopNote FilenameError.BufferPathInvalid (withExtension bufPath exts newName)
   pure (bufDir bufPath </> rel)
 
 replaceDir ::
-  MonadDeepError e FilenameError m =>
+  Member (Stop FilenameError) r =>
   Int ->
   Path Rel Dir ->
   Path Abs File ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 replaceDir index name file = do
   dir <- spin (parent file) index
   pure (dir </> filename file)
   where
     spin d _ | parent d == d =
-      throwHoist (FilenameError.InvalidPathSpec "not enough directory segments in buffer path")
+      stop (FilenameError.InvalidPathSpec "not enough directory segments in buffer path")
     spin d i | i <= 1 =
       pure (parent d </> name)
     spin d i = do
@@ -228,11 +221,11 @@ replaceDir index name file = do
       pure (sub </> dirname d)
 
 assemblePath ::
-  MonadDeepError e FilenameError m =>
+  Member (Stop FilenameError) r =>
   Bool ->
   Path Abs File ->
   Modification ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 assemblePath raw bufPath = \case
   Filename rawSpec destDir newName exts ->
     renameInplace raw rawSpec (uncurry BufPath (splitExtensions bufPath)) destDir newName exts
@@ -244,167 +237,171 @@ assemblePath raw bufPath = \case
     replaceDir index name bufPath
 
 ensureDestinationEmpty ::
-  MonadIO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Embed IO] r =>
   Path Abs File ->
-  m ()
+  Sem r ()
 ensureDestinationEmpty path =
-  whenM (doesFileExist path) (throwHoist (FilenameError.Exists (pathText path)))
+  whenM (doesFileExist path) (stop (FilenameError.Exists (pathText path)))
 
 prepareDestination ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Embed IO] r =>
   Path Abs File ->
-  m ()
+  Sem r ()
 prepareDestination path =
   ifM exists (ensureDestinationEmpty path) create
   where
     exists =
       doesDirExist dir
     create =
-      tryHoistAnyAs (FilenameError.CreateDir (pathText dir)) (ensureDir dir)
+      stopTryAny (const (FilenameError.CreateDir (pathText dir))) (ensureDir dir)
     dir =
       parent path
 
 getCwd ::
-  NvimE e m =>
-  MonadDeepError e FilenameError m =>
-  m (Path Abs Dir)
+  Members [Stop FilenameError, Rpc !! RpcError] r =>
+  Sem r (Path Abs Dir)
 getCwd =
-  hoistEitherAs FilenameError.BadCwd =<< parseAbsDir <$> nvimCwd
+  resumeHoistAs FilenameError.BadCwd nvimCwd
 
 smartModification ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Rpc !! RpcError, Embed IO] r =>
   Bool ->
   Text ->
-  m Modification
+  Sem r Modification
 smartModification raw spec = do
   cwd <- getCwd
   modification raw cwd spec
 
 trashModification ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e FilenameError m =>
-  m Modification
+  Members [Stop FilenameError, Rpc, Rpc !! RpcError, PersistPath, Embed IO] r =>
+  Sem r Modification
 trashModification = do
   cwd <- getCwd
   bufPath <- checkBufferPath cwd
   let original = pathText (filename bufPath)
   Chronos.Time stamp <- liftIO Chronos.now
-  trashFile <- hoistMaybe FilenameError.BufferPathInvalid (parseRelFileMaybe [text|#{stamp}_#{original}|])
-  trashPath <- persistencePath ([reldir|trash|] </> trashFile)
-  let trashDir = parent trashPath
-  tryHoistAnyAs (FilenameError.CreateDir (pathText trashDir)) (ensureDir trashDir)
+  trashFile <- stopNote FilenameError.BufferPathInvalid (parseRelFileMaybe [exon|#{show stamp}_#{original}|])
+  trashDir <- persistPath (Just [reldir|trash|])
+  let trashPath = trashDir </> trashFile
+  stopTryAny (const (FilenameError.CreateDir (pathText trashDir))) (ensureDir trashDir)
   pure (File trashPath)
 
 pathsForMod ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Rpc, Rpc !! RpcError, Embed IO] r =>
   Bool ->
   Modification ->
-  m (Path Abs File, Path Abs File)
-pathsForMod raw mod' = do
+  Sem r (Path Abs File, Path Abs File)
+pathsForMod raw modi = do
   cwd <- getCwd
   bufPath <- checkBufferPath cwd
-  path <- assemblePath raw bufPath mod'
+  path <- assemblePath raw bufPath modi
   prepareDestination path
   pure (bufPath, path)
 
+writeBuffer ::
+  Members [Stop FilenameError, Rpc !! RpcError] r =>
+  Text ->
+  Sem r ()
+writeBuffer action =
+  err "Couldn't write buffer" $ silent do
+    vimCommand "write!"
+  where
+    err msg =
+      resumeHoist \ (RpcError e) -> FilenameError.ActionFailed action [exon|#{msg}: #{e}|]
+
 updateBuffer ::
-  NvimE e m =>
+  Member Rpc r =>
   Path Abs File ->
-  m ()
+  Sem r ()
 updateBuffer path = do
   buf <- vimGetCurrentBuffer
   bufferSetName buf (pathText path)
-  vimCommand "silent write!"
+  silent do
+    vimCommand "write!"
 
 relocate ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Rpc, Rpc !! RpcError, Embed IO] r =>
   Bool ->
-  Text ->
   Modification ->
-  (Path Abs File -> Path Abs File -> m ()) ->
-  m ()
-relocate raw action mod' run = do
-  (bufPath, destPath) <- pathsForMod raw mod'
-  tryHoistAny (FilenameError.ActionFailed action . show) (run bufPath destPath)
+  (Path Abs File -> Path Abs File -> Sem r ()) ->
+  Sem r ()
+relocate raw modi run = do
+  (bufPath, destPath) <- pathsForMod raw modi
+  run bufPath destPath
+
+copyOrFail ::
+  Members [Stop FilenameError, Embed IO] r =>
+  Path Abs File ->
+  Path Abs File ->
+  Sem r ()
+copyOrFail src dest =
+  stopEitherWith copyFailed =<< tryAny (copyFile src dest)
+  where
+    copyFailed e =
+      FilenameError.ActionFailed "move" [exon|Couldn't copy file: #{e}|]
 
 moveFile ::
-  MonadIO m =>
+  Members [Stop FilenameError, DataLog HostError, Embed IO] r =>
   Path Abs File ->
   Path Abs File ->
-  m ()
+  Sem r ()
 moveFile src dest = do
-  copyFile src dest
-  removeFile src
+  copyOrFail src dest
+  leftA (reportError (Just "filename") . FilenameError.Remove) =<< tryAny (removeFile src)
 
 move ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, DataLog HostError, Rpc, Rpc !! RpcError, Embed IO] r =>
   Bool ->
   Modification ->
-  m ()
-move raw mod' = do
-  relocate raw "move" mod' \ buf dest -> do
-    vimCommand "silent write!"
+  Sem r ()
+move raw modi = do
+  relocate raw modi \ buf dest -> do
+    writeBuffer "move"
     moveFile buf dest
     updateBuffer dest
 
 copy ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e FilenameError m =>
+  Members [Stop FilenameError, Rpc, Rpc !! RpcError, Embed IO] r =>
   Bool ->
   Modification ->
-  m ()
-copy raw mod' =
-  relocate raw "copy" mod' \ src dest -> do
-    copyFile src dest
-    view :: Object <- vimCallFunction "winsaveview" []
-    edit (toFilePath dest)
+  Sem r ()
+copy raw modi =
+  relocate raw modi \ src dest -> do
+    copyOrFail src dest
+    view <- vimCallFunction "winsaveview" []
+    edit dest
     vimCallFunction "winrestview" [view]
 
 proMove ::
-  CommandArguments ->
+  Members [DataLog HostError, Rpc !! RpcError, Embed IO] r =>
+  Bang ->
   Text ->
-  Proteome ()
-proMove (CommandArguments bang _ _ _) =
-  move raw <=< smartModification raw
+  Handler r ()
+proMove bang spec =
+  mapHandlerError @FilenameError $ resumeHandlerError @Rpc do
+    move raw =<< smartModification raw spec
   where
     raw =
-      fromMaybe False bang
+      bang == Bang
 
 proCopy ::
-  CommandArguments ->
+  Members [Rpc !! RpcError, Embed IO] r =>
+  Bang ->
   Text ->
-  Proteome ()
-proCopy (CommandArguments bang _ _ _) =
-  copy raw <=< smartModification raw
+  Handler r ()
+proCopy bang spec =
+  mapHandlerError @FilenameError $ resumeHandlerError @Rpc do
+    copy raw =<< smartModification raw spec
   where
     raw =
-      fromMaybe False bang
+      bang == Bang
 
 proRemove ::
-  Proteome ()
-proRemove = do
-  move False =<< trashModification
-  buf <- vimGetCurrentBuffer
-  ignoreError @RpcError do
-    number <- bufferGetNumber buf
-    vimCommand ("silent! noautocmd bwipeout! " <> show number)
+  Members [Rpc !! RpcError, PersistPath !! PersistPathError, DataLog HostError, Embed IO] r =>
+  Handler r ()
+proRemove =
+  mapHandlerError @FilenameError $ resumeHandlerError @Rpc $ resumeHandlerError @PersistPath do
+    move False =<< trashModification
+    buf <- vimGetCurrentBuffer
+    resume_ @RpcError do
+      wipeBuffer buf

@@ -1,42 +1,44 @@
 module Proteome.Project.Activate where
 
-import Path (toFilePath)
+import Control.Lens ((%~), (.~))
+import Exon (exon)
 import Path.IO (doesDirExist)
-import Ribosome.Config.Setting (updateSetting)
-import Ribosome.Nvim.Api.IO (vimCommand)
+import Ribosome (Rpc, Settings)
+import Ribosome.Api (echo, nvimCommand)
+import Ribosome.Data.PluginName (PluginName)
+import Ribosome (pathText)
+import qualified Ribosome.Settings as Settings
 
-import Proteome.Data.ActiveProject (ActiveProject(ActiveProject))
+import Proteome.Data.ActiveProject (ActiveProject (ActiveProject))
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (currentProjectIndex)
-import Proteome.Data.Project (Project(Project))
-import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject, VirtualProject))
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
-import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.Project (Project (Project))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Project (allProjects, currentProject)
-import qualified Proteome.Settings as S (active)
+import qualified Proteome.Settings as Settings
 
 activeProject :: Project -> ActiveProject
 activeProject (Project (DirProject name _ tpe) _ lang _) = ActiveProject name (fromMaybe (ProjectType "none") tpe) lang
 activeProject (Project (VirtualProject name) _ lang _) = ActiveProject name (ProjectType "virtual") lang
 
 activateDirProject ::
-  NvimE e m =>
-  MonadIO m =>
+  Members [Rpc, Embed IO] r =>
   ProjectMetadata ->
-  m ()
+  Sem r ()
 activateDirProject (DirProject _ (ProjectRoot root) _) = do
-  exists <- liftIO $ doesDirExist root
-  when exists $ vimCommand $ "chdir " <> toText (toFilePath root)
-activateDirProject _ = return ()
+  whenM (doesDirExist root) do
+    nvimCommand [exon|chdir #{pathText root}|]
+activateDirProject _ =
+  unit
 
 activateProject ::
-  NvimE e m =>
-  MonadRibo m =>
+  Members [Settings, Rpc, Embed IO] r =>
   Project ->
-  m ()
+  Sem r ()
 activateProject project@(Project meta _ _ _) = do
-  updateSetting S.active $ activeProject project
+  Settings.update Settings.active (activeProject project)
   activateDirProject meta
 
 describeProject :: ProjectMetadata -> Text
@@ -45,63 +47,55 @@ describeProject (DirProject (ProjectName name) _ Nothing) = name
 describeProject (VirtualProject (ProjectName name)) = name
 
 echoProjectActivation ::
-  NvimE e m =>
+  Members [Reader PluginName, Rpc] r =>
   Project ->
-  m ()
+  Sem r ()
 echoProjectActivation (Project meta _ _ _) =
-  vimCommand $ "echo 'activated project " <> describeProject meta <> "'"
+  echo [exon|activated project #{describeProject meta}|]
 
 activateCurrentProject ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  m ()
+  Members [Settings, AtomicState Env, Reader PluginName, Rpc, Embed IO] r =>
+  Sem r ()
 activateCurrentProject = do
   pro <- currentProject
   mapM_ activateProject pro
   mapM_ echoProjectActivation pro
 
 setProjectIndex ::
-  MonadDeepState s Env m =>
+  Member (AtomicState Env) r =>
   Int ->
-  m ()
+  Sem r ()
 setProjectIndex index = do
   pros <- allProjects
-  setL @Env Env.currentProjectIndex $ index `mod` length pros
+  for_ (index `mod` length pros) \ i ->
+    atomicModify' (#currentProjectIndex .~ i)
 
 cycleProjectIndex ::
-  MonadDeepState s Env m =>
+  Member (AtomicState Env) r =>
   (Int -> Int) ->
-  m ()
+  Sem r ()
 cycleProjectIndex f = do
   pros <- allProjects
-  let trans a = f a `rem` length pros
-  modifyL @Env Env.currentProjectIndex trans
+  atomicModify' $ #currentProjectIndex %~ \ i -> fromMaybe i (f i `rem` length pros)
 
 selectProject ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
+  Members [Settings, AtomicState Env, Reader PluginName, Rpc, Embed IO] r =>
   Int ->
-  m ()
+  Sem r ()
 selectProject index = do
   setProjectIndex index
   activateCurrentProject
 
 proPrev ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  m ()
+  Members [Settings, AtomicState Env, Reader PluginName, Rpc, Embed IO] r =>
+  Sem r ()
 proPrev = do
   cycleProjectIndex (subtract 1)
   activateCurrentProject
 
 proNext ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  m ()
+  Members [Settings, AtomicState Env, Reader PluginName, Rpc, Embed IO] r =>
+  Sem r ()
 proNext = do
   cycleProjectIndex (+1)
   activateCurrentProject

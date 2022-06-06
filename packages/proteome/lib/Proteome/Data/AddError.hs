@@ -1,15 +1,18 @@
 module Proteome.Data.AddError where
 
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Error.Report.Class (ReportError(..))
-import System.Log.Logger (Priority(NOTICE))
+import Exon (exon)
+import Log (Severity (Info))
+import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage (toErrorMessage))
 
-newtype AddError =
+data AddError =
   InvalidProjectSpec Text
+  |
+  Directory Text
   deriving stock (Eq, Show)
 
-deepPrisms ''AddError
-
-instance ReportError AddError where
-  errorReport (InvalidProjectSpec spec) =
-    ErrorReport ("no such project: " <> spec) ["AddError.InvalidProjectSpec:", spec] NOTICE
+instance ToErrorMessage AddError where
+  toErrorMessage = \case
+    InvalidProjectSpec spec ->
+      ErrorMessage [exon|no such project: #{spec}|] ["AddError.InvalidProjectSpec:", spec] Info
+    Directory msg ->
+      ErrorMessage [exon|Listing directories: #{msg}|] ["AddError.Directory:", msg] Info

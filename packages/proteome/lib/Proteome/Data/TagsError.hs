@@ -1,15 +1,23 @@
 module Proteome.Data.TagsError where
 
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Error.Report.Class (ReportError(..))
-import System.Log (Priority(NOTICE))
+import Exon (exon)
+import Log (Severity (Warn))
+import Ribosome (ErrorMessage (ErrorMessage), SettingError, ToErrorMessage (toErrorMessage))
+import qualified Ribosome.Host.Data.HandlerError as ErrorMessage
 
-newtype TagsError =
-  Path Text
+data TagsError =
+  Process Text
+  |
+  TempName
+  |
+  Setting SettingError
   deriving stock (Eq, Show)
 
-deepPrisms ''TagsError
-
-instance ReportError TagsError where
-  errorReport (Path msg) =
-    ErrorReport msg ["TagsError.Path", msg] NOTICE
+instance ToErrorMessage TagsError where
+  toErrorMessage = \case
+    TempName ->
+      ErrorMessage "failed to create temp dir for tags process" ["TagsError.TempName"] Warn
+    Process msg ->
+      ErrorMessage "tags process failed" ["TagsError.Process", msg] Warn
+    Setting e ->
+      ErrorMessage [exon|tags failed: #{ErrorMessage.user (toErrorMessage e)}|] ["TagsError.Setting:", show e] Warn

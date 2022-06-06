@@ -1,15 +1,13 @@
 module Proteome.Data.Replace where
 
 import Prelude hiding (lines)
-import Ribosome.Data.Scratch (Scratch)
+import Ribosome (ScratchState)
 
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
 
 data Replace =
   Replace {
-    _scratch :: Scratch,
-    _lines :: NonEmpty GrepOutputLine
+    scratch :: ScratchState,
+    lines :: NonEmpty GrepOutputLine
   }
-  deriving stock (Eq, Show)
-
-makeClassy ''Replace
+  deriving stock (Eq, Show, Generic)

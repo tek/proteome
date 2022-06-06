@@ -1,28 +1,35 @@
 module Proteome.Diag where
 
-import qualified Control.Lens as Lens (view)
-import Data.Map (foldMapWithKey)
-import qualified Data.Text as Text (intercalate)
-import Neovim (CommandArguments)
+import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
+import Exon (exon)
 import Path (toFilePath)
-import Ribosome.Data.ErrorReport (ErrorReport (ErrorReport))
-import Ribosome.Data.Errors (ComponentName (ComponentName), Error (Error), Errors (Errors))
-import Ribosome.Data.ScratchOptions (ScratchOptions (..), defaultScratchOptions, scratchFocus)
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Scratch (showInScratch)
+import Prettyprinter (Doc, line, nest, pretty, vsep)
+import Ribosome (
+  ErrorMessage (ErrorMessage),
+  Errors,
+  Handler,
+  HandlerTag (GlobalTag, HandlerTag),
+  RpcError,
+  Scratch,
+  ScratchId (ScratchId),
+  Settings,
+  StoredError (StoredError),
+  defaultScratchOptions,
+  resumeHandlerError,
+  )
+import qualified Ribosome.Errors as Errors
+import qualified Ribosome.Scratch as Scratch
+import Ribosome.Scratch (ScratchOptions (filetype, focus))
 
+import qualified Proteome.Data.Env as Env
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (configLog, errors, mainProject, projects)
 import Proteome.Data.Project (Project (Project))
-import Proteome.Data.ProjectLang (ProjectLang (ProjectLang))
-import qualified Proteome.Data.ProjectLang as ProjectLang (lang)
+import Proteome.Data.ProjectLang (ProjectLang (ProjectLang, unProjectLang))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
-import Proteome.Data.ProjectType (ProjectType (ProjectType))
-import qualified Proteome.Data.ProjectType as ProjectType (tpe)
-import Proteome.Data.TagsError (TagsError)
+import Proteome.Data.ProjectType (ProjectType (ProjectType, unProjectType))
 import Proteome.Tags (tagsCommand)
 
 formatLang :: Maybe ProjectLang -> Text
@@ -33,110 +40,106 @@ formatType :: Maybe ProjectType -> Text
 formatType (Just (ProjectType tpe)) = tpe
 formatType Nothing = "none"
 
-formatMeta ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  ProjectMetadata ->
-  [ProjectLang] ->
-  m [Text]
-formatMeta (VirtualProject (ProjectName name)) _ = return ["name: " <> name]
-formatMeta (DirProject (ProjectName name) r@(ProjectRoot root) tpe) langs = do
-  (tagsCmd, tagsArgs) <- tagsCommand r langs
-  return [
+formatProject :: ProjectName -> ProjectRoot -> Maybe ProjectType -> [Text]
+formatProject (ProjectName name) (ProjectRoot root) tpe =
+  [
     "name: " <> name,
     "root: " <> (toText . toFilePath) root,
-    "type: " <> formatType tpe,
-    "tags cmd: " <> tagsCmd <> " " <> tagsArgs
-    ]
+    "type: " <> formatType tpe
+  ]
+
+formatMeta ::
+  Member (Settings !! se) r =>
+  ProjectMetadata ->
+  [ProjectLang] ->
+  Sem r [Text]
+formatMeta (VirtualProject (ProjectName name)) _ =
+  pure ["name: " <> name]
+formatMeta (DirProject name root tpe) langs = do
+  tags :: [Text] <- resumeAs [] do
+    runStop (tagsCommand root langs) >>= \case
+      Right (tagsCmd, tagsArgs) ->
+        pure [[exon|tags cmd: #{tagsCmd} #{tagsArgs}|]]
+      Left _ ->
+        pure []
+  pure (formatProject name root tpe <> tags)
 
 formatMain ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Member (Settings !! se) r =>
   Project ->
-  m [Text]
+  Sem r [Text]
 formatMain (Project meta types lang langs) = do
   metaContent <- formatMeta meta langs
-  return $ metaContent <> [
-    "types: " <> Text.intercalate ", " (Lens.view ProjectType.tpe <$> types),
+  pure $ metaContent <> [
+    "types: " <> Text.intercalate ", " (unProjectType <$> types),
     "main language: " <> formatLang lang,
-    "languages: " <> Text.intercalate ", " (Lens.view ProjectLang.lang <$> langs)
+    "languages: " <> Text.intercalate ", " (unProjectLang <$> langs)
     ]
 
 formatExtraProjects ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Member (Settings !! se) r =>
   [Project] ->
-  m [Text]
+  Sem r [Text]
 formatExtraProjects projects = do
   formatted <- traverse formatMain projects
-  return $ ["", "Extra projects", ""] <> intercalate [""] formatted
+  pure $ ["", "Extra projects", ""] <> intercalate [""] formatted
 
 formatExtraProjectsIfNonempty ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepState s Env m =>
-  m [Text]
+  Members [Settings !! se, AtomicState Env] r =>
+  Sem r [Text]
 formatExtraProjectsIfNonempty = do
-  projects <- getL @Env Env.projects
+  projects <- atomicGets Env.projects
   case projects of
     _ : _ -> formatExtraProjects projects
-    _ -> return []
+    _ -> pure []
 
-formatError :: Error -> [Text]
-formatError (Error stamp (ErrorReport _ (h : message) _)) = (show stamp <> " | " <> h) : message
-formatError _ = []
+tagName :: HandlerTag -> Text
+tagName = \case
+  GlobalTag -> "global"
+  HandlerTag n -> n
 
-formatComponentErrors :: ComponentName -> [Error] -> [Text]
-formatComponentErrors (ComponentName name) errors@(_ : _) =
-  [name <> "", ""] <> (errors >>= formatError)
-formatComponentErrors _ _ = []
+storedError :: StoredError -> Doc a
+storedError (StoredError (ErrorMessage _ log _) _) =
+  case log of
+    [] -> mempty
+    (h : t) ->
+      nest 2 (vsep (pretty <$> ([exon|* #{h}|] : t)))
 
-formatErrorLog :: Errors -> [Text]
-formatErrorLog (Errors errors) =
-  case compErrors of
-    _ : _ -> ["", "Errors", ""] <> compErrors
-    _ -> []
-  where
-    compErrors = foldMapWithKey formatComponentErrors errors
+tagErrors :: HandlerTag -> [StoredError] -> Doc a
+tagErrors t errs =
+  pretty [exon|### #{tagName t}|] <> line <> vsep (storedError <$> errs)
+
+errorDiagnostics :: Map HandlerTag [StoredError] -> Doc a
+errorDiagnostics errs | null errs =
+  mempty
+errorDiagnostics errs =
+  "## Errors" <> line <> line <> vsep (uncurry tagErrors <$> Map.toAscList errs)
 
 diagnostics ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepState s Env m =>
-  m [Text]
+  Members [Settings !! se, AtomicState Env ,Errors] r =>
+  Sem r [Text]
 diagnostics = do
-  main <- formatMain =<< getL @Env Env.mainProject
+  main <- formatMain =<< atomicGets Env.mainProject
   extra <- formatExtraProjectsIfNonempty
-  confLog <- getL @Env Env.configLog
-  errors <- getL @Env Env.errors
-  return $ header <> main <> extra <> ["", "loaded config files:"] <> confLog <> formatErrorLog errors
+  confLog <- atomicGets Env.configLog
+  errors <- errorDiagnostics <$> Errors.get
+  pure $ header <> main <> extra <> ["", "loaded config files:"] <> confLog <> Text.lines (show errors)
   where
     header =
       ["Diagnostics", "", "Main project", ""]
 
 proDiag ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
-  CommandArguments ->
-  m ()
-proDiag _ = do
-  content <- diagnostics
-  void $ showInScratch content (scratchFocus $ defaultScratchOptions name) { _filetype = Just name }
+  Members [Settings !! se, Scratch !! RpcError, AtomicState Env, Errors] r =>
+  Handler r ()
+proDiag = do
+  resumeHandlerError @Scratch do
+    content <- diagnostics
+    void $ Scratch.show content options
   where
+    options =
+      (defaultScratchOptions (ScratchId name)) {
+        focus = True,
+        filetype = Just name
+      }
     name =
       "proteome-diagnostics"

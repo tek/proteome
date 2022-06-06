@@ -1,29 +1,24 @@
 module Proteome.Test.ConfigTest where
 
-import Data.MessagePack (Object(ObjectInt))
+import Path (reldir)
+import qualified Polysemy.Test as Test
+import Polysemy.Test (UnitTest, assertEq)
+import Ribosome.Api (nvimGetVar, nvimSetCwd)
 import Ribosome.Api.Option (rtpCat)
-import Ribosome.Control.Ribosome (newRibosome)
-import Ribosome.Nvim.Api.IO (vimCallFunction, vimCommand, vimGetVar)
-import Ribosome.Test.Await (awaitEqual_)
-import Ribosome.Test.Run (UnitTest)
-import Ribosome.Test.Unit (fixture)
-import System.Directory (getCurrentDirectory)
+import Ribosome (pathText)
+import Ribosome.Test (assertWait, testError)
 
+import Proteome.Config (proReadConfig)
 import Proteome.Init (resolveAndInitMain)
-import Proteome.Plugin (plugin')
-import Proteome.Test.Unit (ProteomeTest, integrationTestDef)
-
-configTest :: ProteomeTest ()
-configTest = do
-  base <- liftIO getCurrentDirectory
-  rtpCat [text|#{base}/test/fixtures/rtp|]
-  dir <- fixture "projects/haskell/flagellum"
-  vimCommand $ "cd " <> toText dir
-  resolveAndInitMain
-  () <- vimCallFunction "ProReadConfig" []
-  awaitEqual_ (ObjectInt 13) (vimGetVar "flag")
+import Proteome.Test.Run (proteomeTest)
 
 test_config :: UnitTest
 test_config = do
-  ribo <- newRibosome "proteome" def
-  integrationTestDef (plugin' ribo) configTest
+  proteomeTest do
+    rtp <- Test.fixturePath [reldir|rtp|]
+    rtpCat (pathText rtp)
+    dir <- Test.fixturePath [reldir|projects/haskell/flagellum|]
+    nvimSetCwd dir
+    testError resolveAndInitMain
+    proReadConfig
+    assertWait (nvimGetVar "flag") (assertEq @Int 13)

@@ -1,19 +1,18 @@
 module Proteome.Data.ReplaceError where
 
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Error.Report.Class (ReportError(..))
-import System.Log (Priority(NOTICE, ERROR))
+import Log (Severity (Error, Warn))
+import Path (Abs, File, Path)
+import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage, toErrorMessage)
+import Ribosome (pathText)
 
 data ReplaceError =
   BadReplacement
   |
-  CouldntLoadBuffer Text
+  CouldntLoadBuffer (Path Abs File)
   deriving stock (Eq, Show)
 
-deepPrisms ''ReplaceError
-
-instance ReportError ReplaceError where
-  errorReport BadReplacement =
-    ErrorReport "replacment line count does not match original" ["ReplaceError.BadReplacement"] NOTICE
-  errorReport (CouldntLoadBuffer path) =
-    ErrorReport ("could not load file " <> path) ["ReplaceError.CouldntLoadBuffer", path] ERROR
+instance ToErrorMessage ReplaceError where
+  toErrorMessage BadReplacement =
+    ErrorMessage "replacment line count does not match original" ["ReplaceError.BadReplacement"] Warn
+  toErrorMessage (CouldntLoadBuffer (pathText -> path)) =
+    ErrorMessage ("could not load file " <> path) ["ReplaceError.CouldntLoadBuffer", path] Error

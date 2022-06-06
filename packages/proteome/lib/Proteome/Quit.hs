@@ -1,18 +1,16 @@
 module Proteome.Quit where
 
-import Control.Monad.Catch (MonadThrow)
-import Ribosome.Data.SettingError (SettingError)
+import Ribosome (Handler, PersistError, Rpc, RpcError, resumeHandlerError)
+import Ribosome.Effect.Persist (Persist)
 
 import Proteome.Data.Env (Env)
-import Proteome.PersistBuffers (storeBuffers)
+import Proteome.Data.PersistBuffers (PersistBuffers)
+import Proteome.PersistBuffers (StoreBuffersLock, storeBuffers)
 
 proQuit ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadDeepError e SettingError m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  m ()
+  Member (Persist PersistBuffers !! PersistError) r =>
+  Members [Sync StoreBuffersLock, AtomicState Env, Rpc !! RpcError, Resource, Embed IO] r =>
+  Handler r ()
 proQuit =
-  storeBuffers
+  resumeHandlerError @(Persist _) $ resumeHandlerError @Rpc do
+    storeBuffers

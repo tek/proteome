@@ -5,4 +5,4 @@ data AddItem =
      projectType :: Text,
      projectName :: Text
   }
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Ord)

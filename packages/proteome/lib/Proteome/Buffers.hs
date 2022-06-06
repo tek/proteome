@@ -1,127 +1,147 @@
 module Proteome.Buffers where
 
-import Control.Lens (each, elemOf, uses, view)
-import Control.Monad.Catch (MonadCatch)
-import Data.Foldable (maximum)
+import Control.Lens (each, elemOf, uses)
 import qualified Data.List.NonEmpty as NonEmpty
-import qualified Data.Map as Map
 import qualified Data.Text as Text
-import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
-import Ribosome.Api.Path (nvimCwd)
-import Ribosome.Api.Window (ensureMainWindow)
-import Ribosome.Config.Setting (settingOr)
-import Ribosome.Data.ScratchOptions (ScratchOptions (..))
-import qualified Ribosome.Menu.Consumer as Consumer
-import qualified Ribosome.Menu.Data.MenuAction as MenuAction
-import Ribosome.Menu.Data.MenuConsumer (MenuWidget, MenuWidgetM)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import Ribosome.Menu.Data.MenuState (menuWrite)
-import Ribosome.Menu.ItemLens (unselected)
-import Ribosome.Menu.Items (deleteSelected, withSelection')
-import Ribosome.Menu.Items.Read (withFocusM)
-import Ribosome.Menu.Prompt (defaultPrompt)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig)
-import Ribosome.Menu.Run (staticNvimMenu)
-import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (
+import Exon (exon)
+import Polysemy.Chronos (ChronosTime)
+import Ribosome (
+  Handler,
+  HandlerError,
+  Rpc,
+  RpcError,
+  Scratch,
+  ScratchId (ScratchId),
+  SettingError,
+  Settings,
+  pathText,
+  resumeHandlerError,
+  )
+import Ribosome.Api (
   bufferGetName,
   bufferGetNumber,
   nvimBufIsLoaded,
-  vimCommand,
+  nvimCommand,
   vimGetCurrentBuffer,
   vimGetCurrentWindow,
   vimSetCurrentWindow,
   )
+import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
+import Ribosome.Api.Path (nvimCwd)
+import Ribosome.Api.Window (ensureMainWindow)
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
+import Ribosome.Menu (
+  Mappings,
+  MenuItem (MenuItem),
+  MenuSem,
+  MenuWidget,
+  MenuWrite,
+  PromptConfig,
+  defaultPrompt,
+  deleteSelected,
+  interpretMenu,
+  menuWrite,
+  semState,
+  staticNvimMenuDef,
+  unselected,
+  withFocus,
+  withMappings,
+  withSelection',
+  )
+import qualified Ribosome.Menu.Data.MenuAction as MenuAction
+import Ribosome.Menu.Data.MenuAction (MenuAction)
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import qualified Ribosome.Settings as Settings
 
 import Proteome.Buffers.Syntax (buffersSyntax)
 import qualified Proteome.Data.Env as Env
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.ListedBuffer as ListedBuffer
 import Proteome.Data.ListedBuffer (ListedBuffer (ListedBuffer))
+import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings
 
+newtype BufferAction =
+  Load ListedBuffer
+  deriving stock (Eq, Show)
+
 loadListedBuffer ::
-  NvimE e m =>
+  Member Rpc r =>
   ListedBuffer ->
-  m ()
+  Sem r ()
 loadListedBuffer (ListedBuffer buffer number _) =
-  ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (vimCommand [exon|buffer #{show number}|])
+  ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (nvimCommand [exon|buffer #{show number}|])
 
 load ::
-  MonadIO m =>
-  NvimE e m =>
-  MonadBaseControl IO m =>
-  MenuWidget m ListedBuffer ()
+  MenuWrite ListedBuffer r =>
+  MenuWidget r BufferAction
 load =
-  withFocusM loadListedBuffer
+  withFocus (pure . Load)
 
 compensateForMissingActiveBuffer ::
-  NvimE e m =>
+  Member Rpc r =>
   NonEmpty ListedBuffer ->
   [ListedBuffer] ->
-  m ()
+  Sem r ()
 compensateForMissingActiveBuffer _ [] =
-  vimCommand "enew"
+  nvimCommand "enew"
 compensateForMissingActiveBuffer marked (next : _) = do
   prev <- vimGetCurrentWindow
   void ensureMainWindow
   current <- vimGetCurrentBuffer
-  when (elemOf (each . ListedBuffer.buffer) current marked) (loadListedBuffer next)
+  when (elemOf (each . #buffer) current marked) (loadListedBuffer next)
   vimSetCurrentWindow prev
 
 deleteListedBuffersWith ::
-  NvimE e m =>
+  Member Rpc r =>
   Text ->
   NonEmpty ListedBuffer ->
-  m ()
+  Sem r ()
 deleteListedBuffersWith deleter bufs =
-  vimCommand [exon|#{deleter} #{numbers}|]
+  nvimCommand [exon|#{deleter} #{numbers}|]
   where
     numbers =
-      unwords (show . view ListedBuffer.number <$> NonEmpty.toList bufs)
+      unwords (show . ListedBuffer.number <$> NonEmpty.toList bufs)
 
 deleteWith ::
-  NvimE e m =>
+  Member Rpc r =>
   Text ->
-  MenuWidgetM m ListedBuffer ()
+  MenuSem ListedBuffer r (Maybe (MenuAction a))
 deleteWith deleter =
   withSelection' \ delete -> do
-    keep <- uses unselected (fmap  MenuItem._meta)
+    keep <- semState (uses unselected (fmap MenuItem.meta))
     compensateForMissingActiveBuffer delete keep
     deleteListedBuffersWith deleter delete
     deleteSelected
     pure MenuAction.Render
 
 moveCurrentLast ::
-  NvimE e m =>
+  Member Rpc r =>
   [MenuItem ListedBuffer] ->
-  m [MenuItem ListedBuffer]
+  Sem r [MenuItem ListedBuffer]
 moveCurrentLast items = do
   current <- vimGetCurrentBuffer
-  return $ spin current items []
+  pure $ spin current items []
   where
-    spin current (item : rest) result | view lens item == current =
+    spin current (item : rest) result | lens item == current =
       result ++ rest ++ [item]
     spin current (item : rest) result =
       spin current rest (item : result)
     spin _ [] result =
       result
     lens =
-      MenuItem.meta . ListedBuffer.buffer
+      ListedBuffer.buffer . MenuItem.meta
 
 buffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
-  m [MenuItem ListedBuffer]
+  Members [AtomicState Env, Settings !! SettingError, Rpc, Rpc !! RpcError] r =>
+  Sem r [MenuItem ListedBuffer]
 buffers = do
-  cwd <- (<> "/") <$> nvimCwd
-  bufs <- filterM bufferIsFile =<< filterM buflisted =<< getL @Env Env.buffers
+  cwd <- nvimCwd
+  bufs <- filterM bufferIsFile =<< filterM buflisted =<< atomicGets Env.buffers
   numbers <- traverse bufferGetNumber bufs
   names <- traverse bufferGetName bufs
-  let items = item (toText cwd) (padding numbers) <$> zip3 bufs numbers names
-  ifM (settingOr False Settings.buffersCurrentLast) (moveCurrentLast items) (return items)
+  let items = item [exon|#{pathText cwd}/|] (padding numbers) <$> zip3 bufs numbers names
+  ifM (Settings.or False Settings.buffersCurrentLast) (moveCurrentLast items) (pure items)
   where
     padding =
       Text.length . show . maximum
@@ -136,10 +156,9 @@ buffers = do
       fromMaybe name $ Text.stripPrefix cwd name
 
 actions ::
-  MonadIO m =>
-  NvimE e m =>
-  MonadBaseControl IO m =>
-  [(Text, MenuWidget m ListedBuffer ())]
+  Member Rpc r =>
+  MenuWrite ListedBuffer r =>
+  Mappings r BufferAction
 actions =
   [
     ("cr", load),
@@ -149,37 +168,38 @@ actions =
     ("W", menuWrite (deleteWith "bwipeout!"))
   ]
 
+bufferAction ::
+  Member Rpc r =>
+  BufferAction ->
+  Sem r ()
+bufferAction = \case
+  Load buf ->
+    loadListedBuffer buf
+
 buffersWith ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  PromptConfig m ->
-  m ()
-buffersWith promptConfig = do
-  bufs <- buffers
-  void $ staticNvimMenu scratchOptions bufs handler promptConfig
+  Members [Log, Mask res, Race, Resource, Embed IO, Final IO] r =>
+  Members [AtomicState Env, Settings !! SettingError, Rpc, Rpc !! RpcError, Scratch, Stop HandlerError] r =>
+  PromptConfig ->
+  Sem r ()
+buffersWith promptConfig =
+  interpretMenu $ withMappings actions do
+    bufs <- buffers
+    result <- staticNvimMenuDef scratchOptions bufs promptConfig
+    handleResult "buffers" bufferAction result
   where
     scratchOptions =
       def {
-        _name = name,
-        _syntax = [buffersSyntax],
-        _filetype = Just name
+        name = ScratchId name,
+        syntax = [buffersSyntax],
+        filetype = Just name
       }
     name =
       "proteome-buffers"
-    handler =
-      Consumer.withMappings (Map.fromList actions)
 
 proBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  m ()
+  Members [AtomicState Env, Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError] r =>
+  Members [ChronosTime, Log, Mask res, Race, Resource, Embed IO, Final IO] r =>
+  Handler r ()
 proBuffers =
-  buffersWith (defaultPrompt [])
+  resumeHandlerError @Rpc $ resumeHandlerError @Scratch do
+    buffersWith =<< defaultPrompt []

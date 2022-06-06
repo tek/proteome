@@ -1,25 +1,22 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.34.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           proteome
-version:        0.3.17.0
-synopsis:       Neovim Project Manager
-description:    Please see the README on GitHub at <https://github.com/tek/proteome>
+version:        0.1.0.0
+synopsis:       Neovim Register Manager
+description:    See https://hackage.haskell.org/package/proteome/docs/Proteome.html
 category:       Neovim
 homepage:       https://github.com/tek/proteome#readme
 bug-reports:    https://github.com/tek/proteome/issues
 author:         Torsten Schmits
-maintainer:     tek@tryp.io
-copyright:      2021 Torsten Schmits
+maintainer:     hackage@tryp.io
+copyright:      2022 Torsten Schmits
 license:        BSD-2-Clause-Patent
 license-file:   LICENSE
 build-type:     Simple
-extra-source-files:
-    changelog.md
-    readme.md
 
 source-repository head
   type: git
@@ -38,7 +35,6 @@ library
       Proteome.Data.AddItem
       Proteome.Data.AddOptions
       Proteome.Data.Env
-      Proteome.Data.Error
       Proteome.Data.FilenameError
       Proteome.Data.FileScanItem
       Proteome.Data.FilesConfig
@@ -59,6 +55,7 @@ library
       Proteome.Data.ReplaceError
       Proteome.Data.ResolveError
       Proteome.Data.TagsError
+      Proteome.Data.TagsParams
       Proteome.Diag
       Proteome.Filename
       Proteome.Files
@@ -70,10 +67,10 @@ library
       Proteome.Grep.Replace
       Proteome.Grep.Syntax
       Proteome.Init
+      Proteome.Menu
       Proteome.Path
       Proteome.PersistBuffers
       Proteome.Plugin
-      Proteome.Prelude
       Proteome.Project
       Proteome.Project.Activate
       Proteome.Project.Resolve
@@ -82,11 +79,6 @@ library
       Proteome.Settings
       Proteome.System.Path
       Proteome.Tags
-  other-modules:
-      Prelude
-      Paths_proteome
-  autogen-modules:
-      Paths_proteome
   hs-source-dirs:
       lib
   default-extensions:
@@ -106,6 +98,7 @@ library
       DeriveLift
       DeriveTraversable
       DerivingStrategies
+      DerivingVia
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
@@ -135,6 +128,7 @@ library
       RankNTypes
       RecordWildCards
       RecursiveDo
+      RoleAnnotations
       ScopedTypeVariables
       StandaloneDeriving
       TemplateHaskell
@@ -147,66 +141,50 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin
   build-depends:
       Glob
     , aeson
     , attoparsec
-    , base ==4.*
-    , bytestring
+    , base >=4.12 && <5
     , chiasma
     , chronos
-    , composition
-    , composition-extra
-    , containers
-    , cornea
-    , data-default
-    , directory
-    , either
-    , exceptions
     , exon
     , extra
-    , filepath
     , filepattern
-    , free
-    , hslogger
+    , incipit >=0.3
     , lens
-    , lifted-async
-    , lifted-base
-    , messagepack
-    , monad-control
+    , lens-regex-pcre
     , mono-traversable
-    , mtl
-    , nvim-hs
     , parsers
     , path
     , path-io
+    , pcre-light
+    , polysemy
+    , polysemy-chronos
+    , polysemy-plugin
+    , polysemy-process
     , prettyprinter
-    , prettyprinter-ansi-terminal
-    , process
     , raw-strings-qq
-    , regex-with-pcre
-    , relude >=0.7 && <1.2
-    , resourcet
     , ribosome
+    , ribosome-host
+    , ribosome-menu
     , stm-chans
     , streamly >=0.8
     , streamly-process >=0.1
-    , string-interpolate
-    , template-haskell
-    , text
     , transformers
     , typed-process
-    , unix
-    , unliftio
   mixins:
       base hiding (Prelude)
+    , incipit (Incipit as Prelude)
+    , incipit hiding (Incipit)
   default-language: Haskell2010
 
 executable proteome
   main-is: Main.hs
-  other-modules:
-      Paths_proteome
   hs-source-dirs:
       app
   default-extensions:
@@ -226,6 +204,7 @@ executable proteome
       DeriveLift
       DeriveTraversable
       DerivingStrategies
+      DerivingVia
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
@@ -255,6 +234,7 @@ executable proteome
       RankNTypes
       RecordWildCards
       RecursiveDo
+      RoleAnnotations
       ScopedTypeVariables
       StandaloneDeriving
       TemplateHaskell
@@ -267,61 +247,18 @@ executable proteome
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -threaded -rtsopts -with-rtsopts=-N
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      Glob
-    , aeson
-    , attoparsec
-    , base ==4.*
-    , bytestring
-    , chiasma
-    , chronos
-    , composition
-    , composition-extra
-    , containers
-    , cornea
-    , data-default
-    , directory
-    , either
-    , exceptions
-    , exon
-    , extra
-    , filepath
-    , filepattern
-    , free
-    , hslogger
-    , lens
-    , lifted-async
-    , lifted-base
-    , messagepack
-    , monad-control
-    , mono-traversable
-    , mtl
-    , nvim-hs
-    , parsers
-    , path
-    , path-io
-    , prettyprinter
-    , prettyprinter-ansi-terminal
-    , process
+      base >=4.12 && <5
+    , incipit >=0.3
+    , polysemy
+    , polysemy-plugin
     , proteome
-    , raw-strings-qq
-    , regex-with-pcre
-    , relude >=0.7 && <1.2
-    , resourcet
-    , ribosome
-    , stm-chans
-    , streamly >=0.8
-    , streamly-process >=0.1
-    , string-interpolate
-    , template-haskell
-    , text
-    , transformers
-    , typed-process
-    , unix
-    , unliftio
   mixins:
       base hiding (Prelude)
-    , proteome hiding (Proteome.Prelude)
-    , proteome (Proteome.Prelude as Prelude)
+    , incipit (Incipit as Prelude)
+    , incipit hiding (Incipit)
   default-language: Haskell2010

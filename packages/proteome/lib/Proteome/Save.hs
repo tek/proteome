@@ -1,22 +1,18 @@
 module Proteome.Save where
 
-import Control.Monad.Catch (MonadThrow)
+import Ribosome (Errors, Handler, HostError, PersistError, Rpc, RpcError, SettingError, Settings, resumeHandlerError)
+import Ribosome.Effect.Persist (Persist)
 
 import Proteome.Data.Env (Env)
-import Proteome.Data.TagsError (TagsError)
-import Proteome.PersistBuffers (storeBuffers)
-import Proteome.Tags (proTags)
-import Ribosome.Data.SettingError (SettingError)
+import Proteome.Data.PersistBuffers (PersistBuffers)
+import Proteome.PersistBuffers (StoreBuffersLock, storeBuffers)
+import Proteome.Tags (TagsLock, proTags)
 
 proSave ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  m ()
+  Member (Persist PersistBuffers !! PersistError) r =>
+  Members [Settings !! SettingError, AtomicState Env, Sync TagsLock, DataLog HostError] r =>
+  Members [Sync StoreBuffersLock, AtomicState Env, Rpc !! RpcError, Errors, Resource, Log, Async, Embed IO] r =>
+  Handler r ()
 proSave = do
   proTags
-  storeBuffers
+  resumeHandlerError @Rpc $ resumeHandlerError @(Persist _) $ storeBuffers

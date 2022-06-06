@@ -1,19 +1,19 @@
 module Proteome.Project.Resolve where
 
-import qualified Control.Lens as Lens (over)
-import Control.Lens ((^.))
+import Control.Lens ((%~))
 import Control.Monad (foldM)
 import Control.Monad.Extra (firstJustM)
+import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.List (nub)
 import Data.List.Extra (firstJust)
 import Data.Map.Strict ((!?))
 import qualified Data.Map.Strict as Map (toList, union)
+import Exon (exon)
+import qualified Log
 import Path (Abs, Dir, Path, dirname, isProperPrefixOf, parent, parseRelDir, stripProperPrefix, toFilePath, (</>))
 import Path.IO (doesDirExist)
-import Ribosome.Config.Setting (setting)
-import Ribosome.Control.Exception (catchAnyAs)
-import Ribosome.Data.Foldable (findMapMaybeM)
-import Ribosome.Data.SettingError (SettingError)
+import Ribosome (Settings)
+import qualified Ribosome.Settings as Settings
 import System.FilePath.Glob (globDir1)
 import qualified System.FilePath.Glob as Glob (compile)
 import System.FilePattern.Directory (getDirectoryFiles)
@@ -29,8 +29,8 @@ import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot), unProjectRoot)
 import Proteome.Data.ProjectSpec (ProjectSpec (ProjectSpec))
 import qualified Proteome.Data.ProjectSpec as PS (ProjectSpec (..))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
-import Proteome.Data.ResolveError (ResolveError)
 import qualified Proteome.Data.ResolveError as ResolveError (ResolveError (..))
+import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Path (dropSlash, parseAbsDirMaybe, rootPathSegment)
 import Proteome.Project (pathData)
 import qualified Proteome.Settings as Settings (projectConfig, projects)
@@ -58,26 +58,24 @@ matchProjectBases :: [Path Abs Dir] -> ProjectRoot -> Bool
 matchProjectBases baseDirs (ProjectRoot root) = (parent . parent) root `elem` baseDirs
 
 byProjectBaseSubpath ::
-  MonadIO m =>
-  MonadDeepError e ResolveError m =>
+  Members [Stop ResolveError, Embed IO] r =>
   ProjectName ->
   ProjectType ->
   Path Abs Dir ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 byProjectBaseSubpath n@(ProjectName name) t@(ProjectType tpe) base = do
-  tpePath <- hoistEitherAs (ResolveError.ParsePath tpe) $ parseRelDir (toString tpe)
-  namePath <- hoistEitherAs (ResolveError.ParsePath name) $ parseRelDir (toString name)
+  tpePath <- stopEitherAs (ResolveError.ParsePath tpe) $ parseRelDir (toString tpe)
+  namePath <- stopEitherAs (ResolveError.ParsePath name) $ parseRelDir (toString name)
   let root = base </> tpePath </> namePath
   exists <- doesDirExist root
   pure $ if exists then Just $ projectFromSegments t n (ProjectRoot root) else Nothing
 
 byProjectBasesSubpath ::
-  MonadIO m =>
-  MonadDeepError e ResolveError m =>
+  Members [Stop ResolveError, Embed IO] r =>
   [Path Abs Dir] ->
   ProjectName ->
   ProjectType ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 byProjectBasesSubpath baseDirs name tpe =
   foldM subpath Nothing baseDirs
   where
@@ -93,13 +91,12 @@ resolveByTypeAndPath baseDirs name tpe root =
   if matchProjectBases baseDirs root then Just (projectFromSegments tpe name root) else Nothing
 
 resolveByType ::
-  MonadIO m =>
-  MonadDeepError e ResolveError m =>
+  Members [Stop ResolveError, Embed IO] r =>
   [Path Abs Dir] ->
   [ProjectSpec] ->
   ProjectName ->
   ProjectType ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 resolveByType baseDirs explicit name tpe = do
   byBaseSubpath <- byProjectBasesSubpath baseDirs name tpe
   pure (byBaseSubpath <|> projectFromSpec <$> byTypeName)
@@ -114,48 +111,40 @@ fromProjectRoot dir =
     (root, name, tpe) = pathData dir
 
 projectFromNameIn ::
-  ∀ m .
-  MonadIO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   ProjectName ->
   Path Abs Dir ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 projectFromNameIn (ProjectName name) base =
-  fmap fromProjectRoot <$> join . find isJust <$> matches
+  fmap fromProjectRoot . join . find isJust <$> matches
   where
     matches =
       fmap (parseAbsDirMaybe . toText) <$> glob
     glob =
-      liftIO $ globDir1 (Glob.compile ("*/" <> toString name)) (toFilePath base)
+      embed $ globDir1 (Glob.compile ("*/" <> toString name)) (toFilePath base)
 
 resolveByName ::
-  MonadIO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   [Path Abs Dir] ->
   ProjectName ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 resolveByName baseDirs name =
-  findMapMaybeM (projectFromNameIn name) baseDirs
+  firstJustM (projectFromNameIn name) baseDirs
 
 globDir ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   Path Abs Dir ->
   [Text] ->
-  m (Maybe FilePath)
+  Sem r (Maybe FilePath)
 globDir root patterns =
-  listToMaybe <$> catchAnyAs [] (liftIO $ getDirectoryFiles rootS patternsS)
-  where
-    patternsS =
-      toString <$> patterns
-    rootS =
-      toFilePath root
+  (head =<<) <$> tryMaybe (getDirectoryFiles (toFilePath root) (toString <$> patterns))
 
 resolveFromDirContents ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   Map ProjectType [Text] ->
   ProjectName ->
   ProjectRoot ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 resolveFromDirContents typeMarkers name projectRoot@(ProjectRoot root) =
   fmap cons <$> firstJustM match (Map.toList typeMarkers)
   where
@@ -165,19 +154,24 @@ resolveFromDirContents typeMarkers name projectRoot@(ProjectRoot root) =
       (tpe <$) <$> globDir root patterns
 
 resolveByRoot ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   ProjectConfig ->
   ProjectName ->
   [ProjectSpec] ->
   ProjectRoot ->
-  m (Maybe Project)
+  Sem r (Maybe Project)
 resolveByRoot (ProjectConfig _ _ _ _ typeMarkers _ _) name explicit root =
   maybe (resolveFromDirContents typeMarkers name root) (pure . Just . projectFromSpec) fromExplicit
   where
     fromExplicit = find (hasProjectRoot root) explicit
 
-augment :: (Eq a, Ord k) => Map k [a] -> k -> [a] -> [a]
+augment ::
+  Eq a =>
+  Ord k =>
+  Map k [a] ->
+  k ->
+  [a] ->
+  [a]
 augment m tpe as =
   case m !? tpe of
     Just extra -> nub $ as ++ extra
@@ -204,46 +198,39 @@ augmentFromConfig _ project =
   project
 
 fromName ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e ResolveError m =>
+  Members [Stop ResolveError, Log, Embed IO] r =>
   [ProjectSpec] ->
   ProjectConfig ->
   ProjectName ->
   Maybe ProjectType ->
-  m Project
+  Sem r Project
 fromName explicit config name tpe = do
-  let baseDirs = config ^. ProjectConfig.baseDirs
+  let baseDirs = ProjectConfig.baseDirs config
   byType <- join <$> traverse (resolveByType baseDirs explicit name) tpe
   byName <- resolveByName baseDirs name
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
   let project = fromMaybe byNameOrVirtual byType
-  logDebug @Text $ logMsg byType byName
+  Log.debug (logMsg byType byName)
   pure (augmentFromConfig config project)
   where
     logMsg byType byName =
       [exon|resolved project: byType(#{show byType}) byName(#{show byName})|]
 
 fromNameSettings ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e ResolveError m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Stop ResolveError, Log, Embed IO] r =>
   ProjectName ->
   Maybe ProjectType ->
-  m Project
+  Sem r Project
 fromNameSettings name tpe = do
-  explicit <- setting Settings.projects
+  explicit <- Settings.get Settings.projects
   config <- projectConfig
   fromName explicit config name tpe
 
 projectConfig ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e SettingError m =>
-  m ProjectConfig
+  Member Settings r =>
+  Sem r ProjectConfig
 projectConfig =
-  Lens.over ProjectConfig.typeMarkers (`Map.union` defaultTypeMarkers) <$> setting Settings.projectConfig
+  (#typeMarkers %~ (`Map.union` defaultTypeMarkers)) <$> Settings.get Settings.projectConfig
 
 rootExplicit :: [ProjectSpec] -> ProjectRoot -> Maybe Project
 rootExplicit explicit root =
@@ -303,25 +290,23 @@ firstJustMOr fallback =
   fmap (fromMaybe fallback) . runMaybeT . asum @[] . fmap MaybeT
 
 fromRoot ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
+  Members [Stop ResolveError, Embed IO] r =>
   [ProjectSpec] ->
   ProjectConfig ->
   ProjectRoot ->
-  m Project
-fromRoot explicit config root = do
+  Sem r Project
+fromRoot explicit config@ProjectConfig {..} root = do
   let
     byRoot =
       asum @[] [
         rootExplicit explicit root,
-        rootProjectTypes (config ^. ProjectConfig.projectTypes) name root,
-        rootTypeDirs (config ^. ProjectConfig.typeDirs) name root,
-        rootBaseDirs (config ^. ProjectConfig.baseDirs) name root
+        rootProjectTypes projectTypes name root,
+        rootTypeDirs typeDirs name root,
+        rootBaseDirs baseDirs name root
         ]
   project <- firstJustMOr (virtualProject name) [
     pure byRoot,
-    resolveFromDirContents (config ^. ProjectConfig.typeMarkers) name root
+    resolveFromDirContents typeMarkers name root
     ]
   pure (augmentFromConfig config project)
   where
@@ -329,13 +314,10 @@ fromRoot explicit config root = do
       projectName root
 
 fromRootSettings ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Stop ResolveError, Embed IO] r =>
   ProjectRoot ->
-  m Project
+  Sem r Project
 fromRootSettings root = do
-  explicit <- setting Settings.projects
+  explicit <- Settings.get Settings.projects
   config <- projectConfig
   fromRoot explicit config root

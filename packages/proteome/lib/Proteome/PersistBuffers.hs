@@ -1,16 +1,14 @@
 module Proteome.PersistBuffers where
 
-import Control.Monad.Catch (MonadThrow)
-import Data.Composition ((.:))
+import Control.Lens ((.~))
 import qualified Data.Text as Text (null)
 import Path (Abs, Dir, File, Path, Rel, parseRelDir, relfile, toFilePath, (</>))
+import Ribosome (Rpc, RpcError, lockOrSkip)
+import Ribosome.Api (bufferGetName, vimCommand, vimGetCurrentBuffer)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
-import Ribosome.Control.Lock (lockOrSkip)
-import Ribosome.Data.PersistError (PersistError)
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (bufferGetName, vimCommand, vimGetCurrentBuffer)
-import Ribosome.Persist (mayPersistLoad, persistStore)
+import qualified Ribosome.Data.FileBuffer as FileBuffer
+import Ribosome.Effect.Persist (Persist)
+import qualified Ribosome.Persist as Persist
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (buffers, mainProject)
@@ -21,124 +19,69 @@ import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Path (existingFile)
+import qualified Log
+import Exon (exon)
+
+data StoreBuffersLock =
+  StoreBuffersLock
+  deriving stock (Eq, Show)
+
+data LoadBuffersLock =
+  LoadBuffersLock
+  deriving stock (Eq, Show)
+
+file :: Path Rel File
+file =
+  [relfile|buffers.json|]
 
 projectPaths ::
-  MonadThrow m =>
-  MonadDeepState s Env m =>
-  m (Maybe (Path Abs Dir, Path Rel Dir))
+  Member (AtomicState Env) r =>
+  Sem r (Maybe (Path Abs Dir, Path Rel Dir))
 projectPaths =
-  examine =<< getL @Env Env.mainProject
+  examine <$> atomicGets Env.mainProject
   where
     examine (Project (DirProject (ProjectName name) (ProjectRoot root) (Just (ProjectType tpe))) _ _ _) =
-      Just . (root,) <$> ((</>) <$> parseRelDir (toString tpe) <*> parseRelDir (toString name))
+      (root,) <$> ((</>) <$> parseRelDir (toString tpe) <*> parseRelDir (toString name))
     examine _ =
-      return Nothing
-
-unsafeStoreBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  Path Abs Dir ->
-  Path Rel Dir ->
-  m ()
-unsafeStoreBuffers cwd path = do
-  names <- traverse bufferGetName =<< filterM buflisted =<< getL @Env Env.buffers
-  files <- catMaybes <$> traverse (existingFile cwd) names
-  persistStore (path </> [relfile|buffers|]) (PersistBuffers (listToMaybe files) files)
-
-safeStoreBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  Path Abs Dir ->
-  Path Rel Dir ->
-  m ()
-safeStoreBuffers =
-  lockOrSkip "store-buffers" .: unsafeStoreBuffers
+      Nothing
 
 storeBuffers ::
-  MonadRibo m =>
-  NvimE e m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e SettingError m =>
-  m ()
+  Member (Persist PersistBuffers) r =>
+  Members [Sync StoreBuffersLock, AtomicState Env, Rpc, Rpc !! RpcError, Resource, Embed IO] r =>
+  Sem r ()
 storeBuffers =
-  traverse_ (uncurry safeStoreBuffers) =<< projectPaths
+  void $ lockOrSkip $ projectPaths >>= traverse_ \ (cwd, path) -> do
+    names <- traverse bufferGetName =<< filterM buflisted =<< atomicGets Env.buffers
+    files <- catMaybes <$> traverse (existingFile cwd) names
+    Persist.store (Just (path </> file)) (PersistBuffers (listToMaybe files) files)
 
 decodePersistBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
+  Member (Persist PersistBuffers) r =>
   Path Rel Dir ->
-  m (Maybe PersistBuffers)
+  Sem r (Maybe PersistBuffers)
 decodePersistBuffers path =
-  mayPersistLoad (path </> [relfile|buffers|])
+  Persist.load (Just (path </> file))
 
 restoreBuffers ::
-  MonadIO m =>
-  NvimE e m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
+  Members [Rpc, AtomicState Env, Log] r =>
   PersistBuffers ->
-  m ()
+  Sem r ()
 restoreBuffers (PersistBuffers active rest) = do
+  Log.debug [exon|Restoring buffers. Active: #{show active}|]
   traverse_ loadActive active
   traverse_ add rest
-  setL @Env Env.buffers . catMaybes =<< traverse (bufferForFile . toText . toFilePath) rest
+  buffers <- traverse bufferForFile rest
+  atomicModify' (#buffers .~ (FileBuffer.buffer <$> catMaybes buffers))
   where
     add a =
       vimCommand ("silent! badd " <> toText (toFilePath a))
     loadActive path = do
       currentBufferName <- bufferGetName =<< vimGetCurrentBuffer
-      when (Text.null currentBufferName) (edit (toFilePath path))
-
-unsafeLoadBuffers ::
-  MonadIO m =>
-  MonadRibo m =>
-  NvimE e m =>
-  MonadThrow m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
-  Path Rel Dir ->
-  m ()
-unsafeLoadBuffers path = do
-  pb <- decodePersistBuffers path
-  traverse_ restoreBuffers pb
-
-safeLoadBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
-  Path Rel Dir ->
-  m ()
-safeLoadBuffers path =
-  lockOrSkip "load-buffers" $ unsafeLoadBuffers path
+      when (Text.null currentBufferName) (edit path)
 
 loadBuffers ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
-  m ()
+  Members [Persist PersistBuffers, Sync LoadBuffersLock, Rpc, AtomicState Env, Log, Resource] r =>
+  Sem r ()
 loadBuffers =
-  traverse_ (safeLoadBuffers . snd) =<< projectPaths
+  void $ lockOrSkip $ projectPaths >>= traverse_ \ (_, path) ->
+    traverse_ restoreBuffers =<< decodePersistBuffers path

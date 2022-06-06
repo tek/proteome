@@ -1,8 +1,9 @@
 module Proteome.Data.GrepError where
 
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Error.Report.Class (ReportError(..))
-import System.Log (Priority(NOTICE))
+import Exon (exon)
+import Log (Severity (Warn))
+import Path (Abs, Dir, Path)
+import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage (toErrorMessage), pathText)
 
 data GrepError =
   Empty
@@ -11,21 +12,19 @@ data GrepError =
   |
   NoSuchExecutable Text
   |
-  NoSuchDestination Text
+  NoSuchDestination (Path Abs Dir)
   |
   EmptyPattern
   deriving stock (Eq, Show)
 
-deepPrisms ''GrepError
-
-instance ReportError GrepError where
-  errorReport Empty =
-    ErrorReport "grep cmdline is empty" ["GrepError.Empty"] NOTICE
-  errorReport (NotInPath exe) =
-    ErrorReport ("grep executable `" <> exe <> "` not found in $PATH") ["GrepError.NotInPath:", exe] NOTICE
-  errorReport (NoSuchExecutable exe) =
-    ErrorReport ("grep executable `" <> exe <> "` does not exist") ["GrepError.NoSuchExecutable:", exe] NOTICE
-  errorReport (NoSuchDestination dir) =
-    ErrorReport ("grep destination `" <> dir <> "` does not exist") ["GrepError.NoSuchDestination:", dir] NOTICE
-  errorReport EmptyPattern =
-    ErrorReport "no pattern given" ["GrepError.EmptyPattern"] NOTICE
+instance ToErrorMessage GrepError where
+  toErrorMessage Empty =
+    ErrorMessage "grep cmdline is empty" ["GrepError.Empty"] Warn
+  toErrorMessage (NotInPath exe) =
+    ErrorMessage ("grep executable `" <> exe <> "` not found in $PATH") ["GrepError.NotInPath:", exe] Warn
+  toErrorMessage (NoSuchExecutable exe) =
+    ErrorMessage ("grep executable `" <> exe <> "` does not exist") ["GrepError.NoSuchExecutable:", exe] Warn
+  toErrorMessage (NoSuchDestination (pathText -> dir)) =
+    ErrorMessage [exon|grep destination `#{dir}` does not exist|] ["GrepError.NoSuchDestination:", dir] Warn
+  toErrorMessage EmptyPattern =
+    ErrorMessage "no pattern given" ["GrepError.EmptyPattern"] Warn

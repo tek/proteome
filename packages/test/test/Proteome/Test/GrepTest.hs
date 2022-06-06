@@ -1,39 +1,30 @@
 module Proteome.Test.GrepTest where
 
-import Hedgehog ((===))
+import Path (absfile, reldir, relfile)
+import Path.IO (findExecutable)
+import qualified Polysemy.Test as Test
+import Polysemy.Test (UnitTest, assertEq, unitTest, (===))
+import Ribosome (pathText)
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
-import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
-import Ribosome.Menu.Prompt.Run (noPromptRenderer)
-import Ribosome.Menu.Prompt.Transition (basicTransition)
-import Ribosome.Test.Run (UnitTest, unitTest)
-import Ribosome.Test.Unit (fixture)
+import Ribosome.Menu.Prompt (promptInputWith)
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig))
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
-import Streamly.Prelude (serial)
+import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
-import Proteome.Grep (proGrepWith, uniqueGrepLines)
+import Proteome.Grep (grepWith, uniqueGrepLines)
 import Proteome.Grep.Process (grepMenuItems)
-import Proteome.Test.Unit (ProteomeTest, testDef, tmuxTest)
-
-promptInput ::
-  MonadIO m =>
-  [Text] ->
-  PromptInput m
-promptInput chars' =
-  PromptInput \ _ ->
-    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
+import Proteome.Test.Run (proteomeTest)
 
 promptConfig ::
-  MonadIO m =>
   [Text] ->
-  PromptConfig m
+  PromptConfig
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
+  PromptConfig (promptInputWith (Just 0.1) Nothing (Stream.fromList cs)) []
 
 pat :: Text
 pat =
@@ -43,59 +34,51 @@ jumpChars :: [Text]
 jumpChars =
   ["k", "cr"]
 
-grepJumpTest :: ProteomeTest ()
-grepJumpTest = do
-  dir <- fixture "grep/pro"
-  proGrepWith (promptConfig jumpChars) (toText dir) pat []
-  l <- currentLine
-  5 === l
-
 test_grepJump :: UnitTest
 test_grepJump =
-  tmuxTest grepJumpTest
+  proteomeTest do
+    dir <- Test.fixturePath [reldir|grep/pro|]
+    grepWith (promptConfig jumpChars) dir pat []
+    assertEq 5 =<< currentLine
 
 yankChars :: [Text]
 yankChars =
   ["k", "y"]
 
-grepYankTest :: ProteomeTest ()
-grepYankTest = do
-  dir <- fixture "grep/pro"
-  proGrepWith (promptConfig yankChars) (toText dir) pat []
-  normal "P"
-  l <- currentBufferContent
-  ["line 6 " <> pat, ""] === l
-
 test_grepYank :: UnitTest
-test_grepYank =
-  tmuxTest grepYankTest
-
-grepDuplicatesTest :: ProteomeTest ()
-grepDuplicatesTest = do
-  dir <- toText <$> fixture "grep/duplicates"
-  outputDupes <- Streamly.toList (proc dir)
-  2 === length outputDupes
-  outputUnique <- Streamly.toList (uniqueGrepLines (proc dir))
-  1 === length outputUnique
-  output3 <- Streamly.toList (uniqueGrepLines (Streamly.fromList (item 1 ++ item 2)))
-  1 === length output3
-  where
-    proc dir =
-      grepMenuItems dir "rg" ["--vimgrep", "--no-heading", "target", dir]
-    item col =
-      [MenuItem (GrepOutputLine "/path/to/file" 0 (Just col) "target") "" ""]
+test_grepYank = do
+  proteomeTest do
+    dir <- Test.fixturePath [reldir|grep/pro|]
+    grepWith (promptConfig yankChars) dir pat []
+    normal "P"
+    l <- currentBufferContent
+    ["line 6 " <> pat, ""] === l
 
 test_grepDuplicates :: UnitTest
 test_grepDuplicates =
-  testDef grepDuplicatesTest
+  proteomeTest do
+    rgExe <- stopNote "rg not found" =<< findExecutable [relfile|rg|]
+    dir <- Test.fixturePath [reldir|grep/duplicates|]
+    let
+      proc =
+        grepMenuItems dir rgExe ["--vimgrep", "--no-heading", "target", pathText dir]
+    outputDupes <- embed . Streamly.toList =<< proc
+    2 === length outputDupes
+    outputUnique <- embed . Streamly.toList . uniqueGrepLines =<< proc
+    1 === length outputUnique
+    output3 <- embed (Streamly.toList (uniqueGrepLines (Streamly.fromList (item 1 ++ item 2))))
+    1 === length output3
+    where
+      item col =
+        [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target") "" ""]
 
 test_noResults :: UnitTest
 test_noResults =
-  testDef @_ @(Ribo _ _) do
-    dir <- fixture "grep/pro"
-    proGrepWith (promptConfig []) (toText dir) "nonexistent" []
+  proteomeTest do
+    dir <- Test.fixturePath [reldir|grep/pro|]
+    grepWith (promptConfig []) dir "nonexistent" []
     l <- currentBufferContent
-    [] === l
+    [""] === l
 
 test_grep :: TestTree
 test_grep =

@@ -1,14 +1,13 @@
 module Proteome.Data.FilesConfig where
 
-import Text.RE.PCRE.Text (RE)
+import Text.Regex.PCRE.Light (Regex)
 
 data FilesConfig =
   FilesConfig {
-    _useRg :: Bool,
-    _ignoreHidden :: Bool,
-    _ignoreFiles :: [RE],
-    _ignoreDirs :: [RE],
-    _wildignore :: [Text]
+    useRg :: Bool,
+    ignoreHidden :: Bool,
+    ignoreFiles :: [Regex],
+    ignoreDirs :: [Regex],
+    wildignore :: [Text]
   }
-
-makeClassy ''FilesConfig
+  deriving stock (Eq, Show, Generic)

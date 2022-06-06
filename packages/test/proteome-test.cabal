@@ -1,19 +1,19 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.34.6.
 --
 -- see: https://github.com/sol/hpack
 
 name:           proteome-test
-version:        0.3.17.0
-synopsis:       Neovim Project Manager, Tests
-description:    Please see the README on GitHub at <https://github.com/tek/proteome>
+version:        0.1.0.0
+synopsis:       Proteome tests
+description:    See https://hackage.haskell.org/package/proteome/docs/Proteome.html
 category:       Neovim
 homepage:       https://github.com/tek/proteome#readme
 bug-reports:    https://github.com/tek/proteome/issues
 author:         Torsten Schmits
-maintainer:     tek@tryp.io
-copyright:      2021 Torsten Schmits
+maintainer:     hackage@tryp.io
+copyright:      2022 Torsten Schmits
 license:        BSD-2-Clause-Patent
 license-file:   LICENSE
 build-type:     Simple
@@ -25,8 +25,6 @@ source-repository head
 library
   exposed-modules:
       Keep
-  other-modules:
-      Paths_proteome_test
   hs-source-dirs:
       lib
   default-extensions:
@@ -46,6 +44,7 @@ library
       DeriveLift
       DeriveTraversable
       DerivingStrategies
+      DerivingVia
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
@@ -75,6 +74,7 @@ library
       RankNTypes
       RecordWildCards
       RecursiveDo
+      RoleAnnotations
       ScopedTypeVariables
       StandaloneDeriving
       TemplateHaskell
@@ -87,63 +87,32 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin
   build-depends:
-      aeson
-    , base ==4.*
-    , bytestring
-    , chiasma
-    , composition
-    , composition-extra
-    , containers
-    , cornea
-    , data-default
-    , directory
-    , either
-    , exceptions
-    , filepath
-    , free
-    , hslogger
-    , lens
-    , lifted-async
-    , lifted-base
-    , messagepack
-    , monad-control
-    , mtl
-    , nvim-hs
-    , path
-    , path-io
-    , prettyprinter
-    , prettyprinter-ansi-terminal
-    , process
-    , proteome
-    , relude >=0.7 && <1.2
-    , resourcet
-    , ribosome
-    , template-haskell
-    , text
-    , transformers
-    , typed-process
-    , unix
-    , unliftio
+      base >=4.12 && <5
+    , incipit >=0.3
+    , polysemy
+    , polysemy-plugin
   mixins:
       base hiding (Prelude)
-    , proteome hiding (Proteome.Prelude)
-    , proteome (Proteome.Prelude as Prelude)
+    , incipit (Incipit as Prelude)
+    , incipit hiding (Incipit)
   default-language: Haskell2010
 
 test-suite proteome-unit
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
-      Proteome.Test.AddFTest
       Proteome.Test.AddMenuTest
       Proteome.Test.AddTest
       Proteome.Test.BuffersTest
-      Proteome.Test.Config
       Proteome.Test.ConfigTest
       Proteome.Test.CycleTest
       Proteome.Test.DiagTest
+      Proteome.Test.Dirs
       Proteome.Test.FilenameTest
       Proteome.Test.FilesTest
       Proteome.Test.GrepTest
@@ -155,9 +124,8 @@ test-suite proteome-unit
       Proteome.Test.Project
       Proteome.Test.ReplaceTest
       Proteome.Test.ResolveTest
+      Proteome.Test.Run
       Proteome.Test.TagsTest
-      Proteome.Test.Unit
-      Paths_proteome_test
   hs-source-dirs:
       test
   default-extensions:
@@ -177,6 +145,7 @@ test-suite proteome-unit
       DeriveLift
       DeriveTraversable
       DerivingStrategies
+      DerivingVia
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
@@ -206,6 +175,7 @@ test-suite proteome-unit
       RankNTypes
       RecordWildCards
       RecursiveDo
+      RoleAnnotations
       ScopedTypeVariables
       StandaloneDeriving
       TemplateHaskell
@@ -218,54 +188,32 @@ test-suite proteome-unit
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -threaded -rtsopts -with-rtsopts=-N
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
+  ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
-    , base ==4.*
-    , bytestring
-    , chiasma
-    , composition
-    , composition-extra
-    , containers
-    , cornea
-    , data-default
-    , directory
-    , either
-    , exceptions
-    , filepath
-    , free
-    , hedgehog
-    , hslogger
+    , base >=4.12 && <5
+    , exon
+    , incipit >=0.3
     , lens
-    , lifted-async
-    , lifted-base
-    , messagepack
-    , monad-control
-    , mono-traversable
-    , mtl
-    , nvim-hs
+    , lens-regex-pcre
     , path
     , path-io
-    , prettyprinter
-    , prettyprinter-ansi-terminal
-    , process
+    , pcre-heavy
+    , polysemy
+    , polysemy-plugin
+    , polysemy-test
     , proteome
-    , regex-with-pcre
-    , relude >=0.7 && <1.2
-    , resourcet
     , ribosome
+    , ribosome-host
+    , ribosome-menu
     , ribosome-test
     , streamly
     , tasty
-    , tasty-hedgehog
-    , template-haskell
-    , text
-    , transformers
-    , typed-process
-    , unix
-    , unliftio
   mixins:
       base hiding (Prelude)
-    , proteome hiding (Proteome.Prelude)
-    , proteome (Proteome.Prelude as Prelude)
+    , incipit (Incipit as Prelude)
+    , incipit hiding (Incipit)
   default-language: Haskell2010

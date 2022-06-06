@@ -1,5 +1,7 @@
 module Proteome.Data.ProjectMetadata where
 
+import Ribosome (MsgpackDecode, MsgpackEncode)
+
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot)
 import Proteome.Data.ProjectType (ProjectType)
@@ -18,4 +20,5 @@ data ProjectMetadata =
   deriving anyclass (MsgpackDecode, MsgpackEncode)
 
 instance Default ProjectMetadata where
-  def = VirtualProject (ProjectName "main")
+  def =
+    VirtualProject (ProjectName "main")

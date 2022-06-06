@@ -1,6 +1,6 @@
 module Main where
 
-import Proteome.Test.AddFTest (test_addCommand, test_addFunction)
+import Polysemy.Test (unitTest)
 import Proteome.Test.AddMenuTest (test_addMenu)
 import Proteome.Test.AddTest (test_add)
 import Proteome.Test.BuffersTest (test_buffers)
@@ -18,14 +18,11 @@ import Proteome.Test.PersistStoreTest (test_storeBuffers)
 import Proteome.Test.ReplaceTest (test_grepDelete, test_grepReplace)
 import Proteome.Test.ResolveTest (test_resolve)
 import Proteome.Test.TagsTest (test_simpleTags)
-import Ribosome.Test.Run (unitTest)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 
 tests :: TestTree
 tests =
   testGroup "all" [
-    unitTest "add a project via function call" test_addFunction,
-    unitTest "add a project via command" test_addCommand,
     unitTest "add a project from the add menu" test_addMenu,
     unitTest "add a project" test_add,
     test_buffers,

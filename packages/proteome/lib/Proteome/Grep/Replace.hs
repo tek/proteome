@@ -1,57 +1,63 @@
 module Proteome.Grep.Replace where
 
-import Control.Lens (view)
+import Control.Lens ((.~), (?~))
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Text as Text
+import Path (parseAbsFile)
+import Ribosome (
+  Buffer,
+  Handler,
+  Rpc,
+  RpcError,
+  Scratch,
+  ScratchId (ScratchId),
+  ScratchState (ScratchState),
+  mapHandlerError,
+  resumeHandlerError,
+  toMsgpack,
+  )
+import Ribosome.Api (bufferGetLines, bufferSetLines, bufferSetOption, nvimCommand, vimCallFunction)
 import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
+import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
-import Ribosome.Data.Scratch (Scratch (Scratch))
-import qualified Ribosome.Data.Scratch as Scratch (Scratch (scratchBuffer))
-import Ribosome.Data.ScratchOptions (ScratchOptions (..))
-import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.Data (Buffer)
-import Ribosome.Nvim.Api.IO (bufferGetLines, bufferSetLines, bufferSetOption, vimCommand, vimCallFunction)
-import Ribosome.Scratch (showInScratch)
+import Ribosome (pathText)
+import qualified Ribosome.Scratch as Scratch
 
-import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (replace)
+import Proteome.Data.Env (Env)
+import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
-import qualified Proteome.Data.GrepOutputLine as GrepOutputLine (content)
 import Proteome.Data.Replace (Replace (Replace))
-import Proteome.Data.ReplaceError (ReplaceError)
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
+import Proteome.Data.ReplaceError (ReplaceError)
 
 scratchName :: Text
 scratchName =
   "proteome-replace"
 
 replaceBuffer ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepState s Env m =>
+  Members [Scratch, Rpc, AtomicState Env] r =>
   NonEmpty GrepOutputLine ->
-  m ()
+  Sem r ()
 replaceBuffer lines' = do
-  scratch <- showInScratch content options
-  let buffer = Scratch.scratchBuffer scratch
-  bufferSetOption buffer "buftype" (toMsgpack ("acwrite" :: Text))
+  scratch <- Scratch.show content options
+  let buffer = Scratch.buffer scratch
+  bufferSetOption buffer "buftype" ("acwrite" :: Text)
   bufferAutocmd buffer "ProteomeReplaceSave" "BufWriteCmd" "silent! ProReplaceSave"
   bufferAutocmd buffer "ProteomeReplaceQuit" "BufUnload" "silent! ProReplaceQuit"
-  setL @Env Env.replace (Just (Replace scratch lines'))
+  atomicModify' (#replace ?~ Replace scratch lines')
   where
     content =
-      view GrepOutputLine.content <$> lines'
+      GrepOutputLine.content <$> lines'
     options =
       def {
-        _name = scratchName,
-        _modify = True,
-        _focus = True,
-        _filetype = Just scratchName
+        Scratch.name = ScratchId scratchName,
+        Scratch.modify = True,
+        Scratch.focus = True,
+        Scratch.filetype = Just scratchName
       }
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.
@@ -59,11 +65,10 @@ replaceBuffer lines' = do
 -- Then do the same for the last line.
 -- Finally, check if both the preceding and current line are empty.
 deleteExtraBlankLine ::
-  MonadIO m =>
-  NvimE e m =>
+  Member Rpc r =>
   Buffer ->
   Int ->
-  m ()
+  Sem r ()
 deleteExtraBlankLine buffer line = do
   check (line - 2) line [""]
   check line (line + 1) [""]
@@ -79,27 +84,29 @@ deleteExtraBlankLine buffer line = do
     clamp0 a | a < 0 = 0
     clamp0 a = a
 
+fileBuffer ::
+  Member Rpc r =>
+  Text ->
+  Sem r (Maybe FileBuffer)
+fileBuffer path =
+  join <$> traverse bufferForFile (parseAbsFile (toString path))
+
 replaceLine ::
-  MonadIO m =>
-  NvimE e m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e ReplaceError m =>
+  Members [Rpc, Stop ReplaceError] r =>
   Text ->
   GrepOutputLine ->
-  m (Maybe Buffer)
+  Sem r (Maybe Buffer)
 replaceLine updatedLine (GrepOutputLine path line _ _) = do
   exists <- isJust <$> bufferForFile path
-  unless exists (addBuffer path)
+  unless exists (addBuffer (pathText path))
   () <- vimCallFunction "bufload" [toMsgpack path]
-  buffer <- hoistMaybe (ReplaceError.CouldntLoadBuffer path) =<< bufferForFile path
+  FileBuffer buffer _ <- stopNote (ReplaceError.CouldntLoadBuffer path) =<< bufferForFile path
   bufferSetLines buffer line (line + 1) False replacement
   deleteExtraBlankLine buffer line
   pure (bool (Just buffer) Nothing exists)
   where
     replacement =
-      if Text.null updatedLine
-      then []
-      else [updatedLine]
+      [updatedLine | not (Text.null updatedLine)]
 
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
 lineNumberDesc (_, GrepOutputLine _ number _ _) =
@@ -110,74 +117,57 @@ replaceFloatOptions =
   FloatOptions def 1 1 0 0 False def Nothing FloatBorder.None True False (Just def) (Just 1)
 
 withReplaceEnv ::
-  NvimE e m =>
-  MonadBaseControl IO m =>
-  m [Maybe Buffer] ->
-  m ()
+  Members [Rpc !! RpcError, Rpc, Resource] r =>
+  Sem r [Maybe Buffer] ->
+  Sem r ()
 withReplaceEnv run = do
   withOption "hidden" True do
     transient <- run
-    ignoreError @RpcError $ vimCommand "noautocmd wall"
+    resume_ (nvimCommand "noautocmd wall")
     traverse_ wipeBuffer (catMaybes transient)
 
 replaceLines ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e ReplaceError m =>
+  Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   Buffer ->
   [(Text, GrepOutputLine)] ->
-  m ()
+  Sem r ()
 replaceLines scratchBuffer lines' = do
-  bufferSetOption scratchBuffer "buftype" (toMsgpack ("nofile" :: Text))
+  bufferSetOption scratchBuffer "buftype" ("nofile" :: Text)
   withReplaceEnv do
     traverse (uncurry replaceLine) (sortOn lineNumberDesc lines')
-  bufferSetOption scratchBuffer "buftype" (toMsgpack ("acwrite" :: Text))
-  bufferSetOption scratchBuffer "modified" (toMsgpack False)
+  bufferSetOption scratchBuffer "buftype" ("acwrite" :: Text)
+  bufferSetOption scratchBuffer "modified" False
 
 deleteLines ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e ReplaceError m =>
+  Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   [GrepOutputLine] ->
-  m ()
+  Sem r ()
 deleteLines lines' =
   withReplaceEnv do
     traverse (uncurry replaceLine) (sortOn lineNumberDesc (zip (repeat "") lines'))
 
 replaceSave ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e ReplaceError m =>
+  Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   Replace ->
-  m ()
-replaceSave (Replace (Scratch _ buffer _ _ _) lines') = do
+  Sem r ()
+replaceSave (Replace (ScratchState _ _ buffer _ _ _) lines') = do
   updatedLines <- bufferContent buffer
   if length updatedLines /= length lines'
   then badReplacement
   else replaceLines buffer (zip updatedLines (NonEmpty.toList lines'))
   where
     badReplacement =
-      throwHoist ReplaceError.BadReplacement
+      stop ReplaceError.BadReplacement
 
 proReplaceSave ::
-  NvimE e m =>
-  MonadIO m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e ReplaceError m =>
-  m ()
+  Members [AtomicState Env, Rpc !! RpcError, Resource] r =>
+  Handler r ()
 proReplaceSave =
-  traverse_ replaceSave =<< getL @Env Env.replace
+  resumeHandlerError $ mapHandlerError do
+    traverse_ replaceSave =<< atomicGets Env.replace
 
 proReplaceQuit ::
-  MonadDeepState s Env m =>
-  m ()
+  Member (AtomicState Env) r =>
+  Handler r ()
 proReplaceQuit =
-  setL @Env Env.replace Nothing
+  atomicModify' (#replace .~ Nothing)

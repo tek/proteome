@@ -2,12 +2,11 @@ module Proteome.Grep.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
 import Ribosome.Data.Syntax (
-  HiLink(HiLink),
-  Syntax(Syntax),
-  SyntaxItem(siOptions, siParams),
-  syntaxMatch,
-  syntaxVerbatim,
+  HiLink (HiLink),
+  Syntax (Syntax),
+  SyntaxItem (siOptions, siParams),
   )
+import Ribosome.Syntax (syntaxMatch, syntaxVerbatim)
 import Text.RawString.QQ (r)
 
 lineNumber :: Text

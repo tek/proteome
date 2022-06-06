@@ -1,11 +1,13 @@
 module Proteome.Files.Source where
 
-import Control.Concurrent.Async.Lifted (async, wait)
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMChan (TMChan, closeTMChan, newTMChan, writeTMChan)
-import Control.Monad.Catch (MonadCatch, MonadThrow)
+import Control.Lens (has)
+import Control.Lens.Regex.Text (match, regexing)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import qualified Data.Set as Set (fromList, toList)
 import qualified Data.Text as Text
+import Exon (exon)
 import Path (
   Abs,
   Dir,
@@ -23,25 +25,26 @@ import Path (
   )
 import Path.IO (doesDirExist, findExecutable, walkDir)
 import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
-import Ribosome.Control.Exception (tryAny)
-import Ribosome.Data.Stream (chanStream)
+import Ribosome (pathText)
 import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
+import Ribosome.Menu.Stream.Util (chanStream)
 import qualified Streamly.Prelude as Streamly
 import Streamly.Prelude (SerialT)
 import System.FilePattern ((?==))
-import Text.RE.PCRE.Text (RE, anyMatches, (*=~))
+import Text.Regex.PCRE.Light (Regex)
 
 import Proteome.Data.FileScanItem (FileScanItem (FileScanItem))
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Grep.Process (processLines)
 import Proteome.Path (dropSlash)
 
-matchPath :: [RE] -> Path Abs t -> Bool
-matchPath exclude path =
-  any (anyMatches . match) exclude
+-- TODO store traversals instead of Regexes?
+matchPath :: [Regex] -> Path Abs t -> Bool
+matchPath excludes path =
+  any check excludes
   where
-    match regex =
-      toText (toFilePath path) *=~ regex
+    check rgx =
+      pathText path & has (regexing rgx . match)
 
 hiddenFilter ::
   (Path Abs t -> Path Rel t) ->
@@ -55,7 +58,7 @@ hiddenFilter _ False =
 
 filterFiles ::
   Bool ->
-  [RE] ->
+  [Regex] ->
   [String] ->
   [Path Abs File] ->
   [Path Abs File]
@@ -72,7 +75,7 @@ filterFiles excludeHidden patterns wildignore =
 
 filterDirs ::
   Bool ->
-  [RE] ->
+  [Regex] ->
   [Path Abs Dir] ->
   [Path Abs Dir]
 filterDirs excludeHidden patterns =
@@ -82,15 +85,14 @@ filterDirs excludeHidden patterns =
       matchPath patterns a || hiddenFilter dirname excludeHidden a
 
 scan ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
+  Member (Embed IO) r =>
   FilesConfig ->
-  TMChan (FileScanItem) ->
+  TMChan FileScanItem ->
   Path Abs Dir ->
   Maybe Text ->
-  m ()
+  Sem r ()
 scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir baseIndicator =
-  void $ tryAny do
+  tryAny_ do
     walkDir enqueue dir
   where
     enqueue _ dirs files' =
@@ -104,21 +106,20 @@ scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir ba
       FileScanItem dir baseIndicator
 
 rgExists ::
-  MonadIO m =>
-  m Bool
+  Member (Embed IO) r =>
+  Sem r Bool
 rgExists =
   isJust <$> findExecutable [relfile|rg|]
 
 runScanners ::
-  MonadIO m =>
-  MonadBaseControl IO m =>
+  Members [Async, Embed IO] r =>
   FilesConfig ->
-  TMChan (FileScanItem) ->
+  TMChan FileScanItem ->
   NonEmpty (Path Abs Dir, Maybe Text) ->
-  m (NonEmpty ())
+  Sem r ()
 runScanners conf chan paths = do
   threads <- traverse (async . uncurry (scan conf chan)) paths
-  traverse wait threads <* atomically (closeTMChan chan)
+  traverse_ await threads <* embed (atomically (closeTMChan chan))
 
 withBaseIndicators ::
   NonEmpty (Path Abs Dir) ->
@@ -128,12 +129,12 @@ withBaseIndicators bases@(_ :| []) =
 withBaseIndicators bases =
   NonEmpty.zip bases (findSegment bases)
   where
-    findSegment paths =
-      if namesUnique paths
-      then Just . dropSlash . dirname <$> paths
-      else if allEqual next then Nothing <$ paths else findSegment next
+    findSegment paths
+      | namesUnique paths = Just . dropSlash . dirname <$> paths
+      | allEqual next = Nothing <$ paths
+      | otherwise = findSegment next
       where
-        next = parent <$> paths
+          next = parent <$> paths
     namesUnique paths =
       uniq names == NonEmpty.toList names
       where
@@ -157,16 +158,14 @@ formatFileLine base baseIndicator path =
       "[" <> name <> "] "
 
 filesNative ::
-  MonadIO m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
+  Members [Async, Embed IO] r =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  SerialT m (MenuItem (Path Abs File))
+  Sem r (SerialT IO (MenuItem (Path Abs File)))
 filesNative conf paths = do
-  chan <- atomically newTMChan
-  void . lift . async $ runScanners conf chan (withBaseIndicators paths)
-  menuItem <$> chanStream chan
+  chan <- embed (atomically newTMChan)
+  void . async $ runScanners conf chan (withBaseIndicators paths)
+  pure (menuItem <$> chanStream chan)
   where
     menuItem (FileScanItem base baseIndicator path) =
       simpleMenuItem path (formatFileLine base baseIndicator path)
@@ -176,7 +175,7 @@ rgExcludes (FilesConfig _ _ _ _ wilds) =
   concat (wild <$> wilds)
   where
     wild i =
-      ["--glob", [text|!#{i}|]]
+      ["--glob", [exon|!#{i}|]]
 
 findBase ::
   Path Abs File ->
@@ -189,21 +188,19 @@ rgMenuItem ::
   NonEmpty (Path Abs Dir, Maybe Text) ->
   Text ->
   Maybe (MenuItem (Path Abs File))
-rgMenuItem bases (toString -> pathText) = do
-  path <- parseAbsFile pathText
+rgMenuItem bases file = do
+  path <- parseAbsFile (toString file)
   (base, baseIndicator) <- findBase path bases
   pure (simpleMenuItem path (formatFileLine base baseIndicator path))
 
 filesRg ::
-  MonadIO m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
+  Path Abs File ->
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  SerialT m (MenuItem (Path Abs File))
-filesRg conf paths =
+  SerialT IO (MenuItem (Path Abs File))
+filesRg rgExe conf paths =
   Streamly.mapMaybe item $
-  processLines "rg" ("--files" : excludes <> patterns)
+  processLines rgExe ("--files" : excludes <> patterns)
   where
     patterns =
       toText . toFilePath <$> toList paths
@@ -213,15 +210,17 @@ filesRg conf paths =
       rgMenuItem (withBaseIndicators paths)
 
 files ::
-  MonadIO m =>
-  MonadCatch m =>
-  MonadBaseControl IO m =>
+  Members [Async, Embed IO] r =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
-  SerialT m (MenuItem (Path Abs File))
+  Sem r (SerialT IO (MenuItem (Path Abs File)))
 files conf@(FilesConfig useRg _ _ _ _) paths =
   filterM doesDirExist (toList paths) >>= \case
     [] ->
-      Streamly.fromList []
-    (p : ps) ->
-      ifM ((useRg &&) <$> rgExists) (filesRg conf (p :| ps)) (filesNative conf (p :| ps))
+      pure Streamly.nil
+    p : ps ->
+      findExecutable [relfile|rg|] >>= \case
+        Just rgExe | useRg ->
+          pure (filesRg rgExe conf (p :| ps))
+        _ ->
+          filesNative conf (p :| ps)

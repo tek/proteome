@@ -1,13 +1,11 @@
 module Proteome.Data.ListedBuffer where
 
-import Ribosome.Nvim.Api.Data (Buffer)
+import Ribosome.Host.Api.Data (Buffer)
 
 data ListedBuffer =
   ListedBuffer {
-    _buffer :: Buffer,
-    _number :: Int,
-    _name :: Text
+    buffer :: Buffer,
+    number :: Int,
+    name :: Text
   }
-  deriving stock (Eq, Show)
-
-makeClassy 'ListedBuffer
+  deriving stock (Eq, Show, Generic)

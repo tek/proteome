@@ -1,37 +1,28 @@
 module Proteome.Test.ReplaceTest where
 
-import qualified Data.Text as Text (replace)
-import Hedgehog (TestT, (===))
+import Control.Lens ((.~))
+import Control.Lens.Regex.Text (group, regex)
+import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
+import Path (Abs, File, Path, reldir, relfile, toFilePath)
+import qualified Polysemy.Test as Test
+import Polysemy.Test (Hedgehog, UnitTest, (===))
+import Prelude hiding (group)
+import Ribosome.Api (vimGetBuffers)
 import Ribosome.Api.Buffer (buflisted, currentBufferContent, setCurrentBufferContent)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
-import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
-import Ribosome.Menu.Prompt.Run (noPromptRenderer)
-import Ribosome.Menu.Prompt.Transition (basicTransition)
-import Ribosome.Nvim.Api.IO (vimGetBuffers)
-import Ribosome.Test.Run (UnitTest)
-import Ribosome.Test.Unit (tempDir)
-import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
-import Streamly.Prelude (serial)
-import Text.RE.PCRE.Text (ed, (*=~/))
+import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig))
+import Ribosome.Menu.Prompt.Input (promptInputWith)
+import qualified Streamly.Prelude as Stream
 
-import Proteome.Grep (proGrepWith)
+import Proteome.Grep (grepWith)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
-import Proteome.Test.Unit (ProteomeTest, tmuxTest)
-
-promptInput ::
-  MonadIO m =>
-  [Text] ->
-  PromptInput m
-promptInput chars' =
-  PromptInput \ _ ->
-    serial (Streamly.nilM (sleep 0.1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
+import Proteome.Test.Run (proteomeTest)
 
 promptConfig ::
-  MonadIO m =>
   [Text] ->
-  PromptConfig m
+  PromptConfig
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
+  PromptConfig (promptInputWith (Just 1) (Just 0.01) (Stream.fromList cs)) []
 
 pat :: Text
 pat =
@@ -107,34 +98,35 @@ file3Target =
   ]
 
 checkContent ::
-  MonadIO m =>
-  FilePath ->
+  Members [Hedgehog IO, Embed IO] r =>
+  Path Abs File ->
   [Text] ->
-  FilePath ->
-  TestT m ()
-checkContent dir target name =
-  (target ===) . lines . toText =<< readFile (dir <> "/" <> name)
+  Sem r ()
+checkContent file target =
+  (target ===) . lines . toText =<< embed (Text.readFile (toFilePath file))
 
-grepReplaceTest :: ProteomeTest ()
-grepReplaceTest = do
-  dir <- tempDir "grep/replace"
-  writeFile (dir <> "/file1") (toString $ unlines file1Lines)
-  writeFile (dir <> "/file2") (toString $ unlines file2Lines)
-  writeFile (dir <> "/file3") (toString $ unlines file3Lines)
-  proGrepWith (promptConfig replaceChars) (toText dir) pat []
-  replaceContent <- currentBufferContent
-  7 === length replaceContent
-  setCurrentBufferContent $ (*=~/ [ed|^delete me.*$///|]) . Text.replace pat replacement <$> replaceContent
-  proReplaceSave
-  proReplaceQuit
-  (2 ===) . length =<< filterM buflisted =<< vimGetBuffers
-  checkContent dir file1Target "file1"
-  checkContent dir file2Target "file2"
-  checkContent dir file3Target "file3"
-
+-- TODO this needs to be run with a custom MenuConsumer that responds to item events, waiting for all of them to appear
+-- in the menu, then triggering a Sync that is waited on in the prompt input stream, to make it deterministic.
+-- Probably a good idea to add a menu event that informs the consumer that the item stream is exhausted.
+--
+-- Also, migrate the whole thing to use effects instead of those callbacks like MenuConsumer
 test_grepReplace :: UnitTest
 test_grepReplace =
-  tmuxTest grepReplaceTest
+  proteomeTest do
+    dir <- Test.tempDir [reldir|grep/replace|]
+    file1 <- Test.tempFile file1Lines [relfile|grep/replace/file1|]
+    file2 <- Test.tempFile file2Lines [relfile|grep/replace/file2|]
+    file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
+    grepWith (promptConfig replaceChars) dir pat []
+    replaceContent <- currentBufferContent
+    7 === length replaceContent
+    setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
+    proReplaceSave
+    proReplaceQuit
+    (2 ===) . length =<< filterM buflisted =<< vimGetBuffers
+    checkContent file1 file1Target
+    checkContent file2 file2Target
+    checkContent file3 file3Target
 
 deleteChars :: [Text]
 deleteChars =
@@ -163,13 +155,10 @@ deleteFile1Target =
     "garbage"
   ]
 
-grepDeleteTest :: ProteomeTest ()
-grepDeleteTest = do
-  dir <- tempDir "grep/delete"
-  writeFile (dir <> "/file1") (toString $ unlines deleteFile1Lines)
-  proGrepWith (promptConfig deleteChars) (toText dir) pat []
-  checkContent dir deleteFile1Target "file1"
-
 test_grepDelete :: UnitTest
 test_grepDelete =
-  tmuxTest grepDeleteTest
+  proteomeTest do
+    dir <- Test.tempDir [reldir|grep/delete|]
+    file1 <- Test.tempFile deleteFile1Lines [relfile|grep/delete/file1|]
+    grepWith (promptConfig deleteChars) dir pat []
+    checkContent file1 deleteFile1Target

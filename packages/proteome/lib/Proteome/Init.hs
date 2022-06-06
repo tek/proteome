@@ -1,139 +1,84 @@
 module Proteome.Init where
 
-import Control.Monad.Catch (MonadThrow)
-import Neovim (Neovim)
-import Neovim.Context.Internal (Config (customConfig), asks')
-import Ribosome.Api.Autocmd (uautocmd)
-import Ribosome.Config.Setting (settingMaybe, updateSetting)
-import Ribosome.Control.Monad.Ribo (RNeovim, runRibo)
-import Ribosome.Control.Ribosome (Ribosome, newRibosome)
-import Ribosome.Data.PersistError (PersistError)
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Error.Report (reportError')
-import Ribosome.Internal.IO (retypeNeovim)
-import Ribosome.Log (showDebug)
-import Ribosome.Msgpack.Error (DecodeError)
-import Ribosome.Nvim.Api.IO (vimCallFunction)
-import System.Log.Logger (Priority (ERROR), setLevel, updateGlobalLogger)
+import Control.Lens ((.~))
+import Exon (exon)
+import qualified Log
+import Ribosome (Rpc, SettingError, Settings)
+import Ribosome.Api (nvimCallFunction, uautocmd)
+import qualified Ribosome.Settings as Settings
 
 import Proteome.Config (logConfig, readConfig)
-import Proteome.Data.Env (Env, Proteome)
+import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (mainProject)
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
-import Proteome.PersistBuffers (loadBuffers)
+import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Project.Activate (activateProject)
 import Proteome.Project.Resolve (fromRootSettings)
 import qualified Proteome.Settings as Settings (mainName, mainProjectDir, mainType)
 
 resolveMainProject ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e SettingError m =>
-  m Project
+  Members [Settings, Settings !! SettingError, Rpc, Stop ResolveError, Embed IO] r =>
+  Sem r Project
 resolveMainProject = do
-  mainDir <- settingMaybe Settings.mainProjectDir
-  vimCwd <- vimCallFunction "getcwd" []
+  mainDir <- Settings.maybe Settings.mainProjectDir
+  vimCwd <- nvimCallFunction "getcwd" []
   fromRootSettings (ProjectRoot (fromMaybe vimCwd mainDir))
 
-setMainProject ::
-  MonadDeepState s Env m =>
-  Project ->
-  m ()
-setMainProject =
-  setL @Env Env.mainProject
-
 updateMainType ::
-  NvimE e m =>
-  MonadRibo m =>
+  Member Settings r =>
   Maybe ProjectType ->
-  m ()
+  Sem r ()
 updateMainType tpe =
-  updateSetting Settings.mainType (fromMaybe (ProjectType "none") tpe)
+  Settings.update Settings.mainType (fromMaybe (ProjectType "none") tpe)
 
 setMainProjectVars ::
-  NvimE e m =>
-  MonadRibo m =>
+  Member Settings r =>
   ProjectMetadata ->
-  m ()
-setMainProjectVars (DirProject name _ tpe) = do
-  updateSetting Settings.mainName name
-  updateMainType tpe
-setMainProjectVars (VirtualProject name) = do
-  updateSetting Settings.mainName name
-  updateMainType (Just (ProjectType "virtual"))
+  Sem r ()
+setMainProjectVars = \case
+  DirProject name _ tpe -> do
+    Settings.update Settings.mainName name
+    updateMainType tpe
+  VirtualProject name -> do
+    Settings.update Settings.mainName name
+    updateMainType (Just (ProjectType "virtual"))
 
 initWithMain ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepState s Env m =>
+  Members [AtomicState Env, Settings, Rpc, Log, Embed IO] r =>
   Project ->
-  m ()
+  Sem r ()
 initWithMain main@(Project meta _ _ _) = do
-  showDebug "initializing with main project:" main
-  setMainProject main
+  Log.debug [exon|initializing with main project: #{show main}|]
+  atomicModify' (#mainProject .~ main)
   setMainProjectVars meta
   activateProject main
 
 resolveAndInitMain ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepState s Env m =>
-  m ()
+  Members [AtomicState Env, Settings !! SettingError, Settings, Rpc, Stop ResolveError, Log, Embed IO] r =>
+  Sem r ()
 resolveAndInitMain =
   initWithMain =<< resolveMainProject
 
-initialize' ::
-  RNeovim Env (Ribosome Env)
-initialize' = do
-  result <- runRibo (resolveAndInitMain :: Proteome ())
-  reportError' "init" result
-  asks' customConfig
-
-initialize :: Neovim e (Ribosome Env)
-initialize = do
-  liftIO $ updateGlobalLogger "Neovim.Plugin" (setLevel ERROR)
-  ribo <- newRibosome "proteome" def
-  retypeNeovim (const ribo) initialize'
-
-proteomeStage1 ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e DecodeError m =>
-  MonadDeepError e SettingError m =>
-  MonadDeepError e PersistError m =>
-  m ()
-proteomeStage1 =
-  loadBuffers
-
 loadConfig ::
-  NvimE e m =>
-  MonadDeepState s Env m =>
+  Members [AtomicState Env, Rpc] r =>
   Text ->
-  m ()
+  Sem r ()
 loadConfig dir =
-  logConfig =<< readConfig dir =<< getL @Env Env.mainProject
+  logConfig =<< readConfig dir =<< atomicGets Env.mainProject
 
-proteomeStage2 ::
-  NvimE e m =>
-  MonadDeepState s Env m =>
-  m ()
-proteomeStage2 =
-  loadConfig "project" *>
-  uautocmd True "ProteomeProject"
+projectConfig ::
+  Members [AtomicState Env, Rpc] r =>
+  Sem r ()
+projectConfig = do
+  loadConfig "project"
+  uautocmd "ProteomeProject"
 
-proteomeStage4 ::
-  NvimE e m =>
-  MonadDeepState s Env m =>
-  m ()
-proteomeStage4 =
-  loadConfig "project_after" *>
-  uautocmd True "ProteomeProjectAfter"
+projectConfigAfter ::
+  Members [AtomicState Env, Rpc] r =>
+  Sem r ()
+projectConfigAfter = do
+  loadConfig "project_after"
+  uautocmd "ProteomeProjectAfter"

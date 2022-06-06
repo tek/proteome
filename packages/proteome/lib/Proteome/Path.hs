@@ -12,10 +12,10 @@ import Path (
   parseAbsFile,
   parseRelDir,
   parseRelFile,
-  toFilePath,
   (</>),
   )
 import Path.IO (doesFileExist)
+import Ribosome (pathText)
 
 parsePathMaybe ::
   (FilePath -> Either a (Path b t)) ->
@@ -90,11 +90,7 @@ existingFile cwd spec =
   where
     check path = do
       exists <- doesFileExist path
-      return $ if exists then Just path else Nothing
-
-pathText :: Path b t -> Text
-pathText =
-  toText . toFilePath
+      pure $ if exists then Just path else Nothing
 
 dropSlash :: Path b t -> Text
 dropSlash =

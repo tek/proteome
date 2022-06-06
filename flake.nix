@@ -1,47 +1,49 @@
 {
   description = "Neovim Project Manager";
 
-  inputs.ribosome.url = github:tek/ribosome;
-  inputs.streamly-process = {
-    flake = false;
-    url = github:/tek/streamly-process;
+  inputs = {
+    ribosome.url = git+https://gitlab.tryp.io/haskell/ribosome?ref=polysemy;
+    streamly-process = {
+      flake = false;
+      url = github:/tek/streamly-process;
+    };
+    polysemy-conc.url = github:tek/polysemy-conc;
   };
 
-  outputs = { ribosome, streamly-process, ... }:
+  outputs = { ribosome, streamly-process, polysemy-conc, ... }:
   let
     inherit (ribosome.inputs) chiasma hix;
-    overrides = { hackage, source, minimal, configure, pkgs, transform_, unbreak, jailbreak, ... }: {
-      cornea = hackage "0.4.0.0" "1w9rkf6f861kknkskywb8fczlk7az8m56i3hvmg6a5inpvqf6p7i";
-      chiasma = source.package chiasma "chiasma";
-      proteome-test = transform_ (drv: drv.overrideAttrs (old: {
-        buildInputs = old.buildInputs ++ [pkgs.neovim pkgs.tmux pkgs.ripgrep];
-      }));
-      ribosome = configure "--extra-prog-path=${pkgs.neovim}/bin" (minimal (source.package ribosome "ribosome"));
-      ribosome-test = minimal (source.package ribosome "test");
+    overrides = { hackage, source, minimal, pkgs, buildInputs, ... }:
+    let
+      inputs = buildInputs [pkgs.neovim pkgs.tmux pkgs.xterm pkgs.ripgrep];
+    in {
+      polysemy-conc = source.package polysemy-conc "conc";
+      polysemy-process = source.package polysemy-conc "process";
+      proteome-test = inputs;
       streamly = hackage "0.8.1" "0ywyy7gxjnp32hx8kki0lfn94bnc9mzjh8g6mg65ff3vv28k2vdr";
       streamly-process = minimal (source.root streamly-process);
     };
 
-  in hix.flake {
+  in hix.lib.flake ({ config, lib, ... }: {
     base = ./.;
     inherit overrides;
-    deps = [ribosome];
-    compat = false;
+    depsFull = [ribosome];
+    compat.enable = false;
     packages = {
       proteome = ./packages/proteome;
       proteome-test = ./packages/test;
     };
-    main = "proteome";
-    versionFile = "ops/hpack/packages/meta.yaml";
-    shellConfig = p: { buildInputs = [p.pkgs.neovim p.pkgs.ripgrep p.pkgs.tmux]; };
-    modify = _: outputs: {
-      apps = rec {
-        proteome = {
-          type = "app";
-          program = "${outputs.packages.proteome}/bin/proteome";
-        };
-        default = proteome;
-      };
+    main = "proteome-test";
+    hpack = {
+      packages = import ./ops/hpack.nix { inherit config lib; };
+      defaultApp = "proteome";
     };
-  };
+    ghcid.shellConfig.buildInputs = with config.devGhc.pkgs; [pkgs.neovim pkgs.tmux];
+    ghci = {
+      preludePackage = "incipit";
+      preludeModule = "Incipit";
+      args = ["-fplugin=Polysemy.Plugin"];
+      extensions = ["StandaloneKindSignatures" "OverloadedLabels" "ImpredicativeTypes"];
+    };
+  });
 }

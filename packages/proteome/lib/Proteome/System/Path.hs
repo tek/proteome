@@ -4,16 +4,15 @@ import Path (Abs, File, Path, parseRelFile)
 import Path.IO (findExecutable)
 
 import Proteome.Data.GrepError (GrepError)
-import qualified Proteome.Data.GrepError as GrepError (GrepError(NoSuchExecutable, NotInPath))
+import qualified Proteome.Data.GrepError as GrepError (GrepError (NoSuchExecutable, NotInPath))
 
 findExe ::
-  MonadIO m =>
-  MonadDeepError e GrepError m =>
+  Members [Stop GrepError, Embed IO] r =>
   Text ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 findExe exe = do
-  path <- hoistEitherAs parseError $ parseRelFile (toString exe)
-  hoistMaybe notInPath =<< findExecutable path
+  path <- stopEitherAs parseError (parseRelFile (toString exe))
+  stopNote notInPath =<< findExecutable path
   where
     parseError =
       GrepError.NoSuchExecutable exe

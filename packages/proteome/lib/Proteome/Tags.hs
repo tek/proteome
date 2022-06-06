@@ -1,31 +1,45 @@
 module Proteome.Tags where
 
-import Control.Concurrent.Lifted (fork)
-import qualified Control.Lens as Lens (view)
-import Data.Composition ((.:))
+import qualified Data.List as List
+import Data.Sequence ((|>))
 import qualified Data.Text as Text (intercalate, replace)
-import GHC.IO.Exception (ExitCode(..))
+import Exon (exon)
+import GHC.IO.Exception (ExitCode (..))
+import qualified Log
+import Log (Severity (Warn))
 import Path (File, Path, Rel, addExtension, toFilePath, (</>))
 import Path.IO (doesFileExist, removeFile, renameFile)
-import Ribosome.Config.Setting (setting)
-import Ribosome.Control.Exception (catchAnyAs)
-import Ribosome.Control.Lock (lockOrSkip)
-import Ribosome.Data.ErrorReport (ErrorReport(ErrorReport))
-import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Error.Report (processErrorReport)
-import System.Log (Priority(NOTICE))
-import System.Process.Typed (readProcess, setWorkingDir, shell)
+import Polysemy.Process (SysProcConf, SystemProcess, interpretSystemProcessNativeSingle)
+import qualified Polysemy.Process.SystemProcess as Process
+import Ribosome (
+  ErrorMessage (ErrorMessage),
+  Errors,
+  Handler,
+  HostError,
+  SettingError,
+  Settings,
+  lockOrSkip_,
+  reportStop,
+  resumeHandlerError,
+  resumeReportError,
+  )
+import qualified Ribosome.Errors as Errors
+import qualified Ribosome.Settings as Settings
+import System.Process.Typed (proc, setWorkingDir)
 
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.Env as Env (mainProject, projects)
 import Proteome.Data.Project (Project (Project), langOrType)
-import Proteome.Data.ProjectLang (ProjectLang())
-import qualified Proteome.Data.ProjectLang as ProjectLang (lang)
-import Proteome.Data.ProjectMetadata (ProjectMetadata(DirProject))
-import Proteome.Data.ProjectRoot (ProjectRoot(ProjectRoot))
+import Proteome.Data.ProjectLang (ProjectLang (unProjectLang))
+import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))
+import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
+import qualified Proteome.Data.TagsError as TagsError
 import Proteome.Data.TagsError (TagsError)
-import qualified Proteome.Data.TagsError as TagsError (TagsError(Path))
-import qualified Proteome.Settings as Settings (tagsArgs, tagsCommand, tagsFileName, tagsFork, tagsEnable)
+import qualified Proteome.Settings as Settings
+
+data TagsLock =
+  TagsLock
+  deriving stock (Eq, Show)
 
 replaceFormatItem :: Text -> (Text, Text) -> Text
 replaceFormatItem original (placeholder, replacement) =
@@ -41,144 +55,120 @@ formatTagsArgs langs (ProjectRoot root) fileName formatString =
   foldl' @[] replaceFormatItem formatString formats
   where
     formats = [
-      ("langsComma", Text.intercalate "," $ fmap (Lens.view ProjectLang.lang) langs),
+      ("langsComma", Text.intercalate "," (fmap unProjectLang langs)),
       ("tagFile", toText . toFilePath $ root </> fileName),
       ("root", toText . toFilePath $ root)
       ]
 
 tempname ::
-  MonadDeepError e TagsError m =>
+  Member (Stop TagsError) r =>
   Path Rel File ->
-  m (Path Rel File)
+  Sem r (Path Rel File)
 tempname name =
-  hoistEitherAs err (addExtension ".tmp" name)
+  stopEitherWith (const err) (addExtension ".tmp" name)
   where
     err =
-      TagsError.Path "appending tempname suffix"
+      TagsError.TempName
 
 deleteTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Stop TagsError, Embed IO] r =>
   ProjectRoot ->
-  m ()
+  Sem r ()
 deleteTags (ProjectRoot root) = do
-  name <- setting Settings.tagsFileName
+  name <- Settings.get Settings.tagsFileName
   path <- (root </>) <$> tempname name
   exists <- doesFileExist path
-  when exists $ catchAnyAs () (removeFile path)
+  when exists do
+    tryAny_ (removeFile path)
 
 replaceTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Stop TagsError, Embed IO] r =>
   ProjectRoot ->
-  m ()
+  Sem r ()
 replaceTags (ProjectRoot root) = do
-  name <- setting Settings.tagsFileName
+  name <- Settings.get Settings.tagsFileName
   temppath <- (root </>) <$> tempname name
-  catchAnyAs () $ renameFile temppath (root </> name)
+  tryAny_ (renameFile temppath (root </> name))
 
 notifyError ::
-  NvimE e m =>
-  MonadRibo m =>
-  Text ->
-  m ()
-notifyError e =
-  processErrorReport "tags" $ ErrorReport "tag generation failed" ["tag subprocess failed: " <> e] NOTICE
-
-tagsProcess ::
-  ProjectRoot ->
-  Text ->
-  Text ->
-  IO (ExitCode, Text)
-tagsProcess (ProjectRoot root) cmd args = do
-  (exitCode, _, err) <- readProcess (conf prc)
-  return (exitCode, decodeUtf8 err)
-  where
-    prc =
-      shell $ "unset STACK_IN_NIX_SHELL; " <> toString cmd <> " " <> toString args
-    conf =
-      setWorkingDir (toFilePath root)
-
-executeTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  ProjectRoot ->
-  Text ->
-  Text ->
-  m ()
-executeTags projectRoot@(ProjectRoot root) cmd args = do
-  deleteTags projectRoot
-  logDebug $ "executing tags: `" <> cmd <> " " <> args <> "` in directory " <> show root
-  (exitcode, errorOutput) <- liftIO $ tagsProcess projectRoot cmd args
-  case exitcode of
-    ExitSuccess -> replaceTags projectRoot
-    ExitFailure _ -> notifyError errorOutput
+  Member Errors r =>
+  [Text] ->
+  Sem r ()
+notifyError out =
+  Errors.store "tags" (ErrorMessage "tag generation failed" ("tag subprocess failed: " : out) Warn)
 
 tagsCommand ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Stop TagsError] r =>
   ProjectRoot ->
   [ProjectLang] ->
-  m (Text, Text)
+  Sem r (Text, Text)
 tagsCommand root langs = do
-  cmd <- setting Settings.tagsCommand
-  args <- setting Settings.tagsArgs
-  fileName <- setting Settings.tagsFileName
+  cmd <- Settings.get Settings.tagsCommand
+  args <- Settings.get Settings.tagsArgs
+  fileName <- Settings.get Settings.tagsFileName
   tmp <- tempname fileName
-  return (cmd, formatTagsArgs langs root tmp args)
+  pure (cmd, formatTagsArgs langs root tmp args)
 
-regenerateTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+tagsProcess ::
+  Members [Settings !! SettingError, Stop TagsError, Log] r =>
   ProjectRoot ->
   [ProjectLang] ->
-  m ()
-regenerateTags root langs = do
-  (cmd, args) <- tagsCommand root langs
-  executeTags root cmd args
+  Sem r SysProcConf
+tagsProcess projectRoot@(ProjectRoot root) langs = do
+  (cmd, args) <- resumeHoist TagsError.Setting (tagsCommand projectRoot langs)
+  Log.debug [exon|executing tags: `#{cmd} #{args}` in directory #{show root}|]
+  pure (setWorkingDir (toFilePath root) (proc (toString cmd) (List.words (toString args))))
+
+readStderr ::
+  Member (SystemProcess !! err) r =>
+  Sem r [Text]
+readStderr =
+  fmap decodeUtf8 <$> spin mempty
+  where
+    spin buf =
+      resumeEither Process.readStderr >>= \case
+        Right l -> spin (buf |> l)
+        Left _ -> pure (toList buf)
+
+executeTags ::
+  Members [Settings !! SettingError, Settings, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
+  ProjectRoot ->
+  [ProjectLang] ->
+  Sem r ()
+executeTags projectRoot langs = do
+  deleteTags projectRoot
+  procConf <- tagsProcess projectRoot langs
+  interpretSystemProcessNativeSingle procConf do
+    resumeHoist (TagsError.Process . show) Process.wait >>= \case
+      ExitSuccess ->
+        replaceTags projectRoot
+      ExitFailure _ ->
+        notifyError =<< readStderr
 
 projectTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings !! SettingError, Settings, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
   Project ->
-  m ()
+  Sem r ()
 projectTags (Project (DirProject _ root tpe) _ lang langs) =
-  regenerateTags root (maybeToList (langOrType lang tpe) <> langs)
-projectTags _ = return ()
+  executeTags root (maybeToList (langOrType lang tpe) <> langs)
+projectTags _ =
+  unit
+
+reportAsyncError ::
+  Members [Settings !! SettingError, DataLog HostError] r =>
+  Sem (Stop TagsError : Settings : r) () ->
+  Sem r ()
+reportAsyncError =
+  resumeReportError @Settings (Just "tags") . reportStop (Just "tags")
 
 proTags ::
-  NvimE e m =>
-  MonadRibo m =>
-  MonadBaseControl IO m =>
-  MonadDeepState s Env m =>
-  MonadDeepError e TagsError m =>
-  MonadDeepError e SettingError m =>
-  m ()
+  Members [AtomicState Env, Settings !! SettingError, DataLog HostError, Sync TagsLock, Errors] r =>
+  Members [Log, Resource, Async, Embed IO] r =>
+  Handler r ()
 proTags =
-  whenM (setting Settings.tagsEnable) do
-    main <- getL @Env Env.mainProject
-    extra <- getL @Env Env.projects
-    wantFork <- setting Settings.tagsFork
-    runner wantFork main extra
-  where
-    runner wantFork =
-      if wantFork then void . fork .: run else run
-    run main extra =
-      lockOrSkip "tags" $ traverse_ projectTags (main : extra)
+  resumeHandlerError @Settings $ whenM (Settings.get Settings.tagsEnable) do
+    main <- atomicGets Env.mainProject
+    extra <- atomicGets Env.projects
+    fork <- Settings.get Settings.tagsFork
+    (if fork then void . async else id) $ lockOrSkip_ @TagsLock $ reportAsyncError $ do
+      void $ sequenceConcurrently (projectTags <$> main : extra)

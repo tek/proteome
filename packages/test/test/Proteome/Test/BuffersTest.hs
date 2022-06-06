@@ -1,102 +1,93 @@
 module Proteome.Test.BuffersTest where
 
-import Control.Lens (view)
-import Data.MonoTraversable (lastMay)
-import Hedgehog ((===))
-import Ribosome.Api.Buffer (bufferForFile, buflisted, currentBufferName, edit)
-import Ribosome.Config.Setting (updateSetting)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem (meta)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig), PromptInput (PromptInput))
-import qualified Ribosome.Menu.Prompt.Data.PromptInputEvent as PromptInputEvent
-import Ribosome.Menu.Prompt.Run (noPromptRenderer)
-import Ribosome.Menu.Prompt.Transition (basicTransition)
-import Ribosome.Nvim.Api.IO (bufferGetName, vimGetBuffers)
-import Ribosome.Test.Run (UnitTest, unitTest)
-import Ribosome.Test.Unit (fixture)
-import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
-import Streamly.Prelude (serial)
+import Control.Lens ((.~))
+import Path (Abs, File, Path, relfile)
+import qualified Polysemy.Test as Test
+import Polysemy.Test (Test, UnitTest, assertEq, assertJust, unitTest)
+import Ribosome (Rpc, pathText)
+import Ribosome.Api (bufferPath, currentBufferPath, vimGetBuffers)
+import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
+import qualified Ribosome.Data.FileBuffer as FileBuffer
+import Ribosome.Menu (PromptConfig (PromptConfig))
+import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import Ribosome.Menu.Prompt (promptInputWith)
+import qualified Ribosome.Settings as Settings
+import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 
 import Proteome.Buffers (buffers, buffersWith)
-import Proteome.Data.Env (Env, Proteome)
-import qualified Proteome.Data.Env as Env (buffers)
+import Proteome.Data.Env (Env)
 import qualified Proteome.Data.ListedBuffer as ListedBuffer (name)
 import qualified Proteome.Settings as Settings (buffersCurrentLast)
-import Proteome.Test.Unit (testDef)
-
-promptInput ::
-  MonadIO m =>
-  [Text] ->
-  PromptInput m
-promptInput chars' =
-  PromptInput \ _ ->
-    serial (Streamly.nilM (sleep 1)) (Streamly.fromList (PromptInputEvent.Character <$> chars'))
+import Proteome.Test.Run (proteomeTest)
 
 promptConfig ::
-  MonadIO m =>
   [Text] ->
-  PromptConfig m
+  PromptConfig
 promptConfig cs =
-  PromptConfig (promptInput cs) basicTransition noPromptRenderer []
+  PromptConfig (promptInputWith (Just 1) Nothing (Stream.fromList cs)) []
 
-setupBuffers :: Proteome (Text, Text, Text)
+setupBuffers ::
+  Members [AtomicState Env, Rpc, Test] r =>
+  Sem r (Path Abs File, Path Abs File, Path Abs File)
 setupBuffers = do
-  buf1 <- fixture "buffers/buf1"
-  buf2 <- fixture "buffers/buf2"
-  buf3 <- fixture "buffers/buf3"
+  buf1 <- Test.fixturePath [relfile|buffers/buf1|]
+  buf2 <- Test.fixturePath [relfile|buffers/buf2|]
+  buf3 <- Test.fixturePath [relfile|buffers/buf3|]
   edit buf1
   edit buf2
   edit buf3
-  setL @Env Env.buffers . catMaybes =<< traverse bufferForFile [toText buf3, toText buf2, toText buf1]
-  return (toText buf1, toText buf2, toText buf3)
+  bufs <- traverse (fmap (fmap FileBuffer.buffer) . bufferForFile) [buf3, buf2, buf1]
+  atomicModify' (#buffers .~ catMaybes bufs)
+  pure (buf1, buf2, buf3)
 
 test_loadBuffer :: UnitTest
 test_loadBuffer =
-  testDef do
-    (_, buf2, buf3) <- lift setupBuffers
-    (toText buf3 ===) =<< currentBufferName
+  proteomeTest do
+    (_, buf2, buf3) <- setupBuffers
+    assertJust buf3 =<< currentBufferPath
     buffersWith (promptConfig ["k", "cr"])
-    (toText buf2 ===) =<< currentBufferName
+    assertJust buf2 =<< currentBufferPath
 
 test_deleteBuffer :: UnitTest
 test_deleteBuffer =
-  testDef do
-    (buf1, _, buf3) <- lift setupBuffers
-    (3 ===) . length =<< filterM buflisted =<< vimGetBuffers
+  proteomeTest do
+    (buf1, _, buf3) <- setupBuffers
+    assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
     buffersWith (promptConfig ["k", "d", "esc"])
-    ([buf1, buf3] ===) =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
+    assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_wipeBuffer :: UnitTest
 test_wipeBuffer =
-  testDef do
-    (buf1, _, buf3) <- lift setupBuffers
-    (3 ===) . length =<< filterM buflisted =<< vimGetBuffers
+  proteomeTest do
+    (buf1, _, buf3) <- setupBuffers
+    assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
     buffersWith (promptConfig ["k", "w", "esc"])
-    ([buf1, buf3] ===) =<< traverse bufferGetName =<< vimGetBuffers
+    assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< vimGetBuffers
 
 test_deleteMultipleBuffers :: UnitTest
 test_deleteMultipleBuffers =
-  testDef do
-    (_, _, buf3) <- lift setupBuffers
-    (3 ===) . length =<< filterM buflisted =<< vimGetBuffers
+  proteomeTest do
+    (_, _, buf3) <- setupBuffers
+    assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
     buffersWith (promptConfig ["k", "space", "space", "d", "esc"])
-    ([buf3] ===) =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
+    assertEq [buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_deleteCurrentBuffer :: UnitTest
 test_deleteCurrentBuffer =
-  testDef do
-    (buf1, _, _) <- lift setupBuffers
-    (3 ===) . length =<< filterM buflisted =<< vimGetBuffers
+  proteomeTest do
+    (buf1, _, _) <- setupBuffers
+    assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
     buffersWith (promptConfig ["d", "d", "esc"])
-    ([buf1] ===) =<< traverse bufferGetName =<< filterM buflisted =<< vimGetBuffers
+    assertEq [buf1] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_currentBufferPosition :: UnitTest
 test_currentBufferPosition =
-  testDef do
-    (_, _, buf3) <- lift setupBuffers
-    updateSetting Settings.buffersCurrentLast True
+  proteomeTest do
+    (_, _, buf3) <- setupBuffers
+    Settings.update Settings.buffersCurrentLast True
     bufs <- buffers
-    Just buf3 === (view (MenuItem.meta . ListedBuffer.name) <$> lastMay bufs)
+    assertJust (pathText buf3) (ListedBuffer.name . MenuItem.meta <$> last bufs)
 
 test_buffers :: TestTree
 test_buffers =

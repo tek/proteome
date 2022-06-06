@@ -118,7 +118,6 @@ It can be configured with these variables:
 * `g:proteome_tags_command` The executable, like `ctags`.
 * `g:proteome_tags_args` A template string for the arguments passed to the command.
 * `g:proteome_tags_file_name` The final name for the tags file, default `.tags`.
-* `g:proteome_tags_fork` Whether to run in a thread.
 
 To prevent the tag file from being gone while the tagger is running, the
 process outputs first to a temporary file and renames it if it was successful.

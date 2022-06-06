@@ -1,20 +1,21 @@
 module Proteome.Grep.Process where
 
-import Control.Monad.Catch (MonadCatch)
 import qualified Data.Text as Text
 import Data.Text (isInfixOf)
-import Path (Abs, File, Path, parseAbsDir, parseAbsFile, toFilePath)
+import Path (Abs, Dir, File, Path, parseAbsFile, toFilePath)
 import Path.IO (isLocationOccupied)
+import Ribosome (pathText)
+import Ribosome.Final (inFinal_)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
 import qualified Streamly.Data.Fold as Fold
 import qualified Streamly.Internal.Unicode.Stream as Stream
 import qualified Streamly.Prelude as Stream
-import Streamly.Prelude (IsStream, MonadAsync)
+import Streamly.Prelude (IsStream)
 import qualified Streamly.System.Process as Process
 import Streamly.System.Process (ProcessFailure)
 
-import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError (..))
+import Proteome.Data.GrepError (GrepError)
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
 import Proteome.Grep.Parse (parseGrepOutput)
 import Proteome.System.Path (findExe)
@@ -34,34 +35,27 @@ replaceOrAppend _ target segments =
   segments <> [target]
 
 parseAbsExe ::
-  MonadDeepError e GrepError m =>
+  Member (Stop GrepError) r =>
   Text ->
-  m (Path Abs File)
+  Sem r (Path Abs File)
 parseAbsExe exe =
-  hoistEitherAs (GrepError.NoSuchExecutable exe) $ parseAbsFile (toString exe)
+  stopEitherAs (GrepError.NoSuchExecutable exe) $ parseAbsFile (toString exe)
 
 grepCmdline ::
+  Members [Stop GrepError, Embed IO] r =>
   Text ->
   Text ->
-  Text ->
-  Text ->
+  Path Abs Dir ->
   [Text] ->
-  MonadIO m =>
-  MonadDeepError e GrepError m =>
-  m (Text, [Text])
-grepCmdline cmdline patt cwd destination opt = do
-  when (Text.null exe) $ throwHoist GrepError.Empty
+  Sem r (Path Abs File, [Text])
+grepCmdline cmdline patt destination opt = do
+  when (Text.null exe) do
+    stop GrepError.Empty
   absExe <- if absolute exe then parseAbsExe exe else findExe exe
-  destPath <- hoistEitherAs destError $ parseAbsDir (toString (absDestination destination))
-  unlessM (isLocationOccupied destPath) $ throwHoist destError
-  return (toText (toFilePath absExe), withDir destPath)
+  unlessM (isLocationOccupied destination) do
+    stop destError
+  pure (absExe, withDir destination)
   where
-    absDestination d =
-      if d == "."
-      then cwd
-      else if absolute d
-      then d
-      else cwd <> "/" <> d
     absolute a =
       Text.take 1 a == "/"
     argSegments =
@@ -69,7 +63,7 @@ grepCmdline cmdline patt cwd destination opt = do
     (exe, args) =
       Text.breakOn " " (Text.strip cmdline)
     withDir dir =
-      replaceOrAppend pathPlaceholder (toText (toFilePath dir)) withPattern
+      replaceOrAppend pathPlaceholder (pathText dir) withPattern
     withPattern =
       replaceOrAppend patternPlaceholder patt argSegments
     destError =
@@ -77,39 +71,36 @@ grepCmdline cmdline patt cwd destination opt = do
 
 processOutput ::
   IsStream t =>
-  MonadAsync m =>
-  MonadCatch m =>
-  Text ->
+  String ->
   [Text] ->
-  t m Word8
+  t IO Word8
 processOutput exe args =
-  Process.toBytes (toString exe) (toString <$> args)
+  Process.toBytes exe (toString <$> args)
 
 processLines ::
   IsStream t =>
-  MonadAsync m =>
-  MonadCatch m =>
-  Text ->
+  Path Abs File ->
   [Text] ->
-  t m Text
+  t IO Text
 processLines exe args =
   Stream.lines (toText <$> Fold.toList) $
   Stream.decodeUtf8 $
-  processOutput exe args
+  processOutput (toFilePath exe) args
 
 grepMenuItems ::
-  MonadRibo m =>
+  Functor (t IO) =>
+  Members [Log, Embed IO, Final IO] r =>
   IsStream t =>
-  MonadAsync m =>
-  MonadCatch m =>
-  Text ->
-  Text ->
+  Path Abs Dir ->
+  Path Abs File ->
   [Text] ->
-  t m (MenuItem GrepOutputLine)
+  Sem r (t IO (MenuItem GrepOutputLine))
 grepMenuItems cwd exe args =
-  Stream.handle processFailure $
-  Stream.mapMaybeM (parseGrepOutput cwd) $
-  processLines exe args
+  inFinal_ \ lower _ pur ->
+    pur $
+    Stream.handle processFailure $
+    Stream.mapMaybeM (fmap join . lower . parseGrepOutput cwd) $
+    processLines exe args
   where
     processFailure (_ :: ProcessFailure) =
       Stream.nil

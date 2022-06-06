@@ -1,16 +1,17 @@
 module Proteome.Data.GrepOutputLine where
 
+import Path (Abs, File, Path)
+import Ribosome (MsgpackEncode)
+
 data GrepOutputLine =
   GrepOutputLine {
-    _path :: Text,
-    _line :: Int,
-    _col :: Maybe Int,
-    _content :: Text
+    path :: Path Abs File,
+    line :: Int,
+    col :: Maybe Int,
+    content :: Text
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (MsgpackEncode)
-
-makeClassy ''GrepOutputLine
 
 sameLine :: GrepOutputLine -> GrepOutputLine -> Bool
 sameLine (GrepOutputLine p1 l1 _ _) (GrepOutputLine p2 l2 _ _) =

@@ -1,5 +1,7 @@
 module Proteome.Data.AddOptions where
 
+import Ribosome (MsgpackDecode, MsgpackEncode)
+
 import Proteome.Data.ProjectName (ProjectName)
 import Proteome.Data.ProjectType (ProjectType)
 

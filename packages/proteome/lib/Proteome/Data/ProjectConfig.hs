@@ -1,21 +1,20 @@
 module Proteome.Data.ProjectConfig where
 
 import Path (Abs, Dir, Path)
+import Ribosome (MsgpackDecode, MsgpackEncode)
 
 import Proteome.Data.ProjectLang (ProjectLang)
 import Proteome.Data.ProjectType (ProjectType)
 
 data ProjectConfig =
   ProjectConfig {
-    _baseDirs :: [Path Abs Dir],
-    _typeDirs :: Map ProjectType [Path Abs Dir],
-    _projectTypes :: Map ProjectType [Path Abs Dir],
-    _typeMap :: Map ProjectType [ProjectType],
-    _typeMarkers :: Map ProjectType [Text],
-    _langMap :: Map ProjectType ProjectLang,
-    _langsMap :: Map ProjectLang [ProjectLang]
+    baseDirs :: [Path Abs Dir],
+    typeDirs :: Map ProjectType [Path Abs Dir],
+    projectTypes :: Map ProjectType [Path Abs Dir],
+    typeMap :: Map ProjectType [ProjectType],
+    typeMarkers :: Map ProjectType [Text],
+    langMap :: Map ProjectType ProjectLang,
+    langsMap :: Map ProjectLang [ProjectLang]
   }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (MsgpackDecode, MsgpackEncode, Default)
-
-makeClassy ''ProjectConfig

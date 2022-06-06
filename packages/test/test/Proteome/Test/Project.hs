@@ -1,15 +1,15 @@
 module Proteome.Test.Project where
 
-import Control.Monad.Catch (MonadThrow)
 import Path (parseRelDir, (</>))
 import Path.IO (ensureDir)
-import Ribosome.Config.Setting (setting)
-import Ribosome.Data.SettingError (SettingError)
+import Polysemy.Test (TestError (TestError))
+import Ribosome (Settings)
+import qualified Ribosome.Settings as Settings
 
-import Proteome.Data.ProjectConfig (ProjectConfig(ProjectConfig))
-import Proteome.Data.ProjectLang (ProjectLang(ProjectLang))
-import Proteome.Data.ProjectName (ProjectName(ProjectName))
-import Proteome.Data.ProjectType (ProjectType(ProjectType))
+import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
+import Proteome.Data.ProjectLang (ProjectLang (ProjectLang))
+import Proteome.Data.ProjectName (ProjectName (ProjectName))
+import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import qualified Proteome.Settings as Settings (projectConfig)
 
 flag :: Text
@@ -55,16 +55,13 @@ la :: ProjectLang
 la = ProjectLang ag
 
 createTestProject ::
-  NvimE e m =>
-  MonadFail m =>
-  MonadRibo m =>
-  MonadThrow m =>
-  MonadDeepError e SettingError m =>
+  Members [Settings, Fail, Error TestError, Embed IO] r =>
   ProjectType ->
   ProjectName ->
-  m ()
+  Sem r ()
 createTestProject (ProjectType tpe) (ProjectName name) = do
-  (ProjectConfig (base : _) _ _ _ _ _ _) <- setting Settings.projectConfig
-  typePath <- parseRelDir (toString tpe)
-  namePath <- parseRelDir (toString name)
-  ensureDir (base </> typePath </> namePath)
+  mapError (TestError . show) do
+    (ProjectConfig (base : _) _ _ _ _ _ _) <- Settings.get Settings.projectConfig
+    typePath <- fromEither (parseRelDir (toString tpe))
+    namePath <- fromEither (parseRelDir (toString name))
+    ensureDir (base </> typePath </> namePath)
