@@ -105,12 +105,6 @@ scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir ba
     cons =
       FileScanItem dir baseIndicator
 
-rgExists ::
-  Member (Embed IO) r =>
-  Sem r Bool
-rgExists =
-  isJust <$> findExecutable [relfile|rg|]
-
 runScanners ::
   Members [Async, Embed IO] r =>
   FilesConfig ->

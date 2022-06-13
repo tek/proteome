@@ -31,7 +31,7 @@ grepParser cwd =
 
 formatGrepLine :: Path Abs Dir -> GrepOutputLine -> Text
 formatGrepLine cwd (GrepOutputLine path line col text') =
-  [exon|#{relativePath} #{lineNumber} #{show line}: #{show (fromMaybe 1 col)} #{Text.strip text'}|]
+  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip text'}|]
   where
     relativePath =
       maybe (pathText path) pathText (stripProperPrefix cwd path)

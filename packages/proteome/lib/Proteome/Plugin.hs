@@ -35,7 +35,7 @@ import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
-import Proteome.Grep (proGrep)
+import Proteome.Grep (proGrep, proGrepIn, proGrepOpt, proGrepOptIn)
 import Proteome.Init (projectConfig, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock), loadBuffers)
 import Proteome.Save (proSave)
@@ -66,6 +66,12 @@ handlers =
   <>
   rpc "ProGrep" Async proGrep
   <>
+  rpc "ProGrepIn" Async proGrepIn
+  <>
+  rpc "ProGrepOpt" Async proGrepOpt
+  <>
+  rpc "ProGrepOptIn" Async proGrepOptIn
+  <>
   [
     rpcFunction "ProAdd" Async proAdd,
     rpcCommand "ProAdd" Async proAddCmd
@@ -73,7 +79,6 @@ handlers =
 
 -- rpcHandlers =
 --   [
---     $(rpcHandler (cmd []) 'proGrep),
 --     $(rpcHandler (cmd []) 'proGrepIn),
 --     $(rpcHandler (cmd []) 'proGrepOpt),
 --     $(rpcHandler (cmd []) 'proGrepOptIn),

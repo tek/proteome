@@ -2,8 +2,8 @@ module Proteome.Grep.Process where
 
 import qualified Data.Text as Text
 import Data.Text (isInfixOf)
-import Path (Abs, Dir, File, Path, parseAbsFile, toFilePath)
-import Path.IO (isLocationOccupied)
+import Path (Abs, Dir, File, Path, parseAbsFile, relfile, toFilePath)
+import Path.IO (findExecutable, isLocationOccupied)
 import Ribosome (pathText)
 import Ribosome.Final (inFinal_)
 import Ribosome.Menu.Data.MenuItem (MenuItem)
@@ -19,6 +19,24 @@ import Proteome.Data.GrepError (GrepError)
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
 import Proteome.Grep.Parse (parseGrepOutput)
 import Proteome.System.Path (findExe)
+
+defaultGrepCmdline :: Text
+defaultGrepCmdline =
+  "grep -Hnr {pattern} {path}"
+
+defaultRgCmdline :: Text
+defaultRgCmdline =
+  "rg --vimgrep --no-heading -e {pattern} {path}"
+
+defaultCmdline ::
+  Member (Embed IO) r =>
+  Sem r Text
+defaultCmdline =
+  findExecutable [relfile|rg|] <&> \case
+    Just _ ->
+      defaultRgCmdline
+    _ ->
+      defaultGrepCmdline
 
 patternPlaceholder :: Text
 patternPlaceholder =

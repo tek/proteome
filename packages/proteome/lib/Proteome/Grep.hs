@@ -32,7 +32,7 @@ import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyPattern))
 import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.ReplaceError (ReplaceError)
-import Proteome.Grep.Process (grepCmdline, grepMenuItems)
+import Proteome.Grep.Process (grepCmdline, grepMenuItems, defaultCmdline)
 import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import Proteome.Menu (handleResult)
@@ -119,14 +119,15 @@ uniqueGrepLines =
   uniqBy menuItemSameLine
 
 grepItems ::
-  Members [Settings, Rpc, Stop GrepError, Log, Embed IO, Final IO] r =>
+  Members [Settings !! SettingError, Rpc, Stop GrepError, Log, Embed IO, Final IO] r =>
   Path Abs Dir ->
   Text ->
   [Text] ->
   Sem r (SerialT IO (MenuItem GrepOutputLine))
 grepItems path patt opt = do
   cwd <- nvimCwd
-  grepper <- Settings.get Settings.grepCmdline
+  userCmd <- Settings.maybe Settings.grepCmdline
+  grepper <- maybe defaultCmdline pure userCmd
   (exe, args) <- grepCmdline grepper patt path opt
   items <- grepMenuItems cwd exe args
   pure (uniqueGrepLines items)
