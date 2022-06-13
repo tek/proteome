@@ -2,9 +2,22 @@ module Proteome.Grep where
 
 import Conc (Restoration)
 import qualified Data.Text as Text
+import Exon (exon)
 import Path (Abs, Dir, File, Path)
 import Polysemy.Chronos (ChronosTime)
-import Ribosome (Handler, HandlerError, Rpc, RpcError, Scratch, ScratchId (ScratchId), Settings, mapHandlerError, pathText, resumeHandlerError, toMsgpack)
+import Ribosome (
+  Handler,
+  HandlerError,
+  Rpc,
+  RpcError,
+  Scratch,
+  ScratchId (ScratchId),
+  Settings,
+  mapHandlerError,
+  pathText,
+  resumeHandlerError,
+  toMsgpack,
+  )
 import Ribosome.Api (nvimCallFunction, nvimCommand, nvimDir)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
@@ -28,11 +41,11 @@ import Streamly.Prelude (IsStream, SerialT)
 
 import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
-import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyPattern))
+import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyUserInput))
 import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.ReplaceError (ReplaceError)
-import Proteome.Grep.Process (grepCmdline, grepMenuItems, defaultCmdline)
+import Proteome.Grep.Process (defaultCmdline, grepCmdline, grepMenuItems)
 import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import Proteome.Menu (handleResult)
@@ -158,9 +171,12 @@ grepAction = \case
   NoAction ->
     unit
 
+type GrepErrorStack =
+  [Scratch, Settings, Rpc, Stop ReplaceError, Stop GrepError]
+
 handleErrors ::
   Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Stop HandlerError] r =>
-  InterpretersFor [Scratch, Settings, Rpc, Stop ReplaceError, Stop GrepError] r
+  InterpretersFor GrepErrorStack r
 handleErrors =
   mapHandlerError @GrepError .
   mapHandlerError @ReplaceError .
@@ -183,14 +199,15 @@ type GrepStack =
 
 grepWith ::
   Member (Stop HandlerError) r =>
+  Members GrepErrorStack r =>
   Members GrepStack r =>
   PromptConfig ->
+  [Text] ->
   Path Abs Dir ->
   Text ->
-  [Text] ->
   Sem r ()
-grepWith promptConfig path patt opt =
-  handleErrors $ interpretMenu $ withMappings actions do
+grepWith promptConfig opt path patt =
+  interpretMenu $ withMappings actions do
     items <- grepItems path patt opt
     result <- nvimMenuDef scratchOptions items promptConfig
     handleResult "grep" grepAction result
@@ -205,68 +222,70 @@ grepWith promptConfig path patt opt =
     name =
       "proteome-grep"
 
-grepWithNative ::
-  Members GrepStack r =>
-  Text ->
+askUser ::
+  Members [Rpc, Stop GrepError] r =>
   Text ->
   [Text] ->
+  Sem r Text
+askUser purpose args = do
+  spec <- nvimCallFunction "input" (toMsgpack <$> [exon|#{purpose}: |] : args)
+  if Text.null spec then stop (GrepError.EmptyUserInput purpose) else pure spec
+
+grepWithNative ::
+  Members GrepStack r =>
+  [Text] ->
+  Maybe Text ->
+  Maybe Text ->
   Handler r ()
-grepWithNative pathSpec patt opt = do
-  resumeHandlerError @Rpc do
-    path <- nvimDir pathSpec
+grepWithNative opt pathSpec pattSpec = do
+  handleErrors do
+    path <- nvimDir =<< maybe (askUser "directory" [".", "dir"]) pure pathSpec
+    patt <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
+      maybe (askUser "pattern" []) pure pattSpec
     cfg <- defaultPrompt []
-    grepWith cfg path patt opt
+    grepWith cfg opt path patt
 
 proGrepIn ::
   Members GrepStack r =>
-  Text ->
-  Text ->
+  Maybe Text ->
+  Maybe Text ->
   Handler r ()
-proGrepIn path patt =
-  grepWithNative path patt []
+proGrepIn =
+  grepWithNative []
 
 proGrepOpt ::
   Members GrepStack r =>
   Text ->
-  Text ->
+  Maybe Text ->
   Handler r ()
 proGrepOpt opt patt = do
   cwd <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
     nvimCwd
-  grepWithNative (pathText cwd) patt (Text.words opt)
+  grepWithNative (Text.words opt) (Just (pathText cwd)) patt
 
 proGrepOptIn ::
   Members GrepStack r =>
   Text ->
-  Text ->
-  Text ->
+  Maybe Text ->
+  Maybe Text ->
   Handler r ()
-proGrepOptIn path opt patt =
-  grepWithNative path patt (Text.words opt)
-
-askPattern ::
-  Members [Rpc, Stop GrepError] r =>
-  Sem r Text
-askPattern = do
-  pat <- nvimCallFunction "input" [toMsgpack ("pattern: " :: Text)]
-  if Text.null pat then stop GrepError.EmptyPattern else pure pat
+proGrepOptIn opt =
+  grepWithNative (Text.words opt)
 
 proGrep ::
   Members GrepStack r =>
   Maybe Text ->
   Handler r ()
-proGrep patt = do
-  nonemptyPattern <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
-    maybe askPattern pure patt
-  proGrepOpt "" nonemptyPattern
+proGrep =
+  proGrepOpt ""
 
 proGrepList ::
   Members GrepStack r =>
   Text ->
-  Text ->
-  Text ->
+  Maybe Text ->
+  Maybe Text ->
   Handler r [GrepOutputLine]
-proGrepList pathSpec opt patt = do
-  path <- resumeHandlerError @Rpc (nvimDir pathSpec)
-  items <- handleErrors (grepItems path patt (Text.words opt))
+proGrepList patt pathSpec opt = do
+  path <- resumeHandlerError @Rpc (nvimDir (fromMaybe "." pathSpec))
+  items <- handleErrors (grepItems path patt (Text.words (fold opt)))
   fmap MenuItem.meta <$> embed (Streamly.toList items)

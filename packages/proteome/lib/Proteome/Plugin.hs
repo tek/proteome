@@ -6,7 +6,7 @@ import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
   Errors,
-  Execution (Async),
+  Execution (Async, Sync),
   Persist,
   PersistError,
   PluginName,
@@ -17,29 +17,37 @@ import Ribosome (
   SettingError,
   Settings,
   ToErrorMessage,
+  completeBuiltin,
   interpretPersist,
   interpretPersistPath,
   rpc,
   rpcCommand,
   rpcFunction,
   runNvimHandlersIO,
-  toHandlerError,
+  toHandlerError, rpcAutocmd,
   )
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.HostError (HostError (HostError))
 
 import Proteome.Add (proAdd, proAddCmd)
-import Proteome.BufEnter (MruLock (MruLock))
+import Proteome.BufEnter (MruLock (MruLock), bufEnter)
+import Proteome.Buffers (proBuffers)
 import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
-import Proteome.Grep (proGrep, proGrepIn, proGrepOpt, proGrepOptIn)
+import Proteome.Filename (proCopy, proMove, proRemove)
+import Proteome.Files (proFiles)
+import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
+import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (projectConfig, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock), loadBuffers)
+import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Save (proSave)
 import Proteome.Tags (TagsLock (TagsLock), proTags)
+import Proteome.Config (proReadConfig)
+import Proteome.Quit (proQuit)
 
 type ProteomeStack =
   [
@@ -72,32 +80,31 @@ handlers =
   <>
   rpc "ProGrepOptIn" Async proGrepOptIn
   <>
+  rpc "ProReplaceSave" Async proReplaceSave
+  <>
+  rpc "ProReplaceQuit" Async proReplaceQuit
+  <>
+  rpc "ProBuffers" Async proBuffers
+  <>
+  rpc "ProFiles" Async proFiles
+  <>
+  rpc "ProPrev" Async proPrev
+  <>
+  rpc "ProNext" Async proNext
+  <>
+  rpc "ProReadConfig" Async proReadConfig
+  <>
   [
+    rpcFunction "ProGrepList" Sync proGrepList,
     rpcFunction "ProAdd" Async proAdd,
-    rpcCommand "ProAdd" Async proAddCmd
+    rpcCommand "ProAdd" Async proAddCmd,
+    completeBuiltin "file" (rpcCommand "ProMove" Async proMove),
+    completeBuiltin "file" (rpcCommand "ProCopy" Async proCopy),
+    rpcCommand "ProRemove" Async proRemove,
+    rpcAutocmd "BufEnter" Async "BufEnter" def bufEnter,
+    rpcAutocmd "ProSave" Async "BufWritePost" def proSave,
+    rpcAutocmd "ProQuit" Sync "VimLeave" def proQuit
   ]
-
--- rpcHandlers =
---   [
---     $(rpcHandler (cmd []) 'proGrepIn),
---     $(rpcHandler (cmd []) 'proGrepOpt),
---     $(rpcHandler (cmd []) 'proGrepOptIn),
---     $(rpcHandler sync 'proGrepList),
---     $(rpcHandler (cmd []) 'proReplaceSave),
---     $(rpcHandler (cmd []) 'proReplaceQuit),
---     $(rpcHandler (cmd []) 'proBuffers),
---     $(rpcHandler (cmd []) 'proFiles),
---     $(rpcHandler (cmd []) 'proNext),
---     $(rpcHandler (cmd []) 'proPrev),
---     $(rpcHandler (cmd [CmdBang, CmdComplete "file"]) 'proMove),
---     $(rpcHandler (cmd [CmdBang, CmdComplete "file"]) 'proCopy),
---     $(rpcHandler (cmd []) 'proRemove),
---     $(rpcHandlerDef 'proReadConfig),
---     $(rpcHandler (cmd []) 'proDiag),
---     $(rpcHandler (autocmd "BufEnter") 'bufEnter),
---     $(rpcHandler (autocmd "BufWritePost") 'proSave),
---     $(rpcHandler (autocmd "VimLeave" . sync) 'proQuit)
---   ]
 
 logError ::
   ∀ e r .

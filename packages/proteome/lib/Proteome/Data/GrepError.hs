@@ -14,17 +14,18 @@ data GrepError =
   |
   NoSuchDestination (Path Abs Dir)
   |
-  EmptyPattern
+  EmptyUserInput Text
   deriving stock (Eq, Show)
 
 instance ToErrorMessage GrepError where
-  toErrorMessage Empty =
-    ErrorMessage "grep cmdline is empty" ["GrepError.Empty"] Warn
-  toErrorMessage (NotInPath exe) =
-    ErrorMessage ("grep executable `" <> exe <> "` not found in $PATH") ["GrepError.NotInPath:", exe] Warn
-  toErrorMessage (NoSuchExecutable exe) =
-    ErrorMessage ("grep executable `" <> exe <> "` does not exist") ["GrepError.NoSuchExecutable:", exe] Warn
-  toErrorMessage (NoSuchDestination (pathText -> dir)) =
-    ErrorMessage [exon|grep destination `#{dir}` does not exist|] ["GrepError.NoSuchDestination:", dir] Warn
-  toErrorMessage EmptyPattern =
-    ErrorMessage "no pattern given" ["GrepError.EmptyPattern"] Warn
+  toErrorMessage = \case
+    Empty ->
+      ErrorMessage "grep cmdline is empty" ["GrepError.Empty"] Warn
+    NotInPath exe ->
+      ErrorMessage ("grep executable `" <> exe <> "` not found in $PATH") ["GrepError.NotInPath:", exe] Warn
+    NoSuchExecutable exe ->
+      ErrorMessage ("grep executable `" <> exe <> "` does not exist") ["GrepError.NoSuchExecutable:", exe] Warn
+    NoSuchDestination (pathText -> dir) ->
+      ErrorMessage [exon|grep destination `#{dir}` does not exist|] ["GrepError.NoSuchDestination:", dir] Warn
+    EmptyUserInput what ->
+      ErrorMessage [exon|no #{what} given|] ["GrepError.EmptyPattern"] Warn

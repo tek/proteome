@@ -6,13 +6,9 @@ It provides project-specific configuration file loading and performs runtime tas
 
 # Install
 
-This plugin depends on the Haskell plugin manager [chromatin] and [nix].
-To install, request both *chromatin* and *proteome* from your Neovim plugin manager:
-
-```vim
-Plug 'tek/chromatin'
-Plug 'tek/proteome'
-```
+The plugin can be loaded by specifying the Github repo to a package manager like any other, but in order to start it,
+the [Nix] build tools needs to be available.
+Nix will fetch Proteome's dependencies and build its sources when the plugin is loaded.
 
 # Overview
 
@@ -156,7 +152,7 @@ ProGrepOpt -r\ bar foo
 
 `ProGrepOptIn(path, options, pattern)` combines the last two.
 
-The function `ProGrepList(path, options, pattern)` returns a list of dictionaries with the results.
+The function `ProGrepList(pattern, path, options)` returns a list of dictionaries with the results.
 
 ## Configuration
 

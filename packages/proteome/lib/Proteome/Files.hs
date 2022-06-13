@@ -292,7 +292,7 @@ filesWith promptConfig cwd paths =
 proFiles ::
   Member ChronosTime r =>
   Members [Scratch !! RpcError, Settings !! SettingError, Rpc !! RpcError] r =>
-  Members [Sync PromptListening, Log, Mask res, Race, Resource, Async, Embed IO, Final IO] r =>
+  Members [Log, Mask res, Race, Resource, Async, Embed IO, Final IO] r =>
   [Text] ->
   Handler r ()
 proFiles paths =

@@ -53,10 +53,11 @@ updateBuffers = do
   whenM (bufferIsFile current) (updateBufferMru current)
 
 bufEnter ::
-  Members [AtomicState Env, Sync MruLock, Rpc, Rpc !! RpcError, Settings !! SettingError, Resource] r =>
+  Members [AtomicState Env, Sync MruLock, Rpc !! RpcError, Settings !! SettingError, Resource] r =>
   Handler r ()
-bufEnter = do
-  updateBuffers
-  roots <- mapMaybe projectRoot <$> allProjects
-  name <- resumeHandlerError (Settings.get tagsFileName)
-  setBufferTags ((</> name) <$> roots)
+bufEnter =
+  resumeHandlerError @Rpc do
+    updateBuffers
+    roots <- mapMaybe projectRoot <$> allProjects
+    name <- resumeHandlerError (Settings.get tagsFileName)
+    setBufferTags ((</> name) <$> roots)

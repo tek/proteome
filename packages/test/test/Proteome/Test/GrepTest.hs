@@ -16,6 +16,7 @@ import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith, uniqueGrepLines)
 import Proteome.Grep.Process (grepMenuItems)
 import Proteome.Test.Run (proteomeTest)
@@ -38,7 +39,7 @@ test_grepJump :: UnitTest
 test_grepJump =
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    grepWith (promptConfig jumpChars) dir pat []
+    Grep.handleErrors (grepWith (promptConfig jumpChars) [] dir pat)
     assertEq 5 =<< currentLine
 
 yankChars :: [Text]
@@ -49,7 +50,7 @@ test_grepYank :: UnitTest
 test_grepYank = do
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    grepWith (promptConfig yankChars) dir pat []
+    Grep.handleErrors (grepWith (promptConfig yankChars) [] dir pat)
     normal "P"
     l <- currentBufferContent
     ["line 6 " <> pat, ""] === l
@@ -76,7 +77,7 @@ test_noResults :: UnitTest
 test_noResults =
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    grepWith (promptConfig []) dir "nonexistent" []
+    Grep.handleErrors (grepWith (promptConfig []) [] dir "nonexistent")
     l <- currentBufferContent
     [""] === l
 

@@ -14,6 +14,7 @@ import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig))
 import Ribosome.Menu.Prompt.Input (promptInputWith)
 import qualified Streamly.Prelude as Stream
 
+import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Test.Run (proteomeTest)
@@ -117,7 +118,7 @@ test_grepReplace =
     file1 <- Test.tempFile file1Lines [relfile|grep/replace/file1|]
     file2 <- Test.tempFile file2Lines [relfile|grep/replace/file2|]
     file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
-    grepWith (promptConfig replaceChars) dir pat []
+    Grep.handleErrors (grepWith (promptConfig replaceChars) [] dir pat)
     replaceContent <- currentBufferContent
     7 === length replaceContent
     setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
@@ -160,5 +161,5 @@ test_grepDelete =
   proteomeTest do
     dir <- Test.tempDir [reldir|grep/delete|]
     file1 <- Test.tempFile deleteFile1Lines [relfile|grep/delete/file1|]
-    grepWith (promptConfig deleteChars) dir pat []
+    Grep.handleErrors (grepWith (promptConfig deleteChars) [] dir pat)
     checkContent file1 deleteFile1Target
