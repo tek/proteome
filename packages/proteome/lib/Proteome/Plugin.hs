@@ -21,10 +21,11 @@ import Ribosome (
   interpretPersist,
   interpretPersistPath,
   rpc,
+  rpcAutocmd,
   rpcCommand,
   rpcFunction,
   runNvimHandlersIO,
-  toHandlerError, rpcAutocmd,
+  toHandlerError,
   )
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
@@ -33,6 +34,7 @@ import Ribosome.Host.Data.HostError (HostError (HostError))
 import Proteome.Add (proAdd, proAddCmd)
 import Proteome.BufEnter (MruLock (MruLock), bufEnter)
 import Proteome.Buffers (proBuffers)
+import Proteome.Config (proReadConfig)
 import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
@@ -44,10 +46,9 @@ import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (projectConfig, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock), loadBuffers)
 import Proteome.Project.Activate (proNext, proPrev)
+import Proteome.Quit (proQuit)
 import Proteome.Save (proSave)
 import Proteome.Tags (TagsLock (TagsLock), proTags)
-import Proteome.Config (proReadConfig)
-import Proteome.Quit (proQuit)
 
 type ProteomeStack =
   [

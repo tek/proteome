@@ -28,6 +28,7 @@ import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
 import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Errors (pluginHandlerErrors)
+import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
   MenuAction,
   MenuSem,
@@ -293,9 +294,9 @@ proFiles ::
   Member ChronosTime r =>
   Members [Scratch !! RpcError, Settings !! SettingError, Rpc !! RpcError] r =>
   Members [Log, Mask res, Race, Resource, Async, Embed IO, Final IO] r =>
-  [Text] ->
+  ArgList ->
   Handler r ()
-proFiles paths =
+proFiles (ArgList paths) =
   mapHandlerError @FilesError $ pluginHandlerErrors $ interpretMenu do
     cwd <- resumeHoistAs FilesError.BadCwd nvimCwd
     conf <- defaultPrompt [StartInsert, OnlyInsert]
