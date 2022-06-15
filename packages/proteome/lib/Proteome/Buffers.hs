@@ -140,7 +140,7 @@ buffers = do
   bufs <- filterM bufferIsFile =<< filterM buflisted =<< atomicGets Env.buffers
   numbers <- traverse bufferGetNumber bufs
   names <- traverse bufferGetName bufs
-  let items = item [exon|#{pathText cwd}/|] (padding numbers) <$> zip3 bufs numbers names
+  let items = item (pathText cwd) (padding numbers) <$> zip3 bufs numbers names
   ifM (Settings.or False Settings.buffersCurrentLast) (moveCurrentLast items) (pure items)
   where
     padding =

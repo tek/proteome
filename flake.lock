@@ -2792,11 +2792,11 @@
         "polysemy-time": "polysemy-time"
       },
       "locked": {
-        "lastModified": 1655074130,
-        "narHash": "sha256-CpDQ8HpDVxO0d280KG/W741LCwFfSBkI2/ThXw8BbLA=",
+        "lastModified": 1655203466,
+        "narHash": "sha256-BuzI1A9/BdYQT/YJs+JUHZx2hrmIESuwCuj8lAcQhWw=",
         "owner": "tek",
         "repo": "polysemy-conc",
-        "rev": "b6c867fb8820515915a8aba97f6d6d287068e654",
+        "rev": "aa80a87d35681d91d85548d0482f763ac3acd332",
         "type": "github"
       },
       "original": {
@@ -2958,11 +2958,11 @@
         "polysemy-conc": "polysemy-conc_4"
       },
       "locked": {
-        "lastModified": 1655170974,
-        "narHash": "sha256-bKS2wwLOuueZTo1w02Ihcf6nhAuPxYB7NHMlMyMGFmE=",
+        "lastModified": 1655307622,
+        "narHash": "sha256-AXBLtQNI57a6AVSw360R68IGA+giwSXpRrNIFG95CQU=",
         "ref": "polysemy",
-        "rev": "222e1be8cabedef9c8f9e60b1adff8c0e6e55dba",
-        "revCount": 561,
+        "rev": "e97bb28cb5e0e84d0fe0f90d0ef11f55f13c7ffe",
+        "revCount": 562,
         "type": "git",
         "url": "https://gitlab.tryp.io/haskell/ribosome"
       },

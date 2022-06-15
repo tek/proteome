@@ -41,6 +41,21 @@ setupBuffers = do
   atomicModify' (#buffers .~ catMaybes bufs)
   pure (buf1, buf2, buf3)
 
+bufferLines :: [Text]
+bufferLines =
+  [
+    " * 3  test/fixtures/buffers/buf3",
+    " * 2  test/fixtures/buffers/buf2",
+    " * 1  test/fixtures/buffers/buf1"
+  ]
+
+-- TODO check that paths are relative to nvimCwd
+test_bufferPath :: UnitTest
+test_bufferPath =
+  proteomeTest do
+    (_, _, _) <- setupBuffers
+    assertEq bufferLines . fmap MenuItem.text =<< buffers
+
 test_loadBuffer :: UnitTest
 test_loadBuffer =
   proteomeTest do
@@ -92,6 +107,7 @@ test_currentBufferPosition =
 test_buffers :: TestTree
 test_buffers =
   testGroup "buffers menu" [
+    unitTest "show relative paths" test_bufferPath,
     unitTest "load a buffer" test_loadBuffer,
     unitTest "delete a buffer" test_deleteBuffer,
     unitTest "wipe a buffer" test_wipeBuffer,

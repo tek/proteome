@@ -117,6 +117,7 @@ test-suite proteome-unit
       Proteome.Test.FilesTest
       Proteome.Test.GrepTest
       Proteome.Test.InitTest
+      Proteome.Test.Menu
       Proteome.Test.MruTest
       Proteome.Test.MultiTagsTest
       Proteome.Test.PersistLoadTest
