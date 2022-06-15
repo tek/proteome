@@ -8,7 +8,7 @@ let s:build_cmd = [
       \ ]
 
 function! s:run() abort "{{{
-  call jobstart([s:exe], { 'rpc': v:true, 'cwd': s:repo, })
+  call jobstart([s:exe] + get(g:, 'proteome_cli_args', []), { 'rpc': v:true, 'cwd': s:repo, })
 endfunction "}}}
 
 function! s:built(code) abort "{{{

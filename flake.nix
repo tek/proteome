@@ -7,18 +7,15 @@
       flake = false;
       url = github:/tek/streamly-process;
     };
-    polysemy-conc.url = github:tek/polysemy-conc;
   };
 
-  outputs = { ribosome, streamly-process, polysemy-conc, ... }:
+  outputs = { ribosome, streamly-process, ... }:
   let
-    inherit (ribosome.inputs) chiasma hix;
+    inherit (ribosome.inputs) hix;
     overrides = { hackage, source, minimal, pkgs, buildInputs, ... }:
     let
       inputs = buildInputs [pkgs.neovim pkgs.tmux pkgs.xterm pkgs.ripgrep];
     in {
-      polysemy-conc = source.package polysemy-conc "conc";
-      polysemy-process = source.package polysemy-conc "process";
       proteome-test = inputs;
       streamly = hackage "0.8.1" "0ywyy7gxjnp32hx8kki0lfn94bnc9mzjh8g6mg65ff3vv28k2vdr";
       streamly-process = minimal (source.root streamly-process);
