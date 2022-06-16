@@ -86,7 +86,7 @@ let
 in {
 
   proteome = merge (project "proteome") {
-    synopsis = "Neovim Register Manager";
+    synopsis = "Neovim Project Manager";
     description = "See https://hackage.haskell.org/package/proteome/docs/Proteome.html";
     library.dependencies = [
       "Glob"

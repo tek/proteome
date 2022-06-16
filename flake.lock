@@ -2476,12 +2476,12 @@
         "rev": "b08fbc0a0f0ea7a7932b1a965aadd0bc7c6a36c2",
         "revCount": 572,
         "type": "git",
-        "url": "https://gitlab.tryp.io/haskell/ribosome"
+        "url": "https://git.tryp.io/tek/ribosome"
       },
       "original": {
         "ref": "polysemy",
         "type": "git",
-        "url": "https://gitlab.tryp.io/haskell/ribosome"
+        "url": "https://git.tryp.io/tek/ribosome"
       }
     },
     "root": {
