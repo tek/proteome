@@ -31,7 +31,7 @@ import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.HostError (HostError (HostError))
 
-import Proteome.Add (proAdd, proAddCmd)
+import Proteome.Add (proAdd, proAddCmd, proAddMenu)
 import Proteome.BufEnter (MruLock (MruLock), bufEnter)
 import Proteome.Buffers (proBuffers)
 import Proteome.Config (proReadConfig)
@@ -103,6 +103,7 @@ handlers =
     rpcFunction "ProGrepList" Sync proGrepList,
     rpcFunction "ProAdd" Async proAdd,
     rpcCommand "ProAdd" Async proAddCmd,
+    rpcCommand "ProAddMenu" Async proAddMenu,
     completeBuiltin "file" (rpcCommand "ProMove" Async proMove),
     completeBuiltin "file" (rpcCommand "ProCopy" Async proCopy),
     rpcCommand "ProRemove" Async proRemove,

@@ -12,11 +12,12 @@
   outputs = { ribosome, streamly-process, ... }:
   let
     inherit (ribosome.inputs) hix;
-    overrides = { hackage, source, minimal, pkgs, buildInputs, ... }:
+    overrides = { hackage, source, minimal, pkgs, buildInputs, fast, ... }:
     let
       inputs = buildInputs [pkgs.neovim pkgs.tmux pkgs.xterm pkgs.ripgrep];
     in {
-      proteome-test = inputs;
+      proteome = fast;
+      proteome-test = fast inputs;
       streamly = hackage "0.8.1" "0ywyy7gxjnp32hx8kki0lfn94bnc9mzjh8g6mg65ff3vv28k2vdr";
       streamly-process = minimal (source.root streamly-process);
     };

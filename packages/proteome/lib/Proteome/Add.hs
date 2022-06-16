@@ -102,7 +102,7 @@ availableProjectsInBase base =
     list d =
       stopEitherWith AddError.Directory =<< tryAny (fst <$> listDir d)
     cons proj =
-      MenuItem (AddItem tpe name) pt (maybe pt pathText (stripProperPrefix proj base))
+      MenuItem (AddItem tpe name) pt (maybe pt dropSlash (stripProperPrefix base proj))
       where
         tpe =
           dropSlash (dirname (parent proj))
