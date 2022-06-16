@@ -3,7 +3,7 @@ module Proteome.Init where
 import Control.Lens ((.~))
 import Exon (exon)
 import qualified Log
-import Ribosome (Rpc, SettingError, Settings)
+import Ribosome (Rpc, SettingError, Settings, Handler, resumeHandlerError, RpcError)
 import Ribosome.Api (nvimCallFunction, uautocmd)
 import qualified Ribosome.Settings as Settings
 
@@ -82,3 +82,15 @@ projectConfigAfter ::
 projectConfigAfter = do
   loadConfig "project_after"
   uautocmd "ProteomeProjectAfter"
+
+proLoad ::
+  Members [AtomicState Env, Rpc !! RpcError] r =>
+  Handler r ()
+proLoad =
+  resumeHandlerError @Rpc projectConfig
+
+proLoadAfter ::
+  Members [AtomicState Env, Rpc !! RpcError] r =>
+  Handler r ()
+proLoadAfter =
+  resumeHandlerError @Rpc projectConfigAfter

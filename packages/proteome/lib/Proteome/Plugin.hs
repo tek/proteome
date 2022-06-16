@@ -43,7 +43,7 @@ import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
-import Proteome.Init (projectConfig, resolveAndInitMain)
+import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock), loadBuffers)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Quit (proQuit)
@@ -95,6 +95,10 @@ handlers =
   <>
   rpc "ProReadConfig" Async proReadConfig
   <>
+  rpc "ProLoad" Async proLoad
+  <>
+  rpc "ProLoadAfter" Async proLoadAfter
+  <>
   [
     rpcFunction "ProGrepList" Sync proGrepList,
     rpcFunction "ProAdd" Async proAdd,
@@ -104,6 +108,7 @@ handlers =
     rpcCommand "ProRemove" Async proRemove,
     rpcAutocmd "BufEnter" Async "BufEnter" def bufEnter,
     rpcAutocmd "ProSave" Async "BufWritePost" def proSave,
+    -- If this is Async, Neovim quits before the handler has run
     rpcAutocmd "ProQuit" Sync "VimLeave" def proQuit
   ]
 
@@ -145,6 +150,7 @@ prepare = do
     resolveAndInitMain
   resumeLogError @(Persist _) (resumeLogError @Rpc loadBuffers)
   resumeLogError @Rpc projectConfig
+  resumeLogError @Rpc projectConfigAfter
 
 interpretProteomeStack ::
   Members [Reader PluginName, DataLog HostError] r =>
