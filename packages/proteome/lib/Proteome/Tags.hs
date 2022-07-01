@@ -9,19 +9,20 @@ import qualified Log
 import Log (Severity (Warn))
 import Path (File, Path, Rel, addExtension, toFilePath, (</>))
 import Path.IO (doesFileExist, removeFile, renameFile)
-import Polysemy.Process (SysProcConf, SystemProcess, interpretSystemProcessNativeSingle)
+import Polysemy.Process (SysProcConf, SystemProcess, interpretSystemProcessNativeSingle, SystemProcessScopeError)
 import qualified Polysemy.Process.SystemProcess as Process
 import Ribosome (
   ErrorMessage (ErrorMessage),
   Errors,
   Handler,
+  HandlerError,
   HostError,
   SettingError,
   Settings,
   lockOrSkip_,
+  mapHandlerError,
   reportStop,
   resumeHandlerError,
-  resumeReportError,
   )
 import qualified Ribosome.Errors as Errors
 import qualified Ribosome.Settings as Settings
@@ -70,25 +71,25 @@ tempname name =
     err =
       TagsError.TempName
 
-deleteTags ::
-  Members [Settings, Stop TagsError, Embed IO] r =>
+deleteTempTags ::
+  Members [Settings !! SettingError, Stop TagsError, Embed IO] r =>
   ProjectRoot ->
   Sem r ()
-deleteTags (ProjectRoot root) = do
-  name <- Settings.get Settings.tagsFileName
+deleteTempTags (ProjectRoot root) = do
+  name <- resumeHoist TagsError.Setting (Settings.get Settings.tagsFileName)
   path <- (root </>) <$> tempname name
-  exists <- doesFileExist path
-  when exists do
+  whenM (doesFileExist path) do
     tryAny_ (removeFile path)
 
 replaceTags ::
-  Members [Settings, Stop TagsError, Embed IO] r =>
+  Members [Settings !! SettingError, Stop TagsError, Embed IO] r =>
   ProjectRoot ->
   Sem r ()
 replaceTags (ProjectRoot root) = do
-  name <- Settings.get Settings.tagsFileName
+  name <- resumeHoist TagsError.Setting (Settings.get Settings.tagsFileName)
   temppath <- (root </>) <$> tempname name
-  tryAny_ (renameFile temppath (root </> name))
+  whenM (doesFileExist temppath) do
+    stopTryIOError TagsError.RenameTags (renameFile temppath (root </> name))
 
 notifyError ::
   Member Errors r =>
@@ -123,26 +124,28 @@ readStderr ::
   Member (SystemProcess !! err) r =>
   Sem r [Text]
 readStderr =
-  fmap decodeUtf8 <$> spin mempty
+  spin mempty
   where
     spin buf =
       resumeEither Process.readStderr >>= \case
-        Right l -> spin (buf |> l)
+        Right l -> spin (buf |> decodeUtf8 l)
         Left _ -> pure (toList buf)
 
 executeTags ::
-  Members [Settings !! SettingError, Settings, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
+  Members [Settings !! SettingError, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
   ProjectRoot ->
   [ProjectLang] ->
   Sem r ()
 executeTags projectRoot langs = do
-  deleteTags projectRoot
+  deleteTempTags projectRoot
   procConf <- tagsProcess projectRoot langs
-  interpretSystemProcessNativeSingle procConf do
+  mapStop @SystemProcessScopeError (TagsError.Process . show) $ interpretSystemProcessNativeSingle procConf do
     resumeHoist (TagsError.Process . show) Process.wait >>= \case
-      ExitSuccess ->
+      ExitSuccess -> do
+        Log.debug "success"
         replaceTags projectRoot
-      ExitFailure _ ->
+      ExitFailure _ -> do
+        Log.debug "failure"
         notifyError =<< readStderr
 
 projectTags ::
@@ -154,12 +157,16 @@ projectTags (Project (DirProject _ root tpe) _ lang langs) =
 projectTags _ =
   unit
 
-reportAsyncError ::
-  Members [Settings !! SettingError, DataLog HostError] r =>
-  Sem (Stop TagsError : Settings : r) () ->
+execution ::
+  Members [Settings !! SettingError, DataLog HostError, Async, Stop HandlerError] r =>
+  Bool ->
+  Sem (Stop TagsError : r) () ->
   Sem r ()
-reportAsyncError =
-  resumeReportError @Settings (Just "tags") . reportStop (Just "tags")
+execution = \case
+  True ->
+    void . async . reportStop (Just "tags")
+  False ->
+    mapHandlerError
 
 proTags ::
   Members [AtomicState Env, Settings !! SettingError, DataLog HostError, Sync TagsLock, Errors] r =>
@@ -170,5 +177,6 @@ proTags =
     main <- atomicGets Env.mainProject
     extra <- atomicGets Env.projects
     fork <- Settings.get Settings.tagsFork
-    (if fork then void . async else id) $ lockOrSkip_ @TagsLock $ reportAsyncError $ do
-      void $ sequenceConcurrently (projectTags <$> main : extra)
+    execution fork $ lockOrSkip_ @TagsLock do
+      res <- sequenceConcurrently (runStop . projectTags <$> main : extra)
+      traverse (void . stopEither . fromMaybe unit) res

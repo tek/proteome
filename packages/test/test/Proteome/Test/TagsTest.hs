@@ -12,7 +12,7 @@ import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
-import qualified Proteome.Settings as S (tagsArgs, tagsCommand, tagsFork)
+import qualified Proteome.Settings as Settings
 import Proteome.Tags (proTags)
 import Proteome.Test.Run (proteomeTest)
 
@@ -25,9 +25,9 @@ test_simpleTags =
     root <- Test.tempDir [reldir|projects/haskell/flagellum|]
     atomicModify' (#mainProject . #meta .~ main root)
     atomicModify' (#mainProject . #lang ?~ ProjectLang "idris")
-    Settings.update S.tagsCommand "touch"
-    Settings.update S.tagsArgs "tags-{langsComma}"
-    Settings.update S.tagsFork False
+    Settings.update Settings.tagsCommand "touch"
+    Settings.update Settings.tagsArgs "tags-{langsComma}"
+    Settings.update Settings.tagsFork False
     proTags
     let tagsFile = root </> [relfile|tags-idris|]
     assert =<< embed (doesFileExist tagsFile)
