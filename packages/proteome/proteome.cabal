@@ -6,7 +6,7 @@ cabal-version: 2.2
 
 name:           proteome
 version:        0.1.0.0
-synopsis:       Neovim Register Manager
+synopsis:       Neovim Project Manager
 description:    See https://hackage.haskell.org/package/proteome/docs/Proteome.html
 category:       Neovim
 homepage:       https://github.com/tek/proteome#readme
@@ -102,6 +102,7 @@ library
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
+      EmptyCase
       EmptyDataDecls
       ExistentialQuantification
       FlexibleContexts
@@ -116,8 +117,9 @@ library
       MultiParamTypeClasses
       MultiWayIf
       NamedFieldPuns
-      OverloadedStrings
+      OverloadedLabels
       OverloadedLists
+      OverloadedStrings
       PackageImports
       PartialTypeSignatures
       PatternGuards
@@ -158,7 +160,6 @@ library
     , incipit >=0.3
     , lens
     , lens-regex-pcre
-    , mono-traversable
     , parsers
     , path
     , path-io
@@ -208,6 +209,7 @@ executable proteome
       DisambiguateRecordFields
       DoAndIfThenElse
       DuplicateRecordFields
+      EmptyCase
       EmptyDataDecls
       ExistentialQuantification
       FlexibleContexts
@@ -222,8 +224,9 @@ executable proteome
       MultiParamTypeClasses
       MultiWayIf
       NamedFieldPuns
-      OverloadedStrings
+      OverloadedLabels
       OverloadedLists
+      OverloadedStrings
       PackageImports
       PartialTypeSignatures
       PatternGuards

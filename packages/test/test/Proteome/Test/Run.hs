@@ -31,7 +31,7 @@ import Proteome.Plugin (ProteomeStack)
 import qualified Proteome.Settings as Settings
 import Proteome.Tags (TagsLock (TagsLock))
 
-type UraTestStack =
+type ProteomeTestStack =
   Stop HandlerError : StackWith ProteomeStack
 
 interpretProteomeStackTest ::
@@ -51,7 +51,7 @@ interpretProteomeStackTest persistDir =
 proteomeTestConf ::
   HasCallStack =>
   HostConfig ->
-  Sem UraTestStack () ->
+  Sem ProteomeTestStack () ->
   UnitTest
 proteomeTestConf conf test =
   runEmbedTest (TestConfig False (PluginConfig "proteome" conf)) do
@@ -65,14 +65,14 @@ proteomeTestConf conf test =
 
 proteomeTest ::
   HasCallStack =>
-  Sem UraTestStack () ->
+  Sem ProteomeTestStack () ->
   UnitTest
 proteomeTest =
   proteomeTestConf def
 
 proteomeTestDebug ::
   HasCallStack =>
-  Sem UraTestStack () ->
+  Sem ProteomeTestStack () ->
   UnitTest
 proteomeTestDebug =
   proteomeTestConf (setStderr Debug def)

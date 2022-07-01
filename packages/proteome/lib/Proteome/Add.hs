@@ -5,11 +5,8 @@ import qualified Data.Text as Text
 import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix)
 import Path.IO (listDir)
 import Polysemy.Chronos (ChronosTime)
-import Ribosome (Handler, Rpc, RpcError, Scratch, SettingError, Settings, mapHandlerError, pathText, resumeHandlerError)
-import Ribosome.Data.PluginName (PluginName)
-import Ribosome.Data.ScratchOptions (defaultScratchOptions)
+import Ribosome (Bang (Bang), Handler, PluginName, Rpc, RpcError, Scratch, SettingError, Settings, mapHandlerError, pathText, resumeHandlerError)
 import Ribosome.Errors (pluginHandlerErrors)
-import Ribosome.Host.Data.Bang (Bang (Bang))
 import Ribosome.Menu (
   MenuItem (..),
   MenuWidget,
@@ -22,7 +19,7 @@ import Ribosome.Menu (
   traverseSelection_,
   withMappings,
   )
-import Ribosome.Scratch (syntax)
+import Ribosome.Scratch (scratch, syntax)
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Add.Syntax (addSyntax)
@@ -138,7 +135,7 @@ addMenuWith promptConfig =
     void $ staticNvimMenuDef scratchOptions projects promptConfig
   where
     scratchOptions =
-      (defaultScratchOptions "proteome-add") {
+      (scratch "proteome-add") {
         syntax = [addSyntax]
       }
 

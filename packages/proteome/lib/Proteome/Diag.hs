@@ -15,8 +15,8 @@ import Ribosome (
   ScratchId (ScratchId),
   Settings,
   StoredError (StoredError),
-  defaultScratchOptions,
   resumeHandlerError,
+  scratch,
   )
 import qualified Ribosome.Errors as Errors
 import qualified Ribosome.Scratch as Scratch
@@ -116,7 +116,7 @@ errorDiagnostics errs =
   "## Errors" <> line <> line <> vsep (uncurry tagErrors <$> Map.toAscList errs)
 
 diagnostics ::
-  Members [Settings !! se, AtomicState Env ,Errors] r =>
+  Members [Settings !! se, AtomicState Env, Errors] r =>
   Sem r [Text]
 diagnostics = do
   main <- formatMain =<< atomicGets Env.mainProject
@@ -137,7 +137,7 @@ proDiag = do
     void $ Scratch.show content options
   where
     options =
-      (defaultScratchOptions (ScratchId name)) {
+      (scratch (ScratchId name)) {
         focus = True,
         filetype = Just name
       }

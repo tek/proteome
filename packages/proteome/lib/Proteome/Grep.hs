@@ -6,6 +6,7 @@ import Exon (exon)
 import Path (Abs, Dir, File, Path)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
+  Args,
   Handler,
   HandlerError,
   Rpc,
@@ -17,6 +18,7 @@ import Ribosome (
   pathText,
   resumeHandlerError,
   toMsgpack,
+  unArgs,
   )
 import Ribosome.Api (nvimCallFunction, nvimCommand, nvimDir)
 import Ribosome.Api.Buffer (edit)
@@ -235,20 +237,20 @@ grepWithNative ::
   Members GrepStack r =>
   [Text] ->
   Maybe Text ->
-  Maybe Text ->
+  Maybe Args ->
   Handler r ()
 grepWithNative opt pathSpec pattSpec = do
   handleErrors do
     path <- nvimDir =<< maybe (askUser "directory" [".", "dir"]) pure pathSpec
     patt <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
-      maybe (askUser "pattern" []) pure pattSpec
+      maybe (askUser "pattern" []) (pure . unArgs) pattSpec
     cfg <- defaultPrompt []
     grepWith cfg opt path patt
 
 proGrepIn ::
   Members GrepStack r =>
   Maybe Text ->
-  Maybe Text ->
+  Maybe Args ->
   Handler r ()
 proGrepIn =
   grepWithNative []
@@ -256,7 +258,7 @@ proGrepIn =
 proGrepOpt ::
   Members GrepStack r =>
   Text ->
-  Maybe Text ->
+  Maybe Args ->
   Handler r ()
 proGrepOpt opt patt = do
   cwd <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
@@ -267,14 +269,14 @@ proGrepOptIn ::
   Members GrepStack r =>
   Text ->
   Maybe Text ->
-  Maybe Text ->
+  Maybe Args ->
   Handler r ()
 proGrepOptIn opt =
   grepWithNative (Text.words opt)
 
 proGrep ::
   Members GrepStack r =>
-  Maybe Text ->
+  Maybe Args ->
   Handler r ()
 proGrep =
   proGrepOpt ""

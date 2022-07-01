@@ -37,12 +37,6 @@ let
     github = "tek/proteome";
   };
 
-  base = {
-    name = "base";
-    version = ">= 4 && < 5";
-    mixin = "hiding (Prelude)";
-  };
-
   options.ghc-options = [
     "-Wall"
     "-Wredundant-constraints"
@@ -95,12 +89,10 @@ in {
       "chiasma"
       "chronos"
       "exon"
-      "exon"
       "extra"
       "filepattern"
       "lens"
       "lens-regex-pcre"
-      "mono-traversable"
       "parsers"
       "path"
       "path-io"
