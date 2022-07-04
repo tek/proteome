@@ -30,12 +30,14 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Errors (pluginHandlerErrors)
 import Ribosome.Menu (MenuWidget, PromptConfig, interpretMenu)
+import Ribosome.Menu.Data.MenuConfig (MenuConfig (MenuConfig))
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Ribosome.Menu.Data.MenuState (MenuWrite)
+import Ribosome.Menu.Filters (fuzzyMonotonic)
 import Ribosome.Menu.Interpreter.MenuConsumer (Mappings, withMappings)
 import Ribosome.Menu.Items (withFocus, withSelection)
-import Ribosome.Menu.Nvim (nvimMenuDef)
+import Ribosome.Menu.Nvim (nvimMenu)
 import Ribosome.Menu.Prompt (defaultPrompt)
 import qualified Ribosome.Settings as Settings
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
@@ -211,7 +213,7 @@ grepWith ::
 grepWith promptConfig opt path patt =
   interpretMenu $ withMappings actions do
     items <- grepItems path patt opt
-    result <- nvimMenuDef scratchOptions items promptConfig
+    result <- nvimMenu scratchOptions (MenuConfig items fuzzyMonotonic promptConfig)
     handleResult "grep" grepAction result
   where
     scratchOptions =
