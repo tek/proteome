@@ -1,6 +1,5 @@
 module Proteome.Project.Resolve where
 
-import Control.Lens ((%~))
 import Control.Monad (foldM)
 import Control.Monad.Extra (firstJustM)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))

@@ -1,6 +1,5 @@
 module Proteome.Data.PersistBuffers where
 
-import Data.Aeson (FromJSON, ToJSON)
 import Path (Abs, File, Path)
 
 data PersistBuffers =

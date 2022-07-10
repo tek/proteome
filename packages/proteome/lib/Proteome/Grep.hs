@@ -1,10 +1,8 @@
 module Proteome.Grep where
 
-import Conc (Restoration)
 import qualified Data.Text as Text
 import Exon (exon)
 import Path (Abs, Dir, File, Path)
-import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   Args,
   Handler,
@@ -29,16 +27,12 @@ import qualified Ribosome.Data.Register as Register (Register (Special))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Errors (pluginHandlerErrors)
-import Ribosome.Menu (MenuWidget, PromptConfig, interpretMenu)
-import Ribosome.Menu.Data.MenuConfig (MenuConfig (MenuConfig))
+import Ribosome.Menu (MenuState, MenuWidget, NvimMenu, menu)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import Ribosome.Menu.Data.MenuState (MenuWrite)
-import Ribosome.Menu.Filters (fuzzyMonotonic)
+import Ribosome.Menu.Interpreter.Menu (runNvimMenu)
 import Ribosome.Menu.Interpreter.MenuConsumer (Mappings, withMappings)
 import Ribosome.Menu.Items (withFocus, withSelection)
-import Ribosome.Menu.Nvim (nvimMenu)
-import Ribosome.Menu.Prompt (defaultPrompt)
 import qualified Ribosome.Settings as Settings
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
 import Streamly.Prelude (IsStream, SerialT)
@@ -78,14 +72,14 @@ navigate path line col = do
   nvimCommand "normal! zz"
 
 selectResult ::
-  MenuWrite GrepOutputLine r =>
+  Member (MenuState GrepOutputLine) r =>
   MenuWidget r GrepAction
 selectResult = do
   withFocus \ (GrepOutputLine path line col _) ->
     pure (Select path line col)
 
 yankResult ::
-  MenuWrite GrepOutputLine r =>
+  Member (MenuState GrepOutputLine) r =>
   Members [Rpc, Resource, Embed IO] r =>
   MenuWidget r GrepAction
 yankResult =
@@ -93,13 +87,13 @@ yankResult =
     NoAction <$ setregLine (Register.Special "\"") [txt]
 
 replaceResult ::
-  MenuWrite GrepOutputLine r =>
+  Member (MenuState GrepOutputLine) r =>
   MenuWidget r GrepAction
 replaceResult =
   withSelection (pure . Replace)
 
 deleteResult ::
-  MenuWrite GrepOutputLine r =>
+  Member (MenuState GrepOutputLine) r =>
   MenuWidget r GrepAction
 deleteResult =
   withSelection (pure . Delete)
@@ -150,7 +144,7 @@ grepItems path patt opt = do
   pure (uniqueGrepLines items)
 
 actions ::
-  MenuWrite GrepOutputLine r =>
+  Member (MenuState GrepOutputLine) r =>
   Members [Scratch, Rpc, Rpc !! RpcError, AtomicState Env, Stop ReplaceError, Resource, Embed IO] r =>
   Mappings r GrepAction
 actions =
@@ -187,40 +181,35 @@ handleErrors =
   pluginHandlerErrors
 
 type GrepStack =
-  [
+  NvimMenu GrepOutputLine ++ [
     Settings !! SettingError,
     Scratch !! RpcError,
     Rpc !! RpcError,
     AtomicState Env,
-    Log,
-    ChronosTime,
-    Mask Restoration,
     Resource,
-    Race,
     Embed IO,
     Final IO
   ]
 
 grepWith ::
-  Member (Stop HandlerError) r =>
-  Members GrepErrorStack r =>
   Members GrepStack r =>
-  PromptConfig ->
+  Members GrepErrorStack r =>
+  Member (Stop HandlerError) r =>
   [Text] ->
   Path Abs Dir ->
   Text ->
   Sem r ()
-grepWith promptConfig opt path patt =
-  interpretMenu $ withMappings actions do
+grepWith opt path patt =
+  mapHandlerError @RpcError do
     items <- grepItems path patt opt
-    result <- nvimMenu scratchOptions (MenuConfig items fuzzyMonotonic promptConfig)
+    result <- runNvimMenu items [] scratchOptions $ withMappings actions do
+      menu
     handleResult "grep" grepAction result
   where
     scratchOptions =
       def {
         name = ScratchId name,
         syntax = [grepSyntax],
-        size = Just 1,
         filetype = Just name
       }
     name =
@@ -246,8 +235,7 @@ grepWithNative opt pathSpec pattSpec = do
     path <- nvimDir =<< maybe (askUser "directory" [".", "dir"]) pure pathSpec
     patt <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
       maybe (askUser "pattern" []) (pure . unArgs) pattSpec
-    cfg <- defaultPrompt []
-    grepWith cfg opt path patt
+    grepWith opt path patt
 
 proGrepIn ::
   Members GrepStack r =>

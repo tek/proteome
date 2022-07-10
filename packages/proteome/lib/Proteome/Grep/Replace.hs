@@ -1,6 +1,5 @@
 module Proteome.Grep.Replace where
 
-import Control.Lens ((.~), (?~))
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Text as Text
 import Path (parseAbsFile)
@@ -13,6 +12,7 @@ import Ribosome (
   ScratchId (ScratchId),
   ScratchState (ScratchState),
   mapHandlerError,
+  pathText,
   resumeHandlerError,
   toMsgpack,
   )
@@ -23,7 +23,6 @@ import Ribosome.Api.Option (withOption)
 import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
-import Ribosome (pathText)
 import qualified Ribosome.Scratch as Scratch
 
 import qualified Proteome.Data.Env as Env (replace)

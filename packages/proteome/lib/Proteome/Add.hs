@@ -1,21 +1,28 @@
 module Proteome.Add where
 
-import Control.Lens ((<>~))
 import qualified Data.Text as Text
 import Path (Abs, Dir, Path, dirname, parent, stripProperPrefix)
 import Path.IO (listDir)
-import Polysemy.Chronos (ChronosTime)
-import Ribosome (Bang (Bang), Handler, PluginName, Rpc, RpcError, Scratch, SettingError, Settings, mapHandlerError, pathText, resumeHandlerError)
-import Ribosome.Errors (pluginHandlerErrors)
+import Ribosome (
+  Bang (Bang),
+  Handler,
+  PluginName,
+  Rpc,
+  RpcError,
+  SettingError,
+  Settings,
+  mapHandlerError,
+  pathText,
+  resumeHandlerError,
+  )
 import Ribosome.Menu (
   MenuItem (..),
+  MenuResult,
+  MenuState,
   MenuWidget,
-  MenuWrite,
-  PromptConfig,
-  PromptFlag (StartInsert),
-  defaultPrompt,
-  interpretMenu,
-  staticNvimMenuDef,
+  NvimMenu,
+  menu,
+  runStaticNvimMenu,
   traverseSelection_,
   withMappings,
   )
@@ -116,33 +123,42 @@ availableProjects (ProjectConfig.baseDirs -> dirs) =
   join <$> traverse availableProjectsInBase dirs
 
 menuAdd ::
-  MenuWrite AddItem r =>
-  Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Resource, Embed IO] r =>
+  Member (MenuState AddItem) r =>
+  Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Embed IO] r =>
   MenuWidget r ()
 menuAdd =
   traverseSelection_ \ (AddItem tpe name) ->
     add (ProjectName name) (Just (ProjectType tpe)) True
 
-addMenuWith ::
-  Members [Rpc !! RpcError, Rpc, Settings !! SettingError, Settings, Scratch, AtomicState Env, Reader PluginName] r =>
-  Members [Stop ResolveError, Mask res, Stop AddError, Log, Resource, Race, Embed IO, Final IO] r =>
-  PromptConfig ->
-  Sem r ()
-addMenuWith promptConfig =
-  interpretMenu $ withMappings [("cr", menuAdd)] do
-    projectConfig <- Settings.get Settings.projectConfig
-    projects <- sort <$> availableProjects projectConfig
-    void $ staticNvimMenuDef scratchOptions projects promptConfig
+type AddStack =
+  NvimMenu AddItem ++ [
+    AtomicState Env,
+    Reader PluginName,
+    Settings !! SettingError,
+    Rpc !! RpcError,
+    Embed IO
+  ]
+
+addMenu ::
+  Members AddStack r =>
+  Members [Rpc, Settings, Stop ResolveError, Stop AddError, Stop RpcError] r =>
+  Sem r (MenuResult ())
+addMenu = do
+  projectConfig <- Settings.get Settings.projectConfig
+  projects <- sort <$> availableProjects projectConfig
+  runStaticNvimMenu projects [] scratchOptions $ withMappings [("cr", menuAdd)] do
+    menu
   where
     scratchOptions =
-      (scratch "proteome-add") {
-        syntax = [addSyntax]
-      }
+      (scratch "proteome-add") { syntax = [addSyntax] }
 
 proAddMenu ::
-  Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, AtomicState Env, Reader PluginName] r =>
-  Members [ChronosTime, Mask res, Log, Resource, Race, Embed IO, Final IO] r =>
+  Members AddStack r =>
   Handler r ()
 proAddMenu =
-  pluginHandlerErrors $ mapHandlerError @AddError $ mapHandlerError @ResolveError do
-    addMenuWith =<< defaultPrompt [StartInsert]
+  resumeHandlerError @Rpc $
+  resumeHandlerError @Settings $
+  mapHandlerError @AddError $
+  mapHandlerError @ResolveError $
+  mapHandlerError @RpcError do
+    void $ addMenu

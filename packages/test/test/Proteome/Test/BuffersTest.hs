@@ -1,6 +1,5 @@
 module Proteome.Test.BuffersTest where
 
-import Control.Lens ((.~))
 import Path (Abs, File, Path, relfile)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (Test, UnitTest, assertEq, assertJust, unitTest)
@@ -8,24 +7,16 @@ import Ribosome (Rpc, pathText)
 import Ribosome.Api (bufferPath, currentBufferPath, vimGetBuffers)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
 import qualified Ribosome.Data.FileBuffer as FileBuffer
-import Ribosome.Menu (PromptConfig (PromptConfig))
+import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Prompt (promptInputWith)
 import qualified Ribosome.Settings as Settings
-import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 
-import Proteome.Buffers (buffers, buffersWith)
+import Proteome.Buffers (buffers, buffersMenu)
 import Proteome.Data.Env (Env)
 import qualified Proteome.Data.ListedBuffer as ListedBuffer (name)
 import qualified Proteome.Settings as Settings (buffersCurrentLast)
 import Proteome.Test.Run (proteomeTest)
-
-promptConfig ::
-  [Text] ->
-  PromptConfig
-promptConfig cs =
-  PromptConfig (promptInputWith (Just 1) Nothing (Stream.fromList cs)) []
 
 setupBuffers ::
   Members [AtomicState Env, Rpc, Test] r =>
@@ -61,7 +52,7 @@ test_loadBuffer =
   proteomeTest do
     (_, buf2, buf3) <- setupBuffers
     assertJust buf3 =<< currentBufferPath
-    buffersWith (promptConfig ["k", "cr"])
+    interpretNvimMenuFinal $ promptInput ["k", "cr"] buffersMenu
     assertJust buf2 =<< currentBufferPath
 
 test_deleteBuffer :: UnitTest
@@ -69,7 +60,7 @@ test_deleteBuffer =
   proteomeTest do
     (buf1, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    buffersWith (promptConfig ["k", "d", "esc"])
+    interpretNvimMenuFinal $ promptInput ["k", "d", "esc"] buffersMenu
     assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_wipeBuffer :: UnitTest
@@ -77,7 +68,7 @@ test_wipeBuffer =
   proteomeTest do
     (buf1, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    buffersWith (promptConfig ["k", "w", "esc"])
+    interpretNvimMenuFinal $ promptInput ["k", "w", "esc"] buffersMenu
     assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< vimGetBuffers
 
 test_deleteMultipleBuffers :: UnitTest
@@ -85,7 +76,7 @@ test_deleteMultipleBuffers =
   proteomeTest do
     (_, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    buffersWith (promptConfig ["k", "space", "space", "d", "esc"])
+    interpretNvimMenuFinal $ promptInput ["k", "space", "space", "d", "esc"] buffersMenu
     assertEq [buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_deleteCurrentBuffer :: UnitTest
@@ -93,7 +84,7 @@ test_deleteCurrentBuffer =
   proteomeTest do
     (buf1, _, _) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    buffersWith (promptConfig ["d", "d", "esc"])
+    interpretNvimMenuFinal $ promptInput ["d", "d", "esc"] buffersMenu
     assertEq [buf1] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_currentBufferPosition :: UnitTest

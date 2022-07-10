@@ -1,6 +1,6 @@
 module Proteome.Files where
 
-import Control.Lens (_1, use, view)
+import Control.Lens (view)
 import Control.Monad (foldM)
 import Data.Either.Extra (eitherToMaybe)
 import Data.List.Extra (dropEnd)
@@ -9,44 +9,38 @@ import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Text as Text
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
-import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   Handler,
   HandlerError,
   Rpc,
   RpcError,
-  Scratch,
   ScratchId (ScratchId),
   SettingError,
   Settings,
   mapHandlerError,
+  resumeHandlerError,
   )
 import Ribosome.Api (nvimGetOption)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
 import Ribosome.Data.Setting (Setting (Setting))
-import Ribosome.Errors (pluginHandlerErrors)
 import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
   MenuAction,
-  MenuSem,
+  MenuState,
   MenuWidget,
-  MenuWrite,
+  NvimMenu,
   Prompt (..),
-  PromptConfig,
   PromptFlag (OnlyInsert, StartInsert),
-  PromptListening,
   PromptMode,
   PromptText (PromptText),
-  defaultPrompt,
-  interpretMenu,
+  menu,
   menuOk,
-  menuRead,
   menuSuccess,
   menuUpdatePrompt,
-  nvimMenuDef,
-  semState,
+  readPrompt,
+  runNvimMenu,
   withMappings,
   withSelection,
   )
@@ -70,7 +64,7 @@ data FileAction =
   deriving stock (Eq, Show)
 
 editFile ::
-  MenuWrite (Path Abs File) r =>
+  Member (MenuState (Path Abs File)) r =>
   MenuWidget r FileAction
 editFile =
   withSelection (pure . Edit)
@@ -136,11 +130,11 @@ tabUpdatePrompt st prefix =
   Prompt (Text.length prefix) st (PromptText prefix)
 
 tab ::
-  Member (Embed IO) r =>
+  Members [MenuState (Path Abs File), Embed IO] r =>
   [Path Abs Dir] ->
-  MenuSem (Path Abs File) r (Maybe (MenuAction FileAction))
+  Sem r (Maybe (MenuAction FileAction))
 tab bases = do
-  Prompt _ promptState (PromptText promptText) <- semState (use #prompt)
+  Prompt _ promptState (PromptText promptText) <- readPrompt
   tabComplete bases promptText >>= \case
     Just prefix ->
       menuUpdatePrompt (tabUpdatePrompt promptState prefix)
@@ -181,11 +175,11 @@ existingSubdirCount =
           pure count
 
 createFile ::
-  Members [Stop FilesError, Embed IO] r =>
+  Members [MenuState (Path Abs File), Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
-  MenuSem (Path Abs File) r (Maybe (MenuAction FileAction))
+  Sem r (Maybe (MenuAction FileAction))
 createFile bases = do
-  PromptText promptText <- semState (use (#prompt . #text))
+  PromptText promptText <- view #text <$> readPrompt
   let
     parse counts =
       (base counts </>) <$> parseRelFile (toString promptText)
@@ -200,15 +194,14 @@ createFile bases = do
       stop . FilesError.InvalidFilePath
 
 actions ::
-  Members [Stop FilesError, Embed IO] r =>
-  MenuWrite (Path Abs File) r =>
+  Members [MenuState (Path Abs File), Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
   Map Text (MenuWidget r FileAction)
 actions bases =
   [
     ("cr", editFile),
-    ("tab", menuRead (tab (NonEmpty.toList bases))),
-    ("c-y", menuRead (createFile bases))
+    ("tab", tab (NonEmpty.toList bases)),
+    ("c-y", createFile bases)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
@@ -261,26 +254,27 @@ fileAction = \case
   NoAction ->
     unit
 
-filesWith ::
-  MenuWrite (Path Abs File) r =>
-  Members [Sync PromptListening, Log, Mask res, Race, Resource, Async, Embed IO, Final IO] r =>
-  Members [Stop FilesError, Stop HandlerError, Settings, Settings !! SettingError, Scratch, Rpc, Rpc !! RpcError] r =>
-  PromptConfig ->
+type FilesStack =
+  NvimMenu (Path Abs File) ++ [
+    Async,
+    Embed IO
+  ]
+
+filesMenuWith ::
+  Members FilesStack r =>
+  Members [Stop FilesError, Stop HandlerError, Settings, Rpc] r =>
   Path Abs Dir ->
   [Text] ->
   Sem r ()
-filesWith promptConfig cwd paths =
-  withMappings (actions nePaths) do
+filesMenuWith cwd pathSpecs = do
+  mapHandlerError @RpcError do
     conf <- filesConfig
     items <- files conf nePaths
-    result <- nvimMenuDef scratchOptions items promptConfig
+    result <- runNvimMenu items [StartInsert, OnlyInsert] opt $ withMappings (actions nePaths) do
+      menu
     handleResult "files" fileAction result
   where
-    nePaths =
-      fromMaybe (cwd :| []) $ nonEmpty absPaths
-    absPaths =
-      mapMaybe (parsePath cwd) paths
-    scratchOptions =
+    opt =
       def {
         name = ScratchId name,
         syntax = [filesSyntax],
@@ -288,15 +282,26 @@ filesWith promptConfig cwd paths =
       }
     name =
       "proteome-files"
+    nePaths =
+      fromMaybe (cwd :| []) (nonEmpty absPaths)
+    absPaths =
+      mapMaybe (parsePath cwd) pathSpecs
+
+filesMenu ::
+  Members FilesStack r =>
+  Members [Stop FilesError, Stop HandlerError, Settings, Rpc] r =>
+  Path Abs Dir ->
+  [Text] ->
+  Sem r ()
+filesMenu cwd pathSpecs =
+  filesMenuWith cwd pathSpecs
 
 proFiles ::
-  Member ChronosTime r =>
-  Members [Scratch !! RpcError, Settings !! SettingError, Rpc !! RpcError] r =>
-  Members [Log, Mask res, Race, Resource, Async, Embed IO, Final IO] r =>
+  Members FilesStack r =>
+  Members [Rpc !! RpcError, Settings !! SettingError] r =>
   ArgList ->
   Handler r ()
 proFiles (ArgList paths) =
-  mapHandlerError @FilesError $ pluginHandlerErrors $ interpretMenu do
+  mapHandlerError @FilesError $ resumeHandlerError @Rpc $ resumeHandlerError @Settings do
     cwd <- resumeHoistAs FilesError.BadCwd nvimCwd
-    conf <- defaultPrompt [StartInsert, OnlyInsert]
-    filesWith conf cwd paths
+    filesMenu cwd paths

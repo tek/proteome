@@ -1,6 +1,5 @@
 module Proteome.Test.PersistStoreTest where
 
-import Control.Lens ((.~))
 import Data.Aeson (decode)
 import qualified Data.ByteString.Lazy as LByteString
 import Path (Abs, File, Path, absdir, reldir, relfile, toFilePath, (</>))
@@ -17,7 +16,7 @@ import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.PersistBuffers (storeBuffers)
-import Proteome.Test.Run (proteomeTest)
+import Proteome.Test.Run (interpretPersistTest, proteomeTest)
 
 main :: ProjectMetadata
 main = DirProject (ProjectName "flagellum") (ProjectRoot [absdir|/|]) (Just (ProjectType "haskell"))
@@ -28,7 +27,7 @@ storeTarget f1 f2 f3 =
 
 test_storeBuffers :: UnitTest
 test_storeBuffers =
-  proteomeTest do
+  proteomeTest $ interpretPersistTest do
     let nonexistentFile = [relfile|nonexistent|]
     base <- Test.fixturePath [reldir|persist/store|]
     let file1 = base </> [relfile|file1|]
@@ -43,8 +42,8 @@ test_storeBuffers =
     atomicModify' (#mainProject . #meta .~ main)
     resumeTestError @(Persist _) storeBuffers
     let bufferFile = persistDir </> [relfile|buffers/haskell/flagellum/buffers.json|]
-    json <- embed (LByteString.readFile (toFilePath bufferFile))
-    pb <- case decode json of
+    js <- embed (LByteString.readFile (toFilePath bufferFile))
+    pb <- case decode js of
       Just a -> pure a
       _ -> fail "invalid json"
     storeTarget file1 file2 file3 === pb

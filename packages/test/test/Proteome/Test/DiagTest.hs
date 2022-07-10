@@ -1,6 +1,5 @@
 module Proteome.Test.DiagTest where
 
-import Control.Lens ((.~))
 import Path (Abs, Dir, Path, absdir, toFilePath)
 import Polysemy.Test (UnitTest, (===))
 import Ribosome.Api.Buffer (currentBufferContent)

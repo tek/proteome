@@ -1,9 +1,8 @@
 module Proteome.Init where
 
-import Control.Lens ((.~))
 import Exon (exon)
 import qualified Log
-import Ribosome (Rpc, SettingError, Settings, Handler, resumeHandlerError, RpcError)
+import Ribosome (Handler, Rpc, RpcError, SettingError, Settings, resumeHandlerError)
 import Ribosome.Api (nvimCallFunction, uautocmd)
 import qualified Ribosome.Settings as Settings
 

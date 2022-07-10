@@ -1,19 +1,18 @@
 module Proteome.Buffers where
 
-import Control.Lens (each, elemOf, uses)
+import Control.Lens (elemOf, uses)
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Text as Text
 import Exon (exon)
-import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   Handler,
   HandlerError,
   Rpc,
   RpcError,
-  Scratch,
   ScratchId (ScratchId),
   SettingError,
   Settings,
+  mapHandlerError,
   pathText,
   resumeHandlerError,
   )
@@ -33,16 +32,13 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Menu (
   Mappings,
   MenuItem (MenuItem),
-  MenuSem,
+  MenuState,
   MenuWidget,
-  MenuWrite,
-  PromptConfig,
-  defaultPrompt,
+  NvimMenu,
   deleteSelected,
-  interpretMenu,
-  menuWrite,
+  menu,
+  runStaticNvimMenu,
   semState,
-  staticNvimMenuDef,
   unselected,
   withFocus,
   withMappings,
@@ -51,6 +47,7 @@ import Ribosome.Menu (
 import qualified Ribosome.Menu.Data.MenuAction as MenuAction
 import Ribosome.Menu.Data.MenuAction (MenuAction)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import Ribosome.Menu.Data.MenuState (modifyMenu)
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Buffers.Syntax (buffersSyntax)
@@ -73,7 +70,7 @@ loadListedBuffer (ListedBuffer buffer number _) =
   ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (nvimCommand [exon|buffer #{show number}|])
 
 load ::
-  MenuWrite ListedBuffer r =>
+  Member (MenuState ListedBuffer) r =>
   MenuWidget r BufferAction
 load =
   withFocus (pure . Load)
@@ -105,10 +102,11 @@ deleteListedBuffersWith deleter bufs =
 
 deleteWith ::
   Member Rpc r =>
+  Member (MenuState ListedBuffer) r =>
   Text ->
-  MenuSem ListedBuffer r (Maybe (MenuAction a))
+  Sem r (Maybe (MenuAction a))
 deleteWith deleter =
-  withSelection' \ delete -> do
+  modifyMenu $ withSelection' \ delete -> do
     keep <- semState (uses unselected (fmap MenuItem.meta))
     compensateForMissingActiveBuffer delete keep
     deleteListedBuffersWith deleter delete
@@ -157,15 +155,15 @@ buffers = do
 
 actions ::
   Member Rpc r =>
-  MenuWrite ListedBuffer r =>
+  Member (MenuState ListedBuffer) r =>
   Mappings r BufferAction
 actions =
   [
     ("cr", load),
-    ("d", menuWrite (deleteWith "bdelete")),
-    ("D", menuWrite (deleteWith "bdelete!")),
-    ("w", menuWrite (deleteWith "bwipeout")),
-    ("W", menuWrite (deleteWith "bwipeout!"))
+    ("d", deleteWith "bdelete"),
+    ("D", deleteWith "bdelete!"),
+    ("w", deleteWith "bwipeout"),
+    ("W", deleteWith "bwipeout!")
   ]
 
 bufferAction ::
@@ -176,16 +174,22 @@ bufferAction = \case
   Load buf ->
     loadListedBuffer buf
 
-buffersWith ::
-  Members [Log, Mask res, Race, Resource, Embed IO, Final IO] r =>
-  Members [AtomicState Env, Settings !! SettingError, Rpc, Rpc !! RpcError, Scratch, Stop HandlerError] r =>
-  PromptConfig ->
+type BuffersStack =
+  NvimMenu ListedBuffer ++ [
+    AtomicState Env,
+    Settings !! SettingError,
+    Rpc !! RpcError
+  ]
+
+buffersMenu ::
+  Members BuffersStack r =>
+  Members [Rpc, Stop HandlerError] r =>
   Sem r ()
-buffersWith promptConfig =
-  interpretMenu $ withMappings actions do
-    bufs <- buffers
-    result <- staticNvimMenuDef scratchOptions bufs promptConfig
-    handleResult "buffers" bufferAction result
+buffersMenu = do
+  items <- buffers
+  result <- mapHandlerError $ runStaticNvimMenu items [] scratchOptions $ withMappings actions do
+    menu
+  handleResult "buffers" bufferAction result
   where
     scratchOptions =
       def {
@@ -197,9 +201,8 @@ buffersWith promptConfig =
       "proteome-buffers"
 
 proBuffers ::
-  Members [AtomicState Env, Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError] r =>
-  Members [ChronosTime, Log, Mask res, Race, Resource, Embed IO, Final IO] r =>
+  Members BuffersStack r =>
   Handler r ()
 proBuffers =
-  resumeHandlerError @Rpc $ resumeHandlerError @Scratch do
-    buffersWith =<< defaultPrompt []
+  resumeHandlerError @Rpc do
+    buffersMenu

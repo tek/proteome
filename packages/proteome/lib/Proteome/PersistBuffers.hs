@@ -1,9 +1,11 @@
 module Proteome.PersistBuffers where
 
-import Control.Lens ((.~))
+import Conc (Lock, lockOrSkip_)
 import qualified Data.Text as Text (null)
+import Exon (exon)
+import qualified Log
 import Path (Abs, Dir, File, Path, Rel, parseRelDir, relfile, toFilePath, (</>))
-import Ribosome (Rpc, RpcError, lockOrSkip)
+import Ribosome (Rpc, RpcError)
 import Ribosome.Api (bufferGetName, vimCommand, vimGetCurrentBuffer)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
 import qualified Ribosome.Data.FileBuffer as FileBuffer
@@ -19,8 +21,6 @@ import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Path (existingFile)
-import qualified Log
-import Exon (exon)
 
 data StoreBuffersLock =
   StoreBuffersLock
@@ -47,10 +47,10 @@ projectPaths =
 
 storeBuffers ::
   Member (Persist PersistBuffers) r =>
-  Members [Sync StoreBuffersLock, AtomicState Env, Rpc, Rpc !! RpcError, Resource, Embed IO] r =>
+  Members [Lock @@ StoreBuffersLock, AtomicState Env, Rpc, Rpc !! RpcError, Resource, Embed IO] r =>
   Sem r ()
 storeBuffers =
-  void $ lockOrSkip $ projectPaths >>= traverse_ \ (cwd, path) -> do
+  tag $ lockOrSkip_ $ projectPaths >>= traverse_ \ (cwd, path) -> do
     names <- traverse bufferGetName =<< filterM buflisted =<< atomicGets Env.buffers
     files <- catMaybes <$> traverse (existingFile cwd) names
     Persist.store (Just (path </> file)) (PersistBuffers (listToMaybe files) files)
@@ -80,8 +80,8 @@ restoreBuffers (PersistBuffers active rest) = do
       when (Text.null currentBufferName) (edit path)
 
 loadBuffers ::
-  Members [Persist PersistBuffers, Sync LoadBuffersLock, Rpc, AtomicState Env, Log, Resource] r =>
+  Members [Persist PersistBuffers, Lock @@ LoadBuffersLock, Rpc, AtomicState Env, Log, Resource] r =>
   Sem r ()
 loadBuffers =
-  void $ lockOrSkip $ projectPaths >>= traverse_ \ (_, path) ->
+  tag $ lockOrSkip_ $ projectPaths >>= traverse_ \ (_, path) ->
     traverse_ restoreBuffers =<< decodePersistBuffers path

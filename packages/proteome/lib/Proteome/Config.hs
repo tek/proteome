@@ -1,6 +1,5 @@
 module Proteome.Config where
 
-import Control.Lens ((%~))
 import Exon (exon)
 import Ribosome (Handler, Rpc, RpcError, msgpackArray, resumeHandlerError)
 import Ribosome.Api (nvimGetOption, vimCallFunction, vimCommand)

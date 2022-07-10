@@ -1,6 +1,5 @@
 module Proteome.Test.PersistLoadTest where
 
-import Control.Lens ((.~))
 import qualified Data.Text.IO as Text
 import Exon (exon)
 import Path (absdir, reldir, relfile, toFilePath, (</>))
@@ -21,7 +20,7 @@ import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import qualified Proteome.PersistBuffers as PersistBuffers
 import Proteome.PersistBuffers (loadBuffers)
-import Proteome.Test.Run (proteomeTest)
+import Proteome.Test.Run (interpretPersistTest, proteomeTest)
 
 main :: ProjectMetadata
 main = DirProject (ProjectName "flagellum") (ProjectRoot [absdir|/|]) (Just (ProjectType "haskell"))
@@ -32,7 +31,7 @@ buffersJson base =
 
 test_loadPersistedBuffers :: UnitTest
 test_loadPersistedBuffers =
-  proteomeTest do
+  proteomeTest $ interpretPersistTest do
     vimSetOption "swapfile" False
     atomicModify' (#mainProject . #meta .~ main)
     persistBase <- resumeTestError @PersistPath Persist.persistRoot

@@ -95,13 +95,13 @@ library
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin
   build-depends:
       base >=4.12 && <5
-    , incipit >=0.3
     , polysemy
     , polysemy-plugin
+    , prelate >=0.1
   mixins:
       base hiding (Prelude)
-    , incipit (Incipit as Prelude)
-    , incipit hiding (Incipit)
+    , prelate (Prelate as Prelude)
+    , prelate hiding (Prelate)
   default-language: Haskell2010
 
 test-suite proteome-unit
@@ -200,7 +200,6 @@ test-suite proteome-unit
       aeson
     , base >=4.12 && <5
     , exon
-    , incipit >=0.3
     , lens
     , lens-regex-pcre
     , path
@@ -209,6 +208,7 @@ test-suite proteome-unit
     , polysemy
     , polysemy-plugin
     , polysemy-test
+    , prelate >=0.1
     , proteome
     , ribosome
     , ribosome-host
@@ -218,6 +218,6 @@ test-suite proteome-unit
     , tasty
   mixins:
       base hiding (Prelude)
-    , incipit (Incipit as Prelude)
-    , incipit hiding (Incipit)
+    , prelate (Prelate as Prelude)
+    , prelate hiding (Prelate)
   default-language: Haskell2010

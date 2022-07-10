@@ -8,11 +8,9 @@ import Ribosome (pathText)
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
+import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
-import Ribosome.Menu.Prompt (promptInputWith)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig))
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
-import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 
 import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
@@ -20,12 +18,6 @@ import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith, uniqueGrepLines)
 import Proteome.Grep.Process (grepMenuItems)
 import Proteome.Test.Run (proteomeTest)
-
-promptConfig ::
-  [Text] ->
-  PromptConfig
-promptConfig cs =
-  PromptConfig (promptInputWith (Just 0.1) Nothing (Stream.fromList cs)) []
 
 pat :: Text
 pat =
@@ -39,7 +31,7 @@ test_grepJump :: UnitTest
 test_grepJump =
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    Grep.handleErrors (grepWith (promptConfig jumpChars) [] dir pat)
+    Grep.handleErrors (interpretNvimMenuFinal (promptInput jumpChars (grepWith [] dir pat)))
     assertEq 5 =<< currentLine
 
 yankChars :: [Text]
@@ -50,7 +42,7 @@ test_grepYank :: UnitTest
 test_grepYank = do
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    Grep.handleErrors (grepWith (promptConfig yankChars) [] dir pat)
+    Grep.handleErrors (interpretNvimMenuFinal (promptInput yankChars (grepWith [] dir pat)))
     normal "P"
     l <- currentBufferContent
     ["line 6 " <> pat, ""] === l
@@ -73,19 +65,10 @@ test_grepDuplicates =
       item col =
         [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target") "" ""]
 
-test_noResults :: UnitTest
-test_noResults =
-  proteomeTest do
-    dir <- Test.fixturePath [reldir|grep/pro|]
-    Grep.handleErrors (grepWith (promptConfig []) [] dir "nonexistent")
-    l <- currentBufferContent
-    [""] === l
-
 test_grep :: TestTree
 test_grep =
   testGroup "grep" [
     unitTest "jump to a result" test_grepJump,
     unitTest "yank a result" test_grepYank,
-    unitTest "filter duplicates" test_grepDuplicates,
-    unitTest "no results" test_noResults
+    unitTest "filter duplicates" test_grepDuplicates
   ]

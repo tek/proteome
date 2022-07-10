@@ -20,13 +20,23 @@ import Path (
   (</>),
   )
 import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
-import Ribosome (Bang (Bang), Handler, HostError, Rpc, RpcError (RpcError), mapHandlerError, reportError, resumeHandlerError)
+import Ribosome (
+  Bang (Bang),
+  Handler,
+  HostError,
+  Rpc,
+  RpcError,
+  mapHandlerError,
+  pathText,
+  reportError,
+  resumeHandlerError,
+  rpcErrorMessage,
+  )
 import Ribosome.Api (bufferSetName, vimCallFunction, vimCommand, vimGetCurrentBuffer, wipeBuffer)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Host.Modify (silent)
-import Ribosome (pathText)
 import Ribosome.Persist (PersistPath, persistPath)
 
 import qualified Proteome.Data.FilenameError as FilenameError
@@ -307,7 +317,7 @@ writeBuffer action =
     vimCommand "write!"
   where
     err msg =
-      resumeHoist \ (RpcError e) -> FilenameError.ActionFailed action [exon|#{msg}: #{e}|]
+      resumeHoist \ e -> FilenameError.ActionFailed action [exon|#{msg}: #{rpcErrorMessage e}|]
 
 updateBuffer ::
   Member Rpc r =>

@@ -1,5 +1,6 @@
 module Proteome.Tags where
 
+import Conc (Lock, lockOrSkip_)
 import qualified Data.List as List
 import Data.Sequence ((|>))
 import qualified Data.Text as Text (intercalate, replace)
@@ -9,7 +10,7 @@ import qualified Log
 import Log (Severity (Warn))
 import Path (File, Path, Rel, addExtension, toFilePath, (</>))
 import Path.IO (doesFileExist, removeFile, renameFile)
-import Polysemy.Process (SysProcConf, SystemProcess, interpretSystemProcessNativeSingle, SystemProcessScopeError)
+import Polysemy.Process (SysProcConf, SystemProcess, SystemProcessScopeError, interpretSystemProcessNativeSingle)
 import qualified Polysemy.Process.SystemProcess as Process
 import Ribosome (
   ErrorMessage (ErrorMessage),
@@ -19,7 +20,6 @@ import Ribosome (
   HostError,
   SettingError,
   Settings,
-  lockOrSkip_,
   mapHandlerError,
   reportStop,
   resumeHandlerError,
@@ -169,7 +169,7 @@ execution = \case
     mapHandlerError
 
 proTags ::
-  Members [AtomicState Env, Settings !! SettingError, DataLog HostError, Sync TagsLock, Errors] r =>
+  Members [AtomicState Env, Settings !! SettingError, DataLog HostError, Lock @@ TagsLock, Errors] r =>
   Members [Log, Resource, Async, Embed IO] r =>
   Handler r ()
 proTags =
@@ -177,6 +177,6 @@ proTags =
     main <- atomicGets Env.mainProject
     extra <- atomicGets Env.projects
     fork <- Settings.get Settings.tagsFork
-    execution fork $ lockOrSkip_ @TagsLock do
+    execution fork $ tag $ lockOrSkip_ do
       res <- sequenceConcurrently (runStop . projectTags <$> main : extra)
       traverse (void . stopEither . fromMaybe unit) res

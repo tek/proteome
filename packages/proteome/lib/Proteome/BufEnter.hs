@@ -1,7 +1,6 @@
 module Proteome.BufEnter where
 
-import Conc (lock)
-import Control.Lens ((.~))
+import Conc (Lock, lock)
 import Data.List.Extra (nub)
 import qualified Data.Text as Text (intercalate)
 import Path (Abs, Dir, File, Path, toFilePath, (</>))
@@ -19,8 +18,8 @@ import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Project (allProjects)
 import Proteome.Settings (tagsFileName)
 
-data MruLock =
-  MruLock
+data Mru =
+  Mru
   deriving stock (Eq, Show)
 
 setBufferTags ::
@@ -36,24 +35,24 @@ projectRoot (Project (DirProject _ (ProjectRoot root) _) _ _ _) = Just root
 projectRoot _ = Nothing
 
 updateBufferMru ::
-  Members [AtomicState Env, Sync MruLock, Rpc !! RpcError, Resource] r =>
+  Members [AtomicState Env, Lock @@ Mru, Rpc !! RpcError, Resource] r =>
   Buffer ->
   Sem r ()
 updateBufferMru buffer = do
-  lock MruLock do
+  tag $ lock do
     old <- atomicGets Env.buffers
     new <- filterM buflisted (nub (buffer : old))
     atomicModify' (#buffers .~ new)
 
 updateBuffers ::
-  Members [AtomicState Env, Sync MruLock, Rpc, Rpc !! RpcError, Resource] r =>
+  Members [AtomicState Env, Lock @@ Mru, Rpc, Rpc !! RpcError, Resource] r =>
   Sem r ()
 updateBuffers = do
   current <- vimGetCurrentBuffer
   whenM (bufferIsFile current) (updateBufferMru current)
 
 bufEnter ::
-  Members [AtomicState Env, Sync MruLock, Rpc !! RpcError, Settings !! SettingError, Resource] r =>
+  Members [AtomicState Env, Lock @@ Mru, Rpc !! RpcError, Settings !! SettingError, Resource] r =>
   Handler r ()
 bufEnter =
   resumeHandlerError @Rpc do

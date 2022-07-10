@@ -1,6 +1,5 @@
 module Proteome.Test.TagsTest where
 
-import Control.Lens ((.~), (?~))
 import Path (Abs, Dir, Path, reldir, relfile, (</>))
 import Path.IO (doesFileExist)
 import qualified Polysemy.Test as Test

@@ -1,6 +1,5 @@
 module Proteome.Project.Activate where
 
-import Control.Lens ((%~), (.~))
 import Exon (exon)
 import Path.IO (doesDirExist)
 import Ribosome (Handler, Rpc, RpcError, SettingError, Settings, pathText, resumeHandlerError)

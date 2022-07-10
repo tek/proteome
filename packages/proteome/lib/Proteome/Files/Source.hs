@@ -1,8 +1,7 @@
 module Proteome.Files.Source where
 
 import Control.Concurrent.STM (atomically)
-import Control.Concurrent.STM.TMChan (TMChan, closeTMChan, newTMChan, writeTMChan)
-import Control.Lens (has)
+import Control.Concurrent.STM.TMChan (TMChan, closeTMChan, newTMChan, readTMChan, writeTMChan)
 import Control.Lens.Regex.Text (match, regexing)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import qualified Data.Set as Set (fromList, toList)
@@ -27,9 +26,9 @@ import Path.IO (doesDirExist, findExecutable, walkDir)
 import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
 import Ribosome (pathText)
 import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
-import Ribosome.Menu.Stream.Util (chanStream)
-import qualified Streamly.Prelude as Streamly
-import Streamly.Prelude (SerialT)
+import Ribosome.Menu.Stream.Util (takeUntilNothing)
+import qualified Streamly.Prelude as Stream
+import Streamly.Prelude (IsStream, SerialT)
 import System.FilePattern ((?==))
 import Text.Regex.PCRE.Light (Regex)
 
@@ -96,9 +95,9 @@ scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir ba
     walkDir enqueue dir
   where
     enqueue _ dirs files' =
-      exclude <$ atomically (traverse_ (writeTMChan chan) filtered)
+      exclude <$ atomically (traverse_ (writeTMChan chan) filteredFiles)
       where
-        filtered =
+        filteredFiles =
           cons <$> filterFiles excludeHidden ignoreFiles (toString <$> wildignore) files'
         exclude =
           WalkAction.WalkExclude (filterDirs excludeHidden ignoreDirs dirs)
@@ -151,6 +150,14 @@ formatFileLine base baseIndicator path =
     indicator name =
       "[" <> name <> "] "
 
+chanStream ::
+  IsStream t =>
+  Functor (t IO) =>
+  TMChan a ->
+  t IO a
+chanStream chan =
+  takeUntilNothing (Stream.repeatM (liftIO (atomically (readTMChan chan))))
+
 filesNative ::
   Members [Async, Embed IO] r =>
   FilesConfig ->
@@ -193,7 +200,7 @@ filesRg ::
   NonEmpty (Path Abs Dir) ->
   SerialT IO (MenuItem (Path Abs File))
 filesRg rgExe conf paths =
-  Streamly.mapMaybe item $
+  Stream.mapMaybe item $
   processLines rgExe ("--files" : excludes <> patterns)
   where
     patterns =
@@ -211,7 +218,7 @@ files ::
 files conf@(FilesConfig useRg _ _ _ _) paths =
   filterM doesDirExist (toList paths) >>= \case
     [] ->
-      pure Streamly.nil
+      pure Stream.nil
     p : ps ->
       findExecutable [relfile|rg|] >>= \case
         Just rgExe | useRg ->

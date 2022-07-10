@@ -1,6 +1,5 @@
 module Proteome.Test.ReplaceTest where
 
-import Control.Lens ((.~))
 import Control.Lens.Regex.Text (group, regex)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
@@ -10,20 +9,12 @@ import Polysemy.Test (Hedgehog, UnitTest, (===))
 import Prelude hiding (group)
 import Ribosome.Api (vimGetBuffers)
 import Ribosome.Api.Buffer (buflisted, currentBufferContent, setCurrentBufferContent)
-import Ribosome.Menu.Prompt.Data.PromptConfig (PromptConfig (PromptConfig))
-import Ribosome.Menu.Prompt.Input (promptInputWith)
-import qualified Streamly.Prelude as Stream
+import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
 
 import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Test.Run (proteomeTest)
-
-promptConfig ::
-  [Text] ->
-  PromptConfig
-promptConfig cs =
-  PromptConfig (promptInputWith (Just 1) (Just 0.01) (Stream.fromList cs)) []
 
 pat :: Text
 pat =
@@ -118,7 +109,7 @@ test_grepReplace =
     file1 <- Test.tempFile file1Lines [relfile|grep/replace/file1|]
     file2 <- Test.tempFile file2Lines [relfile|grep/replace/file2|]
     file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
-    Grep.handleErrors (grepWith (promptConfig replaceChars) [] dir pat)
+    Grep.handleErrors (interpretNvimMenuFinal (promptInput replaceChars (grepWith [] dir pat)))
     replaceContent <- currentBufferContent
     7 === length replaceContent
     setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
@@ -161,5 +152,5 @@ test_grepDelete =
   proteomeTest do
     dir <- Test.tempDir [reldir|grep/delete|]
     file1 <- Test.tempFile deleteFile1Lines [relfile|grep/delete/file1|]
-    Grep.handleErrors (grepWith (promptConfig deleteChars) [] dir pat)
+    Grep.handleErrors (interpretNvimMenuFinal (promptInput deleteChars (grepWith [] dir pat)))
     checkContent file1 deleteFile1Target

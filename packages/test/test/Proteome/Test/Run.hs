@@ -1,62 +1,61 @@
 module Proteome.Test.Run where
 
-import Conc (interpretAtomic, interpretSyncAs)
-import Log (Severity (Debug))
-import Path (Abs, Dir, Path, reldir)
+import Conc (Restoration, interpretAtomic)
+import Log (Severity (Trace))
+import Path (reldir)
 import qualified Polysemy.Test as Test
-import Polysemy.Test (UnitTest)
+import Polysemy.Test (Test, UnitTest)
 import Ribosome (
   BootError,
   HandlerError,
   HostConfig,
+  Persist,
+  PersistError,
+  PersistPath,
+  PersistPathError,
   PluginConfig (PluginConfig),
-  Rpc,
-  RpcError,
-  SettingError,
-  Settings,
   interpretPersist,
   interpretPersistPathAt,
   noHandlers,
   setStderr,
   )
-import Ribosome.Data.PluginName (PluginName)
-import Ribosome.Host.Data.HostError (HostError)
 import qualified Ribosome.Settings as Settings
-import Ribosome.Test (StackWith, TestConfig (TestConfig), runEmbedTest, testHandler, testPluginEmbed)
+import Ribosome.Test (EmbedStackWith, TestConfig (TestConfig), runEmbedTest, testHandler, testPluginEmbed)
 
-import Proteome.BufEnter (MruLock (MruLock))
+import Proteome.Data.Env (Env)
+import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ProjectConfig (baseDirs)
-import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock))
-import Proteome.Plugin (ProteomeStack)
+import Proteome.Plugin (ProteomeStack, interpretProteomeStack)
 import qualified Proteome.Settings as Settings
-import Proteome.Tags (TagsLock (TagsLock))
 
 type ProteomeTestStack =
-  Stop HandlerError : StackWith ProteomeStack
+  AtomicState Env : ProteomeStack
+
+type ProteomeTest =
+  Stop HandlerError : EmbedStackWith ProteomeTestStack
+
+interpretPersistTest ::
+  Members [Error BootError, Test, Log, Embed IO] r =>
+  InterpretersFor [Persist PersistBuffers !! PersistError, PersistPath !! PersistPathError] r
+interpretPersistTest test = do
+  persistDir <- Test.tempDir [reldir|persist|]
+  interpretPersistPathAt True persistDir (interpretPersist "buffers" test)
 
 interpretProteomeStackTest ::
-  Members [Reader PluginName, DataLog HostError] r =>
-  Members [Rpc !! RpcError, Settings !! SettingError, Error BootError, Race, Log, Resource, Async, Embed IO] r =>
-  Path Abs Dir ->
-  InterpretersFor ProteomeStack r
-interpretProteomeStackTest persistDir =
-  interpretSyncAs MruLock .
-  interpretSyncAs TagsLock .
-  interpretSyncAs StoreBuffersLock .
-  interpretSyncAs LoadBuffersLock .
-  interpretPersistPathAt True persistDir .
-  interpretPersist "buffers" .
+  Members [Race, Resource, Mask Restoration, Embed IO] r =>
+  InterpretersFor ProteomeTestStack r
+interpretProteomeStackTest =
+  interpretProteomeStack .
   interpretAtomic def
 
 proteomeTestConf ::
   HasCallStack =>
   HostConfig ->
-  Sem ProteomeTestStack () ->
+  Sem ProteomeTest () ->
   UnitTest
 proteomeTestConf conf test =
   runEmbedTest (TestConfig False (PluginConfig "proteome" conf)) do
-    persistDir <- Test.tempDir [reldir|persist|]
-    interpretProteomeStackTest persistDir $ noHandlers $ testPluginEmbed $ testHandler do
+    interpretProteomeStackTest $ noHandlers $ testPluginEmbed $ testHandler do
       projects <- Test.fixturePath [reldir|projects|]
       mainDir <- Test.fixturePath [reldir|projects/haskell/flagellum|]
       Settings.update Settings.projectConfig def { baseDirs = [projects] }
@@ -65,14 +64,14 @@ proteomeTestConf conf test =
 
 proteomeTest ::
   HasCallStack =>
-  Sem ProteomeTestStack () ->
+  Sem ProteomeTest () ->
   UnitTest
 proteomeTest =
   proteomeTestConf def
 
-proteomeTestDebug ::
+proteomeTestTrace ::
   HasCallStack =>
-  Sem ProteomeTestStack () ->
+  Sem ProteomeTest () ->
   UnitTest
-proteomeTestDebug =
-  proteomeTestConf (setStderr Debug def)
+proteomeTestTrace =
+  proteomeTestConf (setStderr Trace def)

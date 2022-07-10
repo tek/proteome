@@ -5,16 +5,15 @@ import Path (File, Path, Rel, parent, reldir, relfile, stripProperPrefix, (</>))
 import Path.IO (createDirIfMissing, doesFileExist, listDir)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (Hedgehog, Test, UnitTest, assert, assertEq, evalMaybe, unitTest, (===))
-import Ribosome (Bang (Bang, NoBang), Rpc)
+import Ribosome (Bang (Bang, NoBang), Rpc, pathText)
 import Ribosome.Api (nvimCommand)
 import Ribosome.Api.Buffer (currentBufferName, edit)
 import Ribosome.Effect.PersistPath (PersistPath, persistSubPath)
-import Ribosome (pathText)
-import Ribosome.Test (resumeTestError)
+import Ribosome.Test (resumeTestError, testHandler)
 import Test.Tasty (TestTree, testGroup)
 
 import Proteome.Filename (proCopy, proMove, proRemove)
-import Proteome.Test.Run (proteomeTest)
+import Proteome.Test.Run (interpretPersistTest, proteomeTest)
 
 filenameTest ::
   Members [Rpc, Hedgehog IO, Test, Embed IO] r =>
@@ -101,7 +100,7 @@ test_copyRename =
 
 test_remove :: UnitTest
 test_remove = do
-  proteomeTest do
+  proteomeTest $ interpretPersistTest $ testHandler do
     trash <- resumeTestError @PersistPath (persistSubPath [reldir|proteome/trash|])
     base <- Test.tempDir [reldir|rename|]
     let

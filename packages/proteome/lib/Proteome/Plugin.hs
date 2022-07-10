@@ -1,7 +1,8 @@
 module Proteome.Plugin where
 
-import Conc (Restoration, interpretAtomic, interpretSyncAs, withAsync_)
+import Conc (Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
 import Log (dataLog)
+import Path (Abs, File, Path)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
@@ -30,12 +31,22 @@ import Ribosome (
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.HostError (HostError (HostError))
+import Ribosome.Menu (
+  MenuState,
+  NvimRenderer,
+  interpretMenuStates,
+  )
+import Ribosome.Menu.Interpreter.Menu (MenusIOEffects, NvimMenusIOEffects, interpretNvimMenusFinal)
+import Ribosome.Menu.Interpreter.MenuRenderer (interpretMenuRendererNvim)
 
 import Proteome.Add (proAdd, proAddCmd, proAddMenu)
-import Proteome.BufEnter (MruLock (MruLock), bufEnter)
+import Proteome.BufEnter (Mru, bufEnter)
 import Proteome.Buffers (proBuffers)
 import Proteome.Config (proReadConfig)
+import Proteome.Data.AddItem (AddItem)
 import Proteome.Data.Env (Env)
+import Proteome.Data.GrepOutputLine (GrepOutputLine)
+import Proteome.Data.ListedBuffer (ListedBuffer)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
@@ -44,25 +55,37 @@ import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
-import Proteome.PersistBuffers (LoadBuffersLock (LoadBuffersLock), StoreBuffersLock (StoreBuffersLock), loadBuffers)
+import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Quit (proQuit)
 import Proteome.Save (proSave)
-import Proteome.Tags (TagsLock (TagsLock), proTags)
+import Proteome.Tags (TagsLock, proTags)
 
 type ProteomeStack =
   [
     AtomicState Env,
-    Persist PersistBuffers !! PersistError,
-    PersistPath !! PersistPathError,
-    Sync LoadBuffersLock,
-    Sync StoreBuffersLock,
-    Sync TagsLock,
-    Sync MruLock
+    Lock @@ LoadBuffersLock,
+    Lock @@ StoreBuffersLock,
+    Lock @@ TagsLock,
+    Lock @@ Mru
   ]
 
+type ProteomeProdStack =
+  [
+    Persist PersistBuffers !! PersistError,
+    PersistPath !! PersistPathError,
+    NvimRenderer (Path Abs File) !! RpcError,
+    Scoped () (MenuState (Path Abs File)),
+    NvimRenderer AddItem !! RpcError,
+    Scoped () (MenuState AddItem),
+    NvimRenderer GrepOutputLine !! RpcError,
+    Scoped () (MenuState GrepOutputLine),
+    NvimRenderer ListedBuffer !! RpcError,
+    Scoped () (MenuState ListedBuffer)
+  ] ++ MenusIOEffects ++ NvimMenusIOEffects ++ ProteomeStack
+
 handlers ::
-  Members ProteomeStack r =>
+  Members ProteomeProdStack r =>
   Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Errors, Reader PluginName] r =>
   Members [DataLog HostError, ChronosTime, Log, Mask Restoration, Race, Resource, Async, Embed IO, Final IO] r =>
   [RpcHandler r]
@@ -144,7 +167,7 @@ resolveError sem =
 
 prepare ::
   Members [Persist PersistBuffers !! PersistError, Log, Resource, Embed IO] r =>
-  Members [AtomicState Env, Settings !! SettingError, Rpc !! RpcError, Sync LoadBuffersLock, DataLog HostError] r =>
+  Members [AtomicState Env, Settings !! SettingError, Rpc !! RpcError, Lock @@ LoadBuffersLock, DataLog HostError] r =>
   Sem r ()
 prepare = do
   resolveError $ resumeLogError @Settings $ resumeLogError @Rpc do
@@ -154,19 +177,34 @@ prepare = do
   resumeLogError @Rpc projectConfigAfter
 
 interpretProteomeStack ::
-  Members [Reader PluginName, DataLog HostError] r =>
-  Members [Rpc !! RpcError, Settings !! SettingError, Error BootError, Race, Log, Resource, Async, Embed IO] r =>
+  Members [Race, Resource, Mask Restoration, Embed IO] r =>
   InterpretersFor ProteomeStack r
-interpretProteomeStack sem =
-  interpretSyncAs MruLock .
-  interpretSyncAs TagsLock .
-  interpretSyncAs StoreBuffersLock .
-  interpretSyncAs LoadBuffersLock .
-  interpretPersistPath True $
-  interpretPersist "buffers" $
-  interpretAtomic def do
-    withAsync_ prepare sem
+interpretProteomeStack =
+  interpretLockReentrant . untag .
+  interpretLockReentrant . untag .
+  interpretLockReentrant . untag .
+  interpretLockReentrant . untag .
+  interpretAtomic def
+
+interpretProteomeProdStack ::
+  Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, Reader PluginName, DataLog HostError] r =>
+  Members [Error BootError, Race, Log, Resource, Mask Restoration, Async, Embed IO, Final IO] r =>
+  InterpretersFor ProteomeProdStack r
+interpretProteomeProdStack =
+  interpretProteomeStack .
+  interpretNvimMenusFinal .
+  interpretMenuStates .
+  interpretMenuRendererNvim .
+  interpretMenuStates .
+  interpretMenuRendererNvim .
+  interpretMenuStates .
+  interpretMenuRendererNvim .
+  interpretMenuStates .
+  interpretMenuRendererNvim .
+  interpretPersistPath True .
+  interpretPersist "buffers" .
+  withAsync_ prepare
 
 proteome :: IO ()
 proteome =
-  runNvimHandlersIO @ProteomeStack "proteome" interpretProteomeStack handlers
+  runNvimHandlersIO @ProteomeProdStack "proteome" interpretProteomeProdStack handlers
