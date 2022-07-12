@@ -31,7 +31,7 @@
       proteome = ./packages/proteome;
       proteome-test = ./packages/test;
     };
-    main = "proteome-test";
+    main = "proteome";
     hpack = {
       packages = import ./ops/hpack.nix { inherit config lib; };
       defaultApp = "proteome";
