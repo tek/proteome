@@ -11,7 +11,6 @@
 
   outputs = { ribosome, streamly-process, ... }:
   let
-    inherit (ribosome.inputs) hix;
     overrides = { hackage, source, minimal, pkgs, buildInputs, fast, ... }:
     let
       inputs = buildInputs [pkgs.neovim pkgs.tmux pkgs.xterm pkgs.ripgrep];
@@ -22,7 +21,7 @@
       streamly-process = minimal (source.root streamly-process);
     };
 
-  in hix.lib.flake ({ config, lib, ... }: {
+  in ribosome.lib.flake ({ config, lib, ... }: {
     base = ./.;
     inherit overrides;
     depsFull = [ribosome];
@@ -32,6 +31,11 @@
       proteome-test = ./packages/test;
     };
     main = "proteome";
+    exe = "proteome";
+    branch = "main";
+    githubOrg = "tek";
+    cachixName = "tek";
+    cachixKey = "tek.cachix.org-1:+sdc73WFq8aEKnrVv5j/kuhmnW2hQJuqdPJF5SnaCBk=";
     hpack = {
       packages = import ./ops/hpack.nix { inherit config lib; };
       defaultApp = "proteome";
