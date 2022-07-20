@@ -2,7 +2,7 @@
   description = "Neovim Project Manager";
 
   inputs = {
-    ribosome.url = git+https://git.tryp.io/tek/ribosome?ref=polysemy;
+    ribosome.url = git+https://git.tryp.io/tek/ribosome;
     streamly-process = {
       flake = false;
       url = github:/tek/streamly-process;

@@ -25,7 +25,7 @@ import Ribosome (
   rpcAutocmd,
   rpcCommand,
   rpcFunction,
-  runNvimHandlersIO,
+  runNvimPluginIO,
   toHandlerError,
   )
 import Ribosome.Data.PersistPathError (PersistPathError)
@@ -207,4 +207,4 @@ interpretProteomeProdStack =
 
 proteome :: IO ()
 proteome =
-  runNvimHandlersIO @ProteomeProdStack "proteome" interpretProteomeProdStack handlers
+  runNvimPluginIO @ProteomeProdStack "proteome" interpretProteomeProdStack handlers

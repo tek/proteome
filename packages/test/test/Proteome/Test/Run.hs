@@ -16,11 +16,10 @@ import Ribosome (
   PluginConfig (PluginConfig),
   interpretPersist,
   interpretPersistPathAt,
-  noHandlers,
   setStderr,
   )
 import qualified Ribosome.Settings as Settings
-import Ribosome.Test (EmbedStackWith, TestConfig (TestConfig), runEmbedTest, testHandler, testPluginEmbed)
+import Ribosome.Test (EmbedStackWith, TestConfig (TestConfig), testHandler, testPluginConf)
 
 import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
@@ -54,13 +53,15 @@ proteomeTestConf ::
   Sem ProteomeTest () ->
   UnitTest
 proteomeTestConf conf test =
-  runEmbedTest (TestConfig False (PluginConfig "proteome" conf)) do
-    interpretProteomeStackTest $ noHandlers $ testPluginEmbed $ testHandler do
+  testPluginConf @ProteomeTestStack testConf interpretProteomeStackTest mempty $ testHandler do
       projects <- Test.fixturePath [reldir|projects|]
       mainDir <- Test.fixturePath [reldir|projects/haskell/flagellum|]
       Settings.update Settings.projectConfig def { baseDirs = [projects] }
       Settings.update Settings.mainProjectDir mainDir
       test
+  where
+    testConf =
+      TestConfig False (PluginConfig "proteome" conf)
 
 proteomeTest ::
   HasCallStack =>
