@@ -81,6 +81,7 @@ projectConfigAfter ::
 projectConfigAfter = do
   loadConfig "project_after"
   uautocmd "ProteomeProjectAfter"
+  uautocmd "RibosomeUpdateVariables"
 
 proLoad ::
   Members [AtomicState Env, Rpc !! RpcError] r =>
