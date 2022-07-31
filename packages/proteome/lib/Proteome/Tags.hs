@@ -13,18 +13,17 @@ import Path.IO (doesFileExist, removeFile, renameFile)
 import Polysemy.Process (SysProcConf, SystemProcess, SystemProcessScopeError, interpretSystemProcessNativeSingle)
 import qualified Polysemy.Process.SystemProcess as Process
 import Ribosome (
-  ErrorMessage (ErrorMessage),
-  Errors,
   Handler,
-  HandlerError,
-  HostError,
+  LogReport,
+  Report (Report),
+  Reports,
   SettingError,
   Settings,
-  mapHandlerError,
+  mapReport,
   reportStop,
-  resumeHandlerError,
+  resumeReport,
   )
-import qualified Ribosome.Errors as Errors
+import Ribosome.Report (storeReport)
 import qualified Ribosome.Settings as Settings
 import System.Process.Typed (proc, setWorkingDir)
 
@@ -92,11 +91,11 @@ replaceTags (ProjectRoot root) = do
     stopTryIOError TagsError.RenameTags (renameFile temppath (root </> name))
 
 notifyError ::
-  Member Errors r =>
+  Member Reports r =>
   [Text] ->
   Sem r ()
 notifyError out =
-  Errors.store "tags" (ErrorMessage "tag generation failed" ("tag subprocess failed: " : out) Warn)
+  storeReport "tags" (Report "tag generation failed" ("tag subprocess failed: " : out) Warn)
 
 tagsCommand ::
   Members [Settings, Stop TagsError] r =>
@@ -132,7 +131,7 @@ readStderr =
         Left _ -> pure (toList buf)
 
 executeTags ::
-  Members [Settings !! SettingError, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
+  Members [Settings !! SettingError, Reports, Stop TagsError, Log, Resource, Embed IO] r =>
   ProjectRoot ->
   [ProjectLang] ->
   Sem r ()
@@ -149,7 +148,7 @@ executeTags projectRoot langs = do
         notifyError =<< readStderr
 
 projectTags ::
-  Members [Settings !! SettingError, Settings, Errors, Stop TagsError, Log, Resource, Embed IO] r =>
+  Members [Settings !! SettingError, Settings, Reports, Stop TagsError, Log, Resource, Embed IO] r =>
   Project ->
   Sem r ()
 projectTags (Project (DirProject _ root tpe) _ lang langs) =
@@ -158,22 +157,22 @@ projectTags _ =
   unit
 
 execution ::
-  Members [Settings !! SettingError, DataLog HostError, Async, Stop HandlerError] r =>
+  Members [Settings !! SettingError, DataLog LogReport, Async, Stop Report] r =>
   Bool ->
   Sem (Stop TagsError : r) () ->
   Sem r ()
 execution = \case
   True ->
-    void . async . reportStop (Just "tags")
+    void . async . reportStop
   False ->
-    mapHandlerError
+    mapReport
 
 proTags ::
-  Members [AtomicState Env, Settings !! SettingError, DataLog HostError, Lock @@ TagsLock, Errors] r =>
+  Members [AtomicState Env, Settings !! SettingError, DataLog LogReport, Lock @@ TagsLock, Reports] r =>
   Members [Log, Resource, Async, Embed IO] r =>
   Handler r ()
 proTags =
-  resumeHandlerError @Settings $ whenM (Settings.get Settings.tagsEnable) do
+  resumeReport @Settings $ whenM (Settings.get Settings.tagsEnable) do
     main <- atomicGets Env.mainProject
     extra <- atomicGets Env.projects
     fork <- Settings.get Settings.tagsFork

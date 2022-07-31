@@ -11,14 +11,14 @@ import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseR
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome (
   Handler,
-  HandlerError,
+  Report,
   Rpc,
   RpcError,
   ScratchId (ScratchId),
   SettingError,
   Settings,
-  mapHandlerError,
-  resumeHandlerError,
+  mapReport,
+  resumeReport,
   )
 import Ribosome.Api (nvimGetOption)
 import Ribosome.Api.Buffer (edit)
@@ -243,7 +243,7 @@ filesConfig =
       Text.splitOn "," <$> nvimGetOption "wildignore"
 
 fileAction ::
-  Members [Rpc, Stop FilesError, Stop HandlerError, Embed IO] r =>
+  Members [Rpc, Stop FilesError, Stop Report, Embed IO] r =>
   FileAction ->
   Sem r ()
 fileAction = \case
@@ -262,17 +262,17 @@ type FilesStack =
 
 filesMenuWith ::
   Members FilesStack r =>
-  Members [Stop FilesError, Stop HandlerError, Settings, Rpc] r =>
+  Members [Stop FilesError, Stop Report, Settings, Rpc] r =>
   Path Abs Dir ->
   [Text] ->
   Sem r ()
 filesMenuWith cwd pathSpecs = do
-  mapHandlerError @RpcError do
+  mapReport @RpcError do
     conf <- filesConfig
     items <- files conf nePaths
     result <- runNvimMenu items [StartInsert, OnlyInsert] opt $ withMappings (actions nePaths) do
       menu
-    handleResult "files" fileAction result
+    handleResult fileAction result
   where
     opt =
       def {
@@ -289,7 +289,7 @@ filesMenuWith cwd pathSpecs = do
 
 filesMenu ::
   Members FilesStack r =>
-  Members [Stop FilesError, Stop HandlerError, Settings, Rpc] r =>
+  Members [Stop FilesError, Stop Report, Settings, Rpc] r =>
   Path Abs Dir ->
   [Text] ->
   Sem r ()
@@ -302,6 +302,6 @@ proFiles ::
   ArgList ->
   Handler r ()
 proFiles (ArgList paths) =
-  mapHandlerError @FilesError $ resumeHandlerError @Rpc $ resumeHandlerError @Settings do
+  mapReport @FilesError $ resumeReport @Rpc $ resumeReport @Settings do
     cwd <- resumeHoistAs FilesError.BadCwd nvimCwd
     filesMenu cwd paths

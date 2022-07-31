@@ -3,6 +3,7 @@ module Proteome.Grep.Replace where
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Text as Text
 import Path (parseAbsFile)
+import Prelude hiding (group)
 import Ribosome (
   Buffer,
   Handler,
@@ -11,9 +12,9 @@ import Ribosome (
   Scratch,
   ScratchId (ScratchId),
   ScratchState (ScratchState),
-  mapHandlerError,
+  mapReport,
   pathText,
-  resumeHandlerError,
+  resumeReport,
   toMsgpack,
   )
 import Ribosome.Api (bufferGetLines, bufferSetLines, bufferSetOption, nvimCommand, vimCallFunction)
@@ -23,6 +24,7 @@ import Ribosome.Api.Option (withOption)
 import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
+import Ribosome.Host.Data.RpcType (group)
 import qualified Ribosome.Scratch as Scratch
 
 import qualified Proteome.Data.Env as Env (replace)
@@ -45,8 +47,8 @@ replaceBuffer lines' = do
   scratch <- Scratch.show content options
   let buffer = Scratch.buffer scratch
   bufferSetOption buffer "buftype" ("acwrite" :: Text)
-  bufferAutocmd buffer "ProteomeReplaceSave" "BufWriteCmd" "silent! ProReplaceSave"
-  bufferAutocmd buffer "ProteomeReplaceQuit" "BufUnload" "silent! ProReplaceQuit"
+  bufferAutocmd buffer "BufWriteCmd" def { group = Just "ProteomeReplace" } "silent! ProReplaceSave"
+  bufferAutocmd buffer "BufUnload" def { group = Just "ProteomeReplace" } "silent! ProReplaceQuit"
   atomicModify' (#replace ?~ Replace scratch lines')
   where
     content =
@@ -149,7 +151,7 @@ replaceSave ::
   Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   Replace ->
   Sem r ()
-replaceSave (Replace (ScratchState _ _ buffer _ _ _) lines') = do
+replaceSave (Replace (ScratchState _ _ buffer _ _ _ _) lines') = do
   updatedLines <- bufferContent buffer
   if length updatedLines /= length lines'
   then badReplacement
@@ -162,7 +164,7 @@ proReplaceSave ::
   Members [AtomicState Env, Rpc !! RpcError, Resource] r =>
   Handler r ()
 proReplaceSave =
-  resumeHandlerError $ mapHandlerError do
+  resumeReport $ mapReport do
     traverse_ replaceSave =<< atomicGets Env.replace
 
 proReplaceQuit ::

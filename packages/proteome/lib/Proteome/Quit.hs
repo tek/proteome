@@ -1,7 +1,7 @@
 module Proteome.Quit where
 
 import Conc (Lock)
-import Ribosome (Handler, PersistError, Rpc, RpcError, resumeHandlerError)
+import Ribosome (Handler, PersistError, Rpc, RpcError, resumeReport)
 import Ribosome.Effect.Persist (Persist)
 
 import Proteome.Data.Env (Env)
@@ -13,5 +13,5 @@ proQuit ::
   Members [Lock @@ StoreBuffersLock, AtomicState Env, Rpc !! RpcError, Resource, Embed IO] r =>
   Handler r ()
 proQuit =
-  resumeHandlerError @(Persist _) $ resumeHandlerError @Rpc do
+  resumeReport @(Persist _) $ resumeReport @Rpc do
     storeBuffers

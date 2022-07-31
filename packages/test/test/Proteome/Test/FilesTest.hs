@@ -6,7 +6,7 @@ import Path (Abs, Dir, Path, isProperPrefixOf, reldir, relfile, toFilePath, (</>
 import Path.IO (createDirIfMissing)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (UnitTest, assert, assertEq, assertJust, evalMaybe, runTestAuto, unitTest, (===))
-import Ribosome (mapHandlerError)
+import Ribosome (mapReport)
 import Ribosome.Api (currentBufferPath)
 import Ribosome.Menu (interpretNvimMenuFinal)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
@@ -36,7 +36,7 @@ test_filesEdit =
   proteomeTest do
     Settings.update Settings.filesUseRg False
     dir <- Test.fixturePath [reldir|files|]
-    mapHandlerError @FilesError $ interpretNvimMenuFinal $ promptInput editChars do
+    mapReport @FilesError $ interpretNvimMenuFinal $ promptInput editChars do
       filesMenu dir (toText . toFilePath <$> NonEmpty.toList (paths dir))
     p <- evalMaybe =<< currentBufferPath
     assert (isProperPrefixOf dir p)
@@ -63,7 +63,7 @@ test_filesCreate =
     base <- Test.tempDir [reldir|files/create|]
     let targetDir = base </> [reldir|path/to/dir|]
     createDirIfMissing True targetDir
-    mapHandlerError @FilesError $ interpretNvimMenuFinal $ promptInput createChars do
+    mapReport @FilesError $ interpretNvimMenuFinal $ promptInput createChars do
       filesMenuWith base [toText (toFilePath base)]
     assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
 

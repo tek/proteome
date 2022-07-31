@@ -2,7 +2,7 @@ module Proteome.Data.ReplaceError where
 
 import Log (Severity (Error, Warn))
 import Path (Abs, File, Path)
-import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage, toErrorMessage)
+import Ribosome (Report (Report), Reportable, toReport)
 import Ribosome (pathText)
 
 data ReplaceError =
@@ -11,8 +11,8 @@ data ReplaceError =
   CouldntLoadBuffer (Path Abs File)
   deriving stock (Eq, Show)
 
-instance ToErrorMessage ReplaceError where
-  toErrorMessage BadReplacement =
-    ErrorMessage "replacment line count does not match original" ["ReplaceError.BadReplacement"] Warn
-  toErrorMessage (CouldntLoadBuffer (pathText -> path)) =
-    ErrorMessage ("could not load file " <> path) ["ReplaceError.CouldntLoadBuffer", path] Error
+instance Reportable ReplaceError where
+  toReport BadReplacement =
+    Report "replacment line count does not match original" ["ReplaceError.BadReplacement"] Warn
+  toReport (CouldntLoadBuffer (pathText -> path)) =
+    Report ("could not load file " <> path) ["ReplaceError.CouldntLoadBuffer", path] Error

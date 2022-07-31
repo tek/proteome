@@ -2,7 +2,7 @@ module Proteome.Data.AddError where
 
 import Exon (exon)
 import Log (Severity (Info))
-import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage (toErrorMessage))
+import Ribosome (Report (Report), Reportable (toReport))
 
 data AddError =
   InvalidProjectSpec Text
@@ -10,9 +10,9 @@ data AddError =
   Directory Text
   deriving stock (Eq, Show)
 
-instance ToErrorMessage AddError where
-  toErrorMessage = \case
+instance Reportable AddError where
+  toReport = \case
     InvalidProjectSpec spec ->
-      ErrorMessage [exon|no such project: #{spec}|] ["AddError.InvalidProjectSpec:", spec] Info
+      Report [exon|no such project: #{spec}|] ["AddError.InvalidProjectSpec:", spec] Info
     Directory msg ->
-      ErrorMessage [exon|Listing directories: #{msg}|] ["AddError.Directory:", msg] Info
+      Report [exon|Listing directories: #{msg}|] ["AddError.Directory:", msg] Info

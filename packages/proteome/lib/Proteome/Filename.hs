@@ -23,14 +23,14 @@ import Path.IO (copyFile, doesDirExist, doesFileExist, ensureDir, removeFile)
 import Ribosome (
   Bang (Bang),
   Handler,
-  HostError,
+  LogReport,
   Rpc,
   RpcError,
-  mapHandlerError,
+  logReport,
+  mapReport,
   pathText,
-  reportError,
-  resumeHandlerError,
-  rpcErrorMessage,
+  resumeReport,
+  rpcError,
   )
 import Ribosome.Api (bufferSetName, vimCallFunction, vimCommand, vimGetCurrentBuffer, wipeBuffer)
 import Ribosome.Api.Buffer (currentBufferName, edit)
@@ -317,7 +317,7 @@ writeBuffer action =
     vimCommand "write!"
   where
     err msg =
-      resumeHoist \ e -> FilenameError.ActionFailed action [exon|#{msg}: #{rpcErrorMessage e}|]
+      resumeHoist \ e -> FilenameError.ActionFailed action [exon|#{msg}: #{rpcError e}|]
 
 updateBuffer ::
   Member Rpc r =>
@@ -351,16 +351,16 @@ copyOrFail src dest =
       FilenameError.ActionFailed "move" [exon|Couldn't copy file: #{e}|]
 
 moveFile ::
-  Members [Stop FilenameError, DataLog HostError, Embed IO] r =>
+  Members [Stop FilenameError, DataLog LogReport, Embed IO] r =>
   Path Abs File ->
   Path Abs File ->
   Sem r ()
 moveFile src dest = do
   copyOrFail src dest
-  leftA (reportError (Just "filename") . FilenameError.Remove) =<< tryAny (removeFile src)
+  leftA (logReport . FilenameError.Remove) =<< tryAny (removeFile src)
 
 move ::
-  Members [Stop FilenameError, DataLog HostError, Rpc, Rpc !! RpcError, Embed IO] r =>
+  Members [Stop FilenameError, DataLog LogReport, Rpc, Rpc !! RpcError, Embed IO] r =>
   Bool ->
   Modification ->
   Sem r ()
@@ -383,12 +383,12 @@ copy raw modi =
     vimCallFunction "winrestview" [view]
 
 proMove ::
-  Members [DataLog HostError, Rpc !! RpcError, Embed IO] r =>
+  Members [DataLog LogReport, Rpc !! RpcError, Embed IO] r =>
   Bang ->
   Text ->
   Handler r ()
 proMove bang spec =
-  mapHandlerError @FilenameError $ resumeHandlerError @Rpc do
+  mapReport @FilenameError $ resumeReport @Rpc do
     move raw =<< smartModification raw spec
   where
     raw =
@@ -400,17 +400,17 @@ proCopy ::
   Text ->
   Handler r ()
 proCopy bang spec =
-  mapHandlerError @FilenameError $ resumeHandlerError @Rpc do
+  mapReport @FilenameError $ resumeReport @Rpc do
     copy raw =<< smartModification raw spec
   where
     raw =
       bang == Bang
 
 proRemove ::
-  Members [Rpc !! RpcError, PersistPath !! PersistPathError, DataLog HostError, Embed IO] r =>
+  Members [Rpc !! RpcError, PersistPath !! PersistPathError, DataLog LogReport, Embed IO] r =>
   Handler r ()
 proRemove =
-  mapHandlerError @FilenameError $ resumeHandlerError @Rpc $ resumeHandlerError @PersistPath do
+  mapReport @FilenameError $ resumeReport @Rpc $ resumeReport @PersistPath do
     move False =<< trashModification
     buf <- vimGetCurrentBuffer
     resume_ @RpcError do

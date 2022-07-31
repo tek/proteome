@@ -1,7 +1,7 @@
 module Proteome.Config where
 
 import Exon (exon)
-import Ribosome (Handler, Rpc, RpcError, msgpackArray, resumeHandlerError)
+import Ribosome (Handler, Rpc, RpcError, msgpackArray, resumeReport)
 import Ribosome.Api (nvimGetOption, vimCallFunction, vimCommand)
 
 import qualified Proteome.Data.Env as Env
@@ -90,7 +90,7 @@ proReadConfig ::
   Members [Rpc !! RpcError, AtomicState Env] r =>
   Handler r ()
 proReadConfig = do
-  resumeHandlerError @Rpc do
+  resumeReport @Rpc do
     main <- atomicGets Env.mainProject
     configs <- readConfig "project" main
     logConfig configs

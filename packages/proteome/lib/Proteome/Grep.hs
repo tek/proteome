@@ -6,15 +6,16 @@ import Path (Abs, Dir, File, Path)
 import Ribosome (
   Args,
   Handler,
-  HandlerError,
+  Report,
   Rpc,
   RpcError,
   Scratch,
   ScratchId (ScratchId),
   Settings,
-  mapHandlerError,
+  mapReport,
   pathText,
-  resumeHandlerError,
+  pluginLogReports,
+  resumeReport,
   toMsgpack,
   unArgs,
   )
@@ -26,7 +27,6 @@ import Ribosome.Api.Window (setCurrentCursor)
 import qualified Ribosome.Data.Register as Register (Register (Special))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
-import Ribosome.Errors (pluginHandlerErrors)
 import Ribosome.Menu (MenuState, MenuWidget, NvimMenu, menu)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
@@ -173,12 +173,12 @@ type GrepErrorStack =
   [Scratch, Settings, Rpc, Stop ReplaceError, Stop GrepError]
 
 handleErrors ::
-  Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Stop HandlerError] r =>
+  Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Stop Report] r =>
   InterpretersFor GrepErrorStack r
 handleErrors =
-  mapHandlerError @GrepError .
-  mapHandlerError @ReplaceError .
-  pluginHandlerErrors
+  mapReport @GrepError .
+  mapReport @ReplaceError .
+  pluginLogReports
 
 type GrepStack =
   NvimMenu GrepOutputLine ++ [
@@ -194,17 +194,17 @@ type GrepStack =
 grepWith ::
   Members GrepStack r =>
   Members GrepErrorStack r =>
-  Member (Stop HandlerError) r =>
+  Member (Stop Report) r =>
   [Text] ->
   Path Abs Dir ->
   Text ->
   Sem r ()
 grepWith opt path patt =
-  mapHandlerError @RpcError do
+  mapReport @RpcError do
     items <- grepItems path patt opt
     result <- runNvimMenu items [] scratchOptions $ withMappings actions do
       menu
-    handleResult "grep" grepAction result
+    handleResult grepAction result
   where
     scratchOptions =
       def {
@@ -233,7 +233,7 @@ grepWithNative ::
 grepWithNative opt pathSpec pattSpec = do
   handleErrors do
     path <- nvimDir =<< maybe (askUser "directory" [".", "dir"]) pure pathSpec
-    patt <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
+    patt <- resumeReport @Rpc $ mapReport @GrepError do
       maybe (askUser "pattern" []) (pure . unArgs) pattSpec
     grepWith opt path patt
 
@@ -251,7 +251,7 @@ proGrepOpt ::
   Maybe Args ->
   Handler r ()
 proGrepOpt opt patt = do
-  cwd <- resumeHandlerError @Rpc $ mapHandlerError @GrepError do
+  cwd <- resumeReport @Rpc $ mapReport @GrepError do
     nvimCwd
   grepWithNative (Text.words opt) (Just (pathText cwd)) patt
 
@@ -278,6 +278,6 @@ proGrepList ::
   Maybe Text ->
   Handler r [GrepOutputLine]
 proGrepList patt pathSpec opt = do
-  path <- resumeHandlerError @Rpc (nvimDir (fromMaybe "." pathSpec))
+  path <- resumeReport @Rpc (nvimDir (fromMaybe "." pathSpec))
   items <- handleErrors (grepItems path patt (Text.words (fold opt)))
   fmap MenuItem.meta <$> embed (Streamly.toList items)

@@ -2,7 +2,7 @@ module Proteome.Project.Activate where
 
 import Exon (exon)
 import Path.IO (doesDirExist)
-import Ribosome (Handler, Rpc, RpcError, SettingError, Settings, pathText, resumeHandlerError)
+import Ribosome (Handler, Rpc, RpcError, SettingError, Settings, pathText, resumeReport)
 import Ribosome.Api (echo, nvimCommand)
 import Ribosome.Data.PluginName (PluginName)
 import qualified Ribosome.Settings as Settings
@@ -88,7 +88,7 @@ proPrev ::
   Members [Settings !! SettingError, AtomicState Env, Reader PluginName, Rpc !! RpcError, Embed IO] r =>
   Handler r ()
 proPrev =
-  resumeHandlerError @Rpc $ resumeHandlerError @Settings do
+  resumeReport @Rpc $ resumeReport @Settings do
     cycleProjectIndex (subtract 1)
     activateCurrentProject
 
@@ -96,6 +96,6 @@ proNext ::
   Members [Settings !! SettingError, AtomicState Env, Reader PluginName, Rpc !! RpcError, Embed IO] r =>
   Handler r ()
 proNext =
-  resumeHandlerError @Rpc $ resumeHandlerError @Settings do
+  resumeReport @Rpc $ resumeReport @Settings do
     cycleProjectIndex (+1)
     activateCurrentProject

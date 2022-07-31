@@ -2,12 +2,12 @@ module Proteome.Data.ResolveError where
 
 import Exon (exon)
 import Log (Severity (Warn))
-import Ribosome (ErrorMessage (ErrorMessage), ToErrorMessage (toErrorMessage))
+import Ribosome (Report (Report), Reportable (toReport))
 
 newtype ResolveError =
   ParsePath Text
   deriving stock (Eq, Show)
 
-instance ToErrorMessage ResolveError where
-  toErrorMessage (ParsePath path) =
-    ErrorMessage [exon|invalid path: #{path}|] ["ResolveError.ParsePath:", path] Warn
+instance Reportable ResolveError where
+  toReport (ParsePath path) =
+    Report [exon|invalid path: #{path}|] ["ResolveError.ParsePath:", path] Warn

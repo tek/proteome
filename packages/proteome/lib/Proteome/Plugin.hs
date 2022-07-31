@@ -1,41 +1,36 @@
 module Proteome.Plugin where
 
 import Conc (Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
-import Log (dataLog)
 import Path (Abs, File, Path)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
-  Errors,
   Execution (Async, Sync),
   Persist,
   PersistError,
   PluginName,
+  Reports,
   Rpc,
   RpcError,
   RpcHandler,
   Scratch,
   SettingError,
   Settings,
-  ToErrorMessage,
   completeBuiltin,
   interpretPersist,
   interpretPersistPath,
+  logReport,
+  resumeLogReport,
   rpc,
   rpcAutocmd,
   rpcCommand,
   rpcFunction,
   runNvimPluginIO,
-  toHandlerError,
   )
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
-import Ribosome.Host.Data.HostError (HostError (HostError))
-import Ribosome.Menu (
-  MenuState,
-  NvimRenderer,
-  interpretMenuStates,
-  )
+import Ribosome.Host.Data.Report (LogReport)
+import Ribosome.Menu (MenuState, NvimRenderer, interpretMenuStates)
 import Ribosome.Menu.Interpreter.Menu (MenusIOEffects, NvimMenusIOEffects, interpretNvimMenusFinal)
 import Ribosome.Menu.Interpreter.MenuRenderer (interpretMenuRendererNvim)
 
@@ -86,8 +81,8 @@ type ProteomeProdStack =
 
 handlers ::
   Members ProteomeProdStack r =>
-  Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Errors, Reader PluginName] r =>
-  Members [DataLog HostError, ChronosTime, Log, Mask Restoration, Race, Resource, Async, Embed IO, Final IO] r =>
+  Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Reports, Reader PluginName] r =>
+  Members [DataLog LogReport, ChronosTime, Log, Mask Restoration, Race, Resource, Async, Embed IO, Final IO] r =>
   [RpcHandler r]
 handlers =
   rpc "ProDiag" Async proDiag
@@ -136,45 +131,27 @@ handlers =
     rpcAutocmd "ProQuit" Sync "VimLeave" def proQuit
   ]
 
-logError ::
-  ∀ e r .
-  ToErrorMessage e =>
-  Member (DataLog HostError) r =>
-  e ->
-  Sem r ()
-logError =
-  dataLog . HostError True . toHandlerError "init"
-
-resumeLogError ::
-  ∀ eff e r .
-  ToErrorMessage e =>
-  Members [eff !! e, DataLog HostError] r =>
-  Sem (eff : r ) () ->
-  Sem r ()
-resumeLogError =
-  resuming logError
-
 resolveError ::
-  Member (DataLog HostError) r =>
+  Member (DataLog LogReport) r =>
   Sem (Stop ResolveError : r) () ->
   Sem r ()
 resolveError sem =
   runStop sem >>= \case
     Left e ->
-      logError e
+      logReport e
     Right () ->
       unit
 
 prepare ::
   Members [Persist PersistBuffers !! PersistError, Log, Resource, Embed IO] r =>
-  Members [AtomicState Env, Settings !! SettingError, Rpc !! RpcError, Lock @@ LoadBuffersLock, DataLog HostError] r =>
+  Members [AtomicState Env, Settings !! SettingError, Rpc !! RpcError, Lock @@ LoadBuffersLock, DataLog LogReport] r =>
   Sem r ()
 prepare = do
-  resolveError $ resumeLogError @Settings $ resumeLogError @Rpc do
+  resolveError $ resumeLogReport @Settings $ resumeLogReport @Rpc do
     resolveAndInitMain
-  resumeLogError @(Persist _) (resumeLogError @Rpc loadBuffers)
-  resumeLogError @Rpc projectConfig
-  resumeLogError @Rpc projectConfigAfter
+  resumeLogReport @(Persist _) (resumeLogReport @Rpc loadBuffers)
+  resumeLogReport @Rpc projectConfig
+  resumeLogReport @Rpc projectConfigAfter
 
 interpretProteomeStack ::
   Members [Race, Resource, Mask Restoration, Embed IO] r =>
@@ -187,7 +164,7 @@ interpretProteomeStack =
   interpretAtomic def
 
 interpretProteomeProdStack ::
-  Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, Reader PluginName, DataLog HostError] r =>
+  Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, Reader PluginName, DataLog LogReport] r =>
   Members [Error BootError, Race, Log, Resource, Mask Restoration, Async, Embed IO, Final IO] r =>
   InterpretersFor ProteomeProdStack r
 interpretProteomeProdStack =

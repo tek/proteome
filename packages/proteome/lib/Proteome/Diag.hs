@@ -6,19 +6,20 @@ import Exon (exon)
 import Path (toFilePath)
 import Prettyprinter (Doc, line, nest, pretty, vsep)
 import Ribosome (
-  ErrorMessage (ErrorMessage),
-  Errors,
   Handler,
-  HandlerTag (GlobalTag, HandlerTag),
+  Report (Report),
+  ReportContext,
+  Reports,
   RpcError,
   Scratch,
   ScratchId (ScratchId),
   Settings,
-  StoredError (StoredError),
-  resumeHandlerError,
+  StoredReport (StoredReport),
+  reportContext,
+  resumeReport,
   scratch,
+  storedReports,
   )
-import qualified Ribosome.Errors as Errors
 import qualified Ribosome.Scratch as Scratch
 import Ribosome.Scratch (ScratchOptions (filetype, focus))
 
@@ -93,46 +94,41 @@ formatExtraProjectsIfNonempty = do
     _ : _ -> formatExtraProjects projects
     _ -> pure []
 
-tagName :: HandlerTag -> Text
-tagName = \case
-  GlobalTag -> "global"
-  HandlerTag n -> n
-
-storedError :: StoredError -> Doc a
-storedError (StoredError (ErrorMessage _ log _) _) =
+storedError :: StoredReport -> Doc a
+storedError (StoredReport (Report _ log _) _) =
   case log of
     [] -> mempty
     (h : t) ->
       nest 2 (vsep (pretty <$> ([exon|* #{h}|] : t)))
 
-tagErrors :: HandlerTag -> [StoredError] -> Doc a
-tagErrors t errs =
-  pretty [exon|### #{tagName t}|] <> line <> vsep (storedError <$> errs)
+tagErrors :: ReportContext -> [StoredReport] -> Doc a
+tagErrors ctx errs =
+  pretty [exon|### #{reportContext ctx}|] <> line <> vsep (storedError <$> errs)
 
-errorDiagnostics :: Map HandlerTag [StoredError] -> Doc a
+errorDiagnostics :: Map ReportContext [StoredReport] -> Doc a
 errorDiagnostics errs | null errs =
   mempty
 errorDiagnostics errs =
-  "## Errors" <> line <> line <> vsep (uncurry tagErrors <$> Map.toAscList errs)
+  "## Reports" <> line <> line <> vsep (uncurry tagErrors <$> Map.toAscList errs)
 
 diagnostics ::
-  Members [Settings !! se, AtomicState Env, Errors] r =>
+  Members [Settings !! se, AtomicState Env, Reports] r =>
   Sem r [Text]
 diagnostics = do
   main <- formatMain =<< atomicGets Env.mainProject
   extra <- formatExtraProjectsIfNonempty
   confLog <- atomicGets Env.configLog
-  errors <- errorDiagnostics <$> Errors.get
+  errors <- errorDiagnostics <$> storedReports
   pure $ header <> main <> extra <> ["", "loaded config files:"] <> confLog <> Text.lines (show errors)
   where
     header =
       ["Diagnostics", "", "Main project", ""]
 
 proDiag ::
-  Members [Settings !! se, Scratch !! RpcError, AtomicState Env, Errors] r =>
+  Members [Settings !! se, Scratch !! RpcError, AtomicState Env, Reports] r =>
   Handler r ()
 proDiag = do
-  resumeHandlerError @Scratch do
+  resumeReport @Scratch do
     content <- diagnostics
     void $ Scratch.show content options
   where

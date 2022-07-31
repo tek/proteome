@@ -6,15 +6,15 @@ import qualified Data.Text as Text
 import Exon (exon)
 import Ribosome (
   Handler,
-  HandlerError,
+  Report,
   Rpc,
   RpcError,
   ScratchId (ScratchId),
   SettingError,
   Settings,
-  mapHandlerError,
+  mapReport,
   pathText,
-  resumeHandlerError,
+  resumeReport,
   )
 import Ribosome.Api (
   bufferGetName,
@@ -183,13 +183,13 @@ type BuffersStack =
 
 buffersMenu ::
   Members BuffersStack r =>
-  Members [Rpc, Stop HandlerError] r =>
+  Members [Rpc, Stop Report] r =>
   Sem r ()
 buffersMenu = do
   items <- buffers
-  result <- mapHandlerError $ runStaticNvimMenu items [] scratchOptions $ withMappings actions do
+  result <- mapReport $ runStaticNvimMenu items [] scratchOptions $ withMappings actions do
     menu
-  handleResult "buffers" bufferAction result
+  handleResult bufferAction result
   where
     scratchOptions =
       def {
@@ -204,5 +204,5 @@ proBuffers ::
   Members BuffersStack r =>
   Handler r ()
 proBuffers =
-  resumeHandlerError @Rpc do
+  resumeReport @Rpc do
     buffersMenu

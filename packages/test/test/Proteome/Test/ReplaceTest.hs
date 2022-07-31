@@ -97,11 +97,6 @@ checkContent ::
 checkContent file target =
   (target ===) . lines . toText =<< embed (Text.readFile (toFilePath file))
 
--- TODO this needs to be run with a custom MenuConsumer that responds to item events, waiting for all of them to appear
--- in the menu, then triggering a Sync that is waited on in the prompt input stream, to make it deterministic.
--- Probably a good idea to add a menu event that informs the consumer that the item stream is exhausted.
---
--- Also, migrate the whole thing to use effects instead of those callbacks like MenuConsumer
 test_grepReplace :: UnitTest
 test_grepReplace =
   proteomeTest do

@@ -4,7 +4,7 @@ import Conc (Lock, lock)
 import Data.List.Extra (nub)
 import qualified Data.Text as Text (intercalate)
 import Path (Abs, Dir, File, Path, toFilePath, (</>))
-import Ribosome (Buffer, Handler, Rpc, RpcError, Settings, resumeHandlerError)
+import Ribosome (Buffer, Handler, Rpc, RpcError, Settings, resumeReport)
 import Ribosome.Api (bufferSetOption, vimGetCurrentBuffer)
 import Ribosome.Api.Buffer (bufferIsFile, buflisted)
 import Ribosome.Data.SettingError (SettingError)
@@ -55,8 +55,8 @@ bufEnter ::
   Members [AtomicState Env, Lock @@ Mru, Rpc !! RpcError, Settings !! SettingError, Resource] r =>
   Handler r ()
 bufEnter =
-  resumeHandlerError @Rpc do
+  resumeReport @Rpc do
     updateBuffers
     roots <- mapMaybe projectRoot <$> allProjects
-    name <- resumeHandlerError (Settings.get tagsFileName)
+    name <- resumeReport (Settings.get tagsFileName)
     setBufferTags ((</> name) <$> roots)

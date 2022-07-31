@@ -7,13 +7,13 @@ import qualified Polysemy.Test as Test
 import Polysemy.Test (Test, UnitTest)
 import Ribosome (
   BootError,
-  HandlerError,
   HostConfig,
   Persist,
   PersistError,
   PersistPath,
   PersistPathError,
   PluginConfig (PluginConfig),
+  Report,
   interpretPersist,
   interpretPersistPathAt,
   setStderr,
@@ -31,7 +31,7 @@ type ProteomeTestStack =
   AtomicState Env : ProteomeStack
 
 type ProteomeTest =
-  Stop HandlerError : EmbedStackWith ProteomeTestStack
+  Stop Report : EmbedStackWith ProteomeTestStack
 
 interpretPersistTest ::
   Members [Error BootError, Test, Log, Embed IO] r =>

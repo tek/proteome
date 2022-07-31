@@ -11,9 +11,9 @@ import Ribosome (
   RpcError,
   SettingError,
   Settings,
-  mapHandlerError,
+  mapReport,
   pathText,
-  resumeHandlerError,
+  resumeReport,
   )
 import Ribosome.Menu (
   MenuItem (..),
@@ -67,7 +67,7 @@ proAdd ::
   AddOptions ->
   Handler r ()
 proAdd (AddOptions name tpe activate) =
-  resumeHandlerError @Settings $ resumeHandlerError @Rpc $ mapHandlerError do
+  resumeReport @Settings $ resumeReport @Rpc $ mapReport do
     add name (Just tpe) (fromMaybe False activate)
 
 addFromName ::
@@ -84,7 +84,7 @@ proAddCmd ::
   Text ->
   Handler r ()
 proAddCmd bang spec =
-  resumeHandlerError @Settings $ resumeHandlerError @Rpc $ mapHandlerError @ResolveError $ mapHandlerError @AddError do
+  resumeReport @Settings $ resumeReport @Rpc $ mapReport @ResolveError $ mapReport @AddError do
     process (Text.splitOn "/" spec)
   where
     process [tpe, name] =
@@ -156,9 +156,9 @@ proAddMenu ::
   Members AddStack r =>
   Handler r ()
 proAddMenu =
-  resumeHandlerError @Rpc $
-  resumeHandlerError @Settings $
-  mapHandlerError @AddError $
-  mapHandlerError @ResolveError $
-  mapHandlerError @RpcError do
+  resumeReport @Rpc $
+  resumeReport @Settings $
+  mapReport @AddError $
+  mapReport @ResolveError $
+  mapReport @RpcError do
     void $ addMenu
