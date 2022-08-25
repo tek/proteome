@@ -7,8 +7,9 @@ import Ribosome (Rpc, pathText)
 import Ribosome.Api (bufferPath, currentBufferPath, vimGetBuffers)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
 import qualified Ribosome.Data.FileBuffer as FileBuffer
-import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import Ribosome.Menu.Interpreter.MenuLoop (promptInput)
+import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent (Mapping))
 import qualified Ribosome.Settings as Settings
 import Test.Tasty (TestTree, testGroup)
 
@@ -52,7 +53,7 @@ test_loadBuffer =
   proteomeTest do
     (_, buf2, buf3) <- setupBuffers
     assertJust buf3 =<< currentBufferPath
-    interpretNvimMenuFinal $ promptInput ["k", "cr"] buffersMenu
+    promptInput [Mapping "k", Mapping "<cr>"] buffersMenu
     assertJust buf2 =<< currentBufferPath
 
 test_deleteBuffer :: UnitTest
@@ -60,7 +61,7 @@ test_deleteBuffer =
   proteomeTest do
     (buf1, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    interpretNvimMenuFinal $ promptInput ["k", "d", "esc"] buffersMenu
+    promptInput (Mapping <$> ["k", "d", "<esc>"]) buffersMenu
     assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_wipeBuffer :: UnitTest
@@ -68,7 +69,7 @@ test_wipeBuffer =
   proteomeTest do
     (buf1, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    interpretNvimMenuFinal $ promptInput ["k", "w", "esc"] buffersMenu
+    promptInput (Mapping <$> ["k", "w", "<esc>"]) buffersMenu
     assertEq [buf1, buf3] . catMaybes =<< traverse bufferPath =<< vimGetBuffers
 
 test_deleteMultipleBuffers :: UnitTest
@@ -76,7 +77,7 @@ test_deleteMultipleBuffers =
   proteomeTest do
     (_, _, buf3) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    interpretNvimMenuFinal $ promptInput ["k", "space", "space", "d", "esc"] buffersMenu
+    promptInput (Mapping <$> ["k", "<space>", "<space>", "d", "<esc>"]) buffersMenu
     assertEq [buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_deleteCurrentBuffer :: UnitTest
@@ -84,7 +85,7 @@ test_deleteCurrentBuffer =
   proteomeTest do
     (buf1, _, _) <- setupBuffers
     assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
-    interpretNvimMenuFinal $ promptInput ["d", "d", "esc"] buffersMenu
+    promptInput (Mapping <$> ["d", "d", "<esc>"]) buffersMenu
     assertEq [buf1] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
 test_currentBufferPosition :: UnitTest

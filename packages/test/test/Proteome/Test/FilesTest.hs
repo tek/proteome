@@ -8,9 +8,9 @@ import qualified Polysemy.Test as Test
 import Polysemy.Test (UnitTest, assert, assertEq, assertJust, evalMaybe, runTestAuto, unitTest, (===))
 import Ribosome (mapReport)
 import Ribosome.Api (currentBufferPath)
-import Ribosome.Menu (interpretNvimMenuFinal)
+import Ribosome.Menu (promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Interpreter.NvimPromptInput (promptInput)
+import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
 import qualified Ribosome.Settings as Settings
 import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
@@ -18,7 +18,7 @@ import Text.Regex.PCRE.Heavy (re)
 
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Data.FilesError (FilesError)
-import Proteome.Files (filesMenu, filesMenuWith)
+import Proteome.Files (filesMenu)
 import Proteome.Files.Source (files)
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Run (proteomeTest)
@@ -27,16 +27,16 @@ paths :: Path Abs Dir -> NonEmpty (Path Abs Dir)
 paths base =
   (base </> [reldir|dir1|]) :| [base </> [reldir|dir2|]]
 
-editChars :: [Text]
-editChars =
-  ["k", "cr"]
+editEvents :: [PromptEvent]
+editEvents =
+  Mapping <$> ["k", "<cr>"]
 
 test_filesEdit :: UnitTest
 test_filesEdit =
   proteomeTest do
     Settings.update Settings.filesUseRg False
     dir <- Test.fixturePath [reldir|files|]
-    mapReport @FilesError $ interpretNvimMenuFinal $ promptInput editChars do
+    mapReport @FilesError $ promptInput editEvents do
       filesMenu dir (toText . toFilePath <$> NonEmpty.toList (paths dir))
     p <- evalMaybe =<< currentBufferPath
     assert (isProperPrefixOf dir p)
@@ -52,9 +52,18 @@ test_filesExclude =
     fs <- files conf (paths dir)
     assertEq 3 . length =<< embed (Stream.toList fs)
 
-createChars :: [Text]
-createChars =
-  ["p", "tab", "t", "tab", "d", "tab", "f", "i", "l", "e", "c-y"]
+createEvents :: [PromptEvent]
+createEvents =
+  [
+    Update "p",
+    Mapping "<tab>",
+    Update "path/t",
+    Mapping "<tab>",
+    Update "path/to/d",
+    Mapping "<tab>",
+    Update "path/to/dir/file",
+    Mapping "<c-y>"
+  ]
 
 test_filesCreate :: UnitTest
 test_filesCreate =
@@ -63,8 +72,8 @@ test_filesCreate =
     base <- Test.tempDir [reldir|files/create|]
     let targetDir = base </> [reldir|path/to/dir|]
     createDirIfMissing True targetDir
-    mapReport @FilesError $ interpretNvimMenuFinal $ promptInput createChars do
-      filesMenuWith base [toText (toFilePath base)]
+    mapReport @FilesError $ promptInput createEvents do
+      filesMenu base [toText (toFilePath base)]
     assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
 
 filesMultiDirTest :: Bool -> UnitTest

@@ -1,10 +1,11 @@
 module Proteome.Plugin where
 
-import Conc (Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
+import Conc (ConcStack, Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
 import Path (Abs, File, Path)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
+  Event,
   Execution (Async, Sync),
   Persist,
   PersistError,
@@ -30,9 +31,9 @@ import Ribosome (
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.Report (LogReport)
-import Ribosome.Menu (MenuState, NvimRenderer, interpretMenuStates)
-import Ribosome.Menu.Interpreter.Menu (MenusIOEffects, NvimMenusIOEffects, interpretNvimMenusFinal)
-import Ribosome.Menu.Interpreter.MenuRenderer (interpretMenuRendererNvim)
+import Ribosome.Menu (NvimMenus, interpretMenus)
+import Ribosome.Menu.Effect.MenuLoop (MenuLoops)
+import Ribosome.Menu.Interpreter.MenuLoop (interpretMenuLoops)
 
 import Proteome.Add (proAdd, proAddCmd, proAddMenu)
 import Proteome.BufEnter (Mru, bufEnter)
@@ -69,19 +70,16 @@ type ProteomeProdStack =
   [
     Persist PersistBuffers !! PersistError,
     PersistPath !! PersistPathError,
-    NvimRenderer (Path Abs File) !! RpcError,
-    Scoped () (MenuState (Path Abs File)),
-    NvimRenderer AddItem !! RpcError,
-    Scoped () (MenuState AddItem),
-    NvimRenderer GrepOutputLine !! RpcError,
-    Scoped () (MenuState GrepOutputLine),
-    NvimRenderer ListedBuffer !! RpcError,
-    Scoped () (MenuState ListedBuffer)
-  ] ++ MenusIOEffects ++ NvimMenusIOEffects ++ ProteomeStack
+    MenuLoops AddItem,
+    MenuLoops ListedBuffer,
+    MenuLoops GrepOutputLine,
+    MenuLoops (Path Abs File)
+  ] ++ NvimMenus ++ ProteomeStack
 
 handlers ::
   Members ProteomeProdStack r =>
   Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Reports, Reader PluginName] r =>
+  Members ConcStack r =>
   Members [DataLog LogReport, ChronosTime, Log, Mask Restoration, Race, Resource, Async, Embed IO, Final IO] r =>
   [RpcHandler r]
 handlers =
@@ -164,20 +162,17 @@ interpretProteomeStack =
   interpretAtomic def
 
 interpretProteomeProdStack ::
+  Member (EventConsumer eres Event) r =>
   Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, Reader PluginName, DataLog LogReport] r =>
   Members [Error BootError, Race, Log, Resource, Mask Restoration, Async, Embed IO, Final IO] r =>
   InterpretersFor ProteomeProdStack r
 interpretProteomeProdStack =
   interpretProteomeStack .
-  interpretNvimMenusFinal .
-  interpretMenuStates .
-  interpretMenuRendererNvim .
-  interpretMenuStates .
-  interpretMenuRendererNvim .
-  interpretMenuStates .
-  interpretMenuRendererNvim .
-  interpretMenuStates .
-  interpretMenuRendererNvim .
+  interpretMenus .
+  interpretMenuLoops .
+  interpretMenuLoops .
+  interpretMenuLoops .
+  interpretMenuLoops .
   interpretPersistPath True .
   interpretPersist "buffers" .
   withAsync_ prepare

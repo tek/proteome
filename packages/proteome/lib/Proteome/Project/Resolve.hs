@@ -1,7 +1,6 @@
 module Proteome.Project.Resolve where
 
 import Control.Monad (foldM)
-import Control.Monad.Extra (firstJustM)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.List (nub)
 import Data.List.Extra (firstJust)

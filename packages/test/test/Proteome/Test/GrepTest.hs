@@ -8,8 +8,9 @@ import Ribosome (pathText)
 import Ribosome.Api.Buffer (currentBufferContent)
 import Ribosome.Api.Normal (normal)
 import Ribosome.Api.Window (currentLine)
-import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
+import Ribosome.Menu (promptInput)
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
+import Ribosome.Menu.Prompt (PromptEvent (Mapping))
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
 import Test.Tasty (TestTree, testGroup)
 
@@ -23,26 +24,26 @@ pat :: Text
 pat =
   "target with spaces"
 
-jumpChars :: [Text]
-jumpChars =
-  ["k", "cr"]
+jumpEvents :: [PromptEvent]
+jumpEvents =
+  Mapping <$> ["k", "<cr>"]
 
 test_grepJump :: UnitTest
 test_grepJump =
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    Grep.handleErrors (interpretNvimMenuFinal (promptInput jumpChars (grepWith [] dir pat)))
+    Grep.handleErrors (promptInput jumpEvents (grepWith [] dir pat))
     assertEq 5 =<< currentLine
 
-yankChars :: [Text]
-yankChars =
-  ["k", "y"]
+yankEvents :: [PromptEvent]
+yankEvents =
+  Mapping <$> ["k", "y"]
 
 test_grepYank :: UnitTest
 test_grepYank = do
   proteomeTest do
     dir <- Test.fixturePath [reldir|grep/pro|]
-    Grep.handleErrors (interpretNvimMenuFinal (promptInput yankChars (grepWith [] dir pat)))
+    Grep.handleErrors (promptInput yankEvents (grepWith [] dir pat))
     normal "P"
     l <- currentBufferContent
     ["line 6 " <> pat, ""] === l

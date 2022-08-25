@@ -17,14 +17,13 @@ import Ribosome (
   )
 import Ribosome.Menu (
   MenuItem (..),
+  MenuLoops,
   MenuResult,
-  MenuState,
   MenuWidget,
-  NvimMenu,
-  menu,
-  runStaticNvimMenu,
+  NvimMenuUi,
+  WindowMenu,
+  staticNvimMenu,
   traverseSelection_,
-  withMappings,
   )
 import Ribosome.Scratch (scratch, syntax)
 import qualified Ribosome.Settings as Settings
@@ -123,37 +122,38 @@ availableProjects (ProjectConfig.baseDirs -> dirs) =
   join <$> traverse availableProjectsInBase dirs
 
 menuAdd ::
-  Member (MenuState AddItem) r =>
   Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Embed IO] r =>
-  MenuWidget r ()
+  MenuWidget AddItem r ()
 menuAdd =
   traverseSelection_ \ (AddItem tpe name) ->
     add (ProjectName name) (Just (ProjectType tpe)) True
 
-type AddStack =
-  NvimMenu AddItem ++ [
+type AddStack ui =
+  [
+    NvimMenuUi ui,
+    MenuLoops AddItem,
     AtomicState Env,
     Reader PluginName,
     Settings !! SettingError,
     Rpc !! RpcError,
+    Log,
     Embed IO
   ]
 
 addMenu ::
-  Members AddStack r =>
+  Members (AddStack ui) r =>
   Members [Rpc, Settings, Stop ResolveError, Stop AddError, Stop RpcError] r =>
   Sem r (MenuResult ())
 addMenu = do
   projectConfig <- Settings.get Settings.projectConfig
   projects <- sort <$> availableProjects projectConfig
-  runStaticNvimMenu projects [] scratchOptions $ withMappings [("cr", menuAdd)] do
-    menu
+  staticNvimMenu projects def scratchOptions [("<cr>", menuAdd)]
   where
     scratchOptions =
       (scratch "proteome-add") { syntax = [addSyntax] }
 
 proAddMenu ::
-  Members AddStack r =>
+  Members (AddStack WindowMenu) r =>
   Handler r ()
 proAddMenu =
   resumeReport @Rpc $

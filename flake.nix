@@ -17,7 +17,6 @@
     in {
       proteome = fast;
       proteome-test = fast inputs;
-      streamly = hackage "0.8.1" "0ywyy7gxjnp32hx8kki0lfn94bnc9mzjh8g6mg65ff3vv28k2vdr";
       streamly-process = minimal (source.root streamly-process);
     };
 
@@ -26,6 +25,7 @@
     inherit overrides;
     depsFull = [ribosome];
     compat.enable = false;
+    devGhc.compiler = "ghc902";
     packages = {
       proteome = ./packages/proteome;
       proteome-test = ./packages/test;

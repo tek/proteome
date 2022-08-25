@@ -27,23 +27,22 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
 import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
-  MenuAction,
-  MenuState,
+  Mappings,
+  MenuLoops,
   MenuWidget,
-  NvimMenu,
+  NvimMenuUi,
   Prompt (..),
-  PromptFlag (OnlyInsert, StartInsert),
+  PromptConfig (OnlyInsert),
   PromptMode,
   PromptText (PromptText),
-  menu,
+  WindowMenu,
   menuOk,
   menuSuccess,
   menuUpdatePrompt,
-  readPrompt,
-  runNvimMenu,
-  withMappings,
+  nvimMenu,
   withSelection,
   )
+import Ribosome.Menu.Mappings (insertMapping)
 import qualified Ribosome.Settings as Settings
 import Text.Regex.PCRE.Light (Regex, compileM)
 
@@ -64,8 +63,7 @@ data FileAction =
   deriving stock (Eq, Show)
 
 editFile ::
-  Member (MenuState (Path Abs File)) r =>
-  MenuWidget r FileAction
+  MenuWidget (Path Abs File) r FileAction
 editFile =
   withSelection (pure . Edit)
 
@@ -130,11 +128,11 @@ tabUpdatePrompt st prefix =
   Prompt (Text.length prefix) st (PromptText prefix)
 
 tab ::
-  Members [MenuState (Path Abs File), Embed IO] r =>
+  Member (Embed IO) r =>
   [Path Abs Dir] ->
-  Sem r (Maybe (MenuAction FileAction))
+  MenuWidget (Path Abs File) r FileAction
 tab bases = do
-  Prompt _ promptState (PromptText promptText) <- readPrompt
+  Prompt _ promptState (PromptText promptText) <- ask
   tabComplete bases promptText >>= \case
     Just prefix ->
       menuUpdatePrompt (tabUpdatePrompt promptState prefix)
@@ -175,11 +173,11 @@ existingSubdirCount =
           pure count
 
 createFile ::
-  Members [MenuState (Path Abs File), Stop FilesError, Embed IO] r =>
+  Members [Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
-  Sem r (Maybe (MenuAction FileAction))
+  MenuWidget (Path Abs File) r FileAction
 createFile bases = do
-  PromptText promptText <- view #text <$> readPrompt
+  PromptText promptText <- view #text <$> ask
   let
     parse counts =
       (base counts </>) <$> parseRelFile (toString promptText)
@@ -194,14 +192,14 @@ createFile bases = do
       stop . FilesError.InvalidFilePath
 
 actions ::
-  Members [MenuState (Path Abs File), Stop FilesError, Embed IO] r =>
+  Members [Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
-  Map Text (MenuWidget r FileAction)
+  Mappings (Path Abs File) r FileAction
 actions bases =
   [
-    ("cr", editFile),
-    ("tab", tab (NonEmpty.toList bases)),
-    ("c-y", createFile bases)
+    ("<cr>", editFile),
+    (insertMapping "<tab>", tab (NonEmpty.toList bases)),
+    ("<c-y>", createFile bases)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
@@ -254,24 +252,26 @@ fileAction = \case
   NoAction ->
     unit
 
-type FilesStack =
-  NvimMenu (Path Abs File) ++ [
+type FilesStack ui =
+  [
+    NvimMenuUi ui,
+    MenuLoops (Path Abs File),
+    Log,
     Async,
     Embed IO
   ]
 
-filesMenuWith ::
-  Members FilesStack r =>
+filesMenu ::
+  Members (FilesStack ui) r =>
   Members [Stop FilesError, Stop Report, Settings, Rpc] r =>
   Path Abs Dir ->
   [Text] ->
   Sem r ()
-filesMenuWith cwd pathSpecs = do
+filesMenu cwd pathSpecs = do
   mapReport @RpcError do
     conf <- filesConfig
     items <- files conf nePaths
-    result <- runNvimMenu items [StartInsert, OnlyInsert] opt $ withMappings (actions nePaths) do
-      menu
+    result <- nvimMenu items OnlyInsert opt (actions nePaths)
     handleResult fileAction result
   where
     opt =
@@ -287,17 +287,8 @@ filesMenuWith cwd pathSpecs = do
     absPaths =
       mapMaybe (parsePath cwd) pathSpecs
 
-filesMenu ::
-  Members FilesStack r =>
-  Members [Stop FilesError, Stop Report, Settings, Rpc] r =>
-  Path Abs Dir ->
-  [Text] ->
-  Sem r ()
-filesMenu cwd pathSpecs =
-  filesMenuWith cwd pathSpecs
-
 proFiles ::
-  Members FilesStack r =>
+  Members (FilesStack WindowMenu) r =>
   Members [Rpc !! RpcError, Settings !! SettingError] r =>
   ArgList ->
   Handler r ()

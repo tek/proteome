@@ -1,7 +1,7 @@
 module Proteome.Test.Run where
 
 import Conc (Restoration, interpretAtomic)
-import Log (Severity (Trace))
+import Log (Severity (Debug, Trace))
 import Path (reldir)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (Test, UnitTest)
@@ -61,7 +61,7 @@ proteomeTestConf conf test =
       test
   where
     testConf =
-      TestConfig False (PluginConfig "proteome" conf)
+      TestConfig False (PluginConfig "proteome" conf unit)
 
 proteomeTest ::
   HasCallStack =>
@@ -69,6 +69,13 @@ proteomeTest ::
   UnitTest
 proteomeTest =
   proteomeTestConf def
+
+proteomeTestDebug ::
+  HasCallStack =>
+  Sem ProteomeTest () ->
+  UnitTest
+proteomeTestDebug =
+  proteomeTestConf (setStderr Debug def)
 
 proteomeTestTrace ::
   HasCallStack =>

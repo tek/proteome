@@ -9,7 +9,8 @@ import Polysemy.Test (Hedgehog, UnitTest, (===))
 import Prelude hiding (group)
 import Ribosome.Api (vimGetBuffers)
 import Ribosome.Api.Buffer (buflisted, currentBufferContent, setCurrentBufferContent)
-import Ribosome.Menu (interpretNvimMenuFinal, promptInput)
+import Ribosome.Menu (promptInput)
+import Ribosome.Menu.Prompt (PromptEvent (Mapping))
 
 import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith)
@@ -24,9 +25,9 @@ replacement :: Text
 replacement =
   "replaced"
 
-replaceChars :: [Text]
-replaceChars =
-  ["*", "r"]
+replaceEvents :: [PromptEvent]
+replaceEvents =
+  Mapping <$> ["*", "r"]
 
 file1Lines :: [Text]
 file1Lines =
@@ -104,7 +105,7 @@ test_grepReplace =
     file1 <- Test.tempFile file1Lines [relfile|grep/replace/file1|]
     file2 <- Test.tempFile file2Lines [relfile|grep/replace/file2|]
     file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
-    Grep.handleErrors (interpretNvimMenuFinal (promptInput replaceChars (grepWith [] dir pat)))
+    Grep.handleErrors (promptInput replaceEvents (grepWith [] dir pat))
     replaceContent <- currentBufferContent
     7 === length replaceContent
     setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
@@ -115,9 +116,9 @@ test_grepReplace =
     checkContent file2 file2Target
     checkContent file3 file3Target
 
-deleteChars :: [Text]
-deleteChars =
-  ["k", "space", "k", "space", "d"]
+deleteEvents :: [PromptEvent]
+deleteEvents =
+  Mapping <$> ["k", "<space>", "k", "<space>", "d"]
 
 deleteFile1Lines :: [Text]
 deleteFile1Lines =
@@ -147,5 +148,5 @@ test_grepDelete =
   proteomeTest do
     dir <- Test.tempDir [reldir|grep/delete|]
     file1 <- Test.tempFile deleteFile1Lines [relfile|grep/delete/file1|]
-    Grep.handleErrors (interpretNvimMenuFinal (promptInput deleteChars (grepWith [] dir pat)))
+    Grep.handleErrors (promptInput deleteEvents (grepWith [] dir pat))
     checkContent file1 deleteFile1Target

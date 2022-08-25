@@ -1,6 +1,6 @@
 module Proteome.Buffers where
 
-import Control.Lens (elemOf, uses)
+import Control.Lens (elemOf, view)
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Text as Text
 import Exon (exon)
@@ -31,23 +31,20 @@ import Ribosome.Api.Window (ensureMainWindow)
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Menu (
   Mappings,
+  MenuAction (Render),
   MenuItem (MenuItem),
-  MenuState,
+  MenuLoops,
   MenuWidget,
-  NvimMenu,
+  NvimMenuUi,
+  WindowMenu,
   deleteSelected,
-  menu,
-  runStaticNvimMenu,
-  semState,
+  menuState,
+  staticNvimMenu,
   unselected,
+  use,
   withFocus,
-  withMappings,
   withSelection',
   )
-import qualified Ribosome.Menu.Data.MenuAction as MenuAction
-import Ribosome.Menu.Data.MenuAction (MenuAction)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Data.MenuState (modifyMenu)
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Buffers.Syntax (buffersSyntax)
@@ -70,8 +67,7 @@ loadListedBuffer (ListedBuffer buffer number _) =
   ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (nvimCommand [exon|buffer #{show number}|])
 
 load ::
-  Member (MenuState ListedBuffer) r =>
-  MenuWidget r BufferAction
+  MenuWidget ListedBuffer r BufferAction
 load =
   withFocus (pure . Load)
 
@@ -102,16 +98,15 @@ deleteListedBuffersWith deleter bufs =
 
 deleteWith ::
   Member Rpc r =>
-  Member (MenuState ListedBuffer) r =>
   Text ->
-  Sem r (Maybe (MenuAction a))
+  MenuWidget ListedBuffer r a
 deleteWith deleter =
-  modifyMenu $ withSelection' \ delete -> do
-    keep <- semState (uses unselected (fmap MenuItem.meta))
+  menuState $ withSelection' \ delete -> do
+    keep <- fmap (view #meta) <$> use unselected
     compensateForMissingActiveBuffer delete keep
     deleteListedBuffersWith deleter delete
     deleteSelected
-    pure MenuAction.Render
+    pure Render
 
 moveCurrentLast ::
   Member Rpc r =>
@@ -121,14 +116,14 @@ moveCurrentLast items = do
   current <- vimGetCurrentBuffer
   pure $ spin current items []
   where
-    spin current (item : rest) result | lens item == current =
+    spin current (item : rest) result | item ^. lens == current =
       result ++ rest ++ [item]
     spin current (item : rest) result =
       spin current rest (item : result)
     spin _ [] result =
       result
     lens =
-      ListedBuffer.buffer . MenuItem.meta
+      #meta . #buffer
 
 buffers ::
   Members [AtomicState Env, Settings !! SettingError, Rpc, Rpc !! RpcError] r =>
@@ -155,11 +150,10 @@ buffers = do
 
 actions ::
   Member Rpc r =>
-  Member (MenuState ListedBuffer) r =>
-  Mappings r BufferAction
+  Mappings ListedBuffer r BufferAction
 actions =
   [
-    ("cr", load),
+    ("<cr>", load),
     ("d", deleteWith "bdelete"),
     ("D", deleteWith "bdelete!"),
     ("w", deleteWith "bwipeout"),
@@ -174,21 +168,25 @@ bufferAction = \case
   Load buf ->
     loadListedBuffer buf
 
-type BuffersStack =
-  NvimMenu ListedBuffer ++ [
+type BuffersStack ui =
+  [
+    NvimMenuUi ui,
+    MenuLoops ListedBuffer,
     AtomicState Env,
     Settings !! SettingError,
-    Rpc !! RpcError
+    Rpc !! RpcError,
+    Log
   ]
 
 buffersMenu ::
-  Members BuffersStack r =>
+  ∀ ui r .
+  Members (BuffersStack ui) r =>
   Members [Rpc, Stop Report] r =>
   Sem r ()
 buffersMenu = do
   items <- buffers
-  result <- mapReport $ runStaticNvimMenu items [] scratchOptions $ withMappings actions do
-    menu
+  result <- mapReport do
+    staticNvimMenu items def scratchOptions actions
   handleResult bufferAction result
   where
     scratchOptions =
@@ -201,7 +199,7 @@ buffersMenu = do
       "proteome-buffers"
 
 proBuffers ::
-  Members BuffersStack r =>
+  Members (BuffersStack WindowMenu) r =>
   Handler r ()
 proBuffers =
   resumeReport @Rpc do
