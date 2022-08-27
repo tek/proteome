@@ -42,6 +42,7 @@ import Ribosome.Menu (
   nvimMenu,
   withSelection,
   )
+import qualified Ribosome.Menu.Mappings as Mapping
 import Ribosome.Menu.Mappings (insertMapping)
 import qualified Ribosome.Settings as Settings
 import Text.Regex.PCRE.Light (Regex, compileM)
@@ -197,9 +198,9 @@ actions ::
   Mappings (Path Abs File) r FileAction
 actions bases =
   [
-    ("<cr>", editFile),
+    (Mapping.insert "<cr>", editFile),
     (insertMapping "<tab>", tab (NonEmpty.toList bases)),
-    ("<c-y>", createFile bases)
+    (insertMapping "<c-y>", createFile bases)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
