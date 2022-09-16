@@ -27,9 +27,11 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
 import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
+  Filter (Fuzzy),
   Mappings,
-  MenuLoops,
+  MenuAction,
   MenuWidget,
+  Menus,
   NvimMenuUi,
   Prompt (..),
   PromptConfig (OnlyInsert),
@@ -37,19 +39,23 @@ import Ribosome.Menu (
   PromptText (PromptText),
   WindowMenu,
   menuOk,
+  menuState,
   menuSuccess,
   menuUpdatePrompt,
+  modal,
   nvimMenu,
-  withSelection,
+  withSelection, (%=),
   )
-import qualified Ribosome.Menu.Mappings as Mapping
-import Ribosome.Menu.Mappings (insertMapping)
+import Ribosome.Menu.Mappings (insert, withInsert)
+import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Settings as Settings
 import Text.Regex.PCRE.Light (Regex, compileM)
 
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Data.FilesError (FilesError)
 import qualified Proteome.Data.FilesError as FilesError (FilesError (..))
+import qualified Proteome.Data.FilesState as FilesState
+import Proteome.Data.FilesState (FilesMode (FilesMode), FilesState, Segment (Full), fileSegments)
 import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
 import Proteome.Menu (handleResult)
@@ -64,9 +70,9 @@ data FileAction =
   deriving stock (Eq, Show)
 
 editFile ::
-  MenuWidget (Path Abs File) r FileAction
+  MenuWidget FilesState r FileAction
 editFile =
-  withSelection (pure . Edit)
+  withSelection (pure . Edit . fmap (view #path))
 
 matchingDirs ::
   Member (Embed IO) r =>
@@ -131,7 +137,7 @@ tabUpdatePrompt st prefix =
 tab ::
   Member (Embed IO) r =>
   [Path Abs Dir] ->
-  MenuWidget (Path Abs File) r FileAction
+  MenuWidget FilesState r FileAction
 tab bases = do
   Prompt _ promptState (PromptText promptText) <- ask
   tabComplete bases promptText >>= \case
@@ -174,9 +180,10 @@ existingSubdirCount =
           pure count
 
 createFile ::
+  Member (Reader Prompt) r =>
   Members [Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
-  MenuWidget (Path Abs File) r FileAction
+  Sem r (Maybe (MenuAction FileAction))
 createFile bases = do
   PromptText promptText <- view #text <$> ask
   let
@@ -192,15 +199,22 @@ createFile bases = do
     err =
       stop . FilesError.InvalidFilePath
 
+cycleSegment :: MenuWidget FilesState r FileAction
+cycleSegment =
+  menuState do
+    mode . #segment %= FilesState.cycle
+    menuOk
+
 actions ::
   Members [Stop FilesError, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
-  Mappings (Path Abs File) r FileAction
+  Mappings FilesState r FileAction
 actions bases =
   [
-    (Mapping.insert "<cr>", editFile),
-    (insertMapping "<tab>", tab (NonEmpty.toList bases)),
-    (insertMapping "<c-y>", createFile bases)
+    (withInsert "<cr>", editFile),
+    (insert "<tab>", tab (NonEmpty.toList bases)),
+    (insert "<c-y>", createFile bases),
+    (insert "<c-s>", cycleSegment)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
@@ -256,7 +270,7 @@ fileAction = \case
 type FilesStack ui =
   [
     NvimMenuUi ui,
-    MenuLoops (Path Abs File),
+    Menus FilesState,
     Log,
     Async,
     Embed IO
@@ -271,10 +285,12 @@ filesMenu ::
 filesMenu cwd pathSpecs = do
   mapReport @RpcError do
     conf <- filesConfig
-    items <- files conf nePaths
-    result <- nvimMenu items OnlyInsert opt (actions nePaths)
+    items <- fmap (fmap fileSegments) <$> files conf nePaths
+    result <- nvimMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths)
     handleResult fileAction result
   where
+    window =
+      def & #prompt .~ OnlyInsert & #items .~ opt
     opt =
       def {
         name = ScratchId name,

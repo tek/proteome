@@ -6,8 +6,8 @@ import qualified Data.Text as Text (strip)
 import Exon (exon)
 import qualified Log
 import Path (Abs, Dir, Path, parseAbsFile, parseRelFile, stripProperPrefix, (</>))
-import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Ribosome (pathText)
+import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Text.Parser.Char (anyChar, char, noneOf)
 import Text.Parser.Combinators (manyTill)
 import Text.Parser.Token (TokenParsing, natural)
@@ -30,8 +30,8 @@ grepParser cwd =
       (fromInteger <$> natural) <* char ':'
 
 formatGrepLine :: Path Abs Dir -> GrepOutputLine -> Text
-formatGrepLine cwd (GrepOutputLine path line col text') =
-  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip text'}|]
+formatGrepLine cwd (GrepOutputLine path line col text) =
+  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip text}|]
   where
     relativePath =
       maybe (pathText path) pathText (stripProperPrefix cwd path)
@@ -50,7 +50,7 @@ parseGrepOutput cwd =
     item (Left err) =
       Nothing <$ Log.debug [exon|parsing grep output failed: #{toText err}|]
     convert _ file =
-      MenuItem file text' text'
+      MenuItem file text [exon| * #{text}|]
       where
-        text' =
+        text =
           formatGrepLine cwd file

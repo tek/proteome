@@ -29,13 +29,16 @@ import qualified Ribosome.Data.Register as Register (Register (Special))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu (
+  Filter (Fuzzy),
   Mappings,
   MenuItem,
-  MenuLoops,
   MenuWidget,
+  Menus,
+  ModalState,
   NvimMenuUi,
   WindowMenu,
   menuState,
+  modal,
   nvimMenu,
   withFocus,
   withSelection,
@@ -55,6 +58,9 @@ import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings (grepCmdline)
+
+type GrepState =
+  ModalState GrepOutputLine
 
 data GrepAction =
   Select (Path Abs File) Int (Maybe Int)
@@ -79,25 +85,25 @@ navigate path line col = do
   nvimCommand "normal! zz"
 
 selectResult ::
-  MenuWidget GrepOutputLine r GrepAction
+  MenuWidget GrepState r GrepAction
 selectResult = do
   withFocus \ (GrepOutputLine path line col _) ->
     pure (Select path line col)
 
 yankResult ::
   Members [Rpc, Resource, Embed IO] r =>
-  MenuWidget GrepOutputLine r GrepAction
+  MenuWidget GrepState r GrepAction
 yankResult =
   withFocus \ (GrepOutputLine _ _ _ txt) ->
     NoAction <$ setregLine (Register.Special "\"") [txt]
 
 replaceResult ::
-  MenuWidget GrepOutputLine r GrepAction
+  MenuWidget GrepState r GrepAction
 replaceResult =
   menuState $ withSelection (pure . Replace)
 
 deleteResult ::
-  MenuWidget GrepOutputLine r GrepAction
+  MenuWidget GrepState r GrepAction
 deleteResult =
   menuState $ withSelection (pure . Delete)
 
@@ -148,7 +154,7 @@ grepItems path patt opt = do
 
 actions ::
   Members [Scratch, Rpc, Rpc !! RpcError, AtomicState Env, Stop ReplaceError, Resource, Embed IO] r =>
-  Mappings GrepOutputLine r GrepAction
+  Mappings GrepState r GrepAction
 actions =
   [
     ("<cr>", selectResult),
@@ -185,7 +191,7 @@ handleErrors =
 type GrepStack ui =
   [
     NvimMenuUi ui,
-    MenuLoops GrepOutputLine,
+    Menus GrepState,
     Settings !! SettingError,
     Scratch !! RpcError,
     Rpc !! RpcError,
@@ -207,7 +213,7 @@ grepWith ::
 grepWith opt path patt =
   mapReport @RpcError do
     items <- grepItems path patt opt
-    result <- nvimMenu items def scratchOptions actions
+    result <- nvimMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
     handleResult grepAction result
   where
     scratchOptions =

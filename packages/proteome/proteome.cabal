@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -39,6 +39,7 @@ library
       Proteome.Data.FileScanItem
       Proteome.Data.FilesConfig
       Proteome.Data.FilesError
+      Proteome.Data.FilesState
       Proteome.Data.GrepError
       Proteome.Data.GrepOutputLine
       Proteome.Data.ListedBuffer

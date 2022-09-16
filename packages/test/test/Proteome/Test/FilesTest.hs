@@ -88,7 +88,7 @@ filesMultiDirTest rg = do
     Test.tempFile ["content"] (sub1 </> [relfile|file.foo|])
     Test.tempFile ["content"] (sub1 </> [relfile|file.bar|])
     fs <- files conf' (dir1 :| [dir2])
-    stream <- fmap MenuItem.truncated <$> embed (Stream.toList fs)
+    stream <- fmap MenuItem.render <$> embed (Stream.toList fs)
     target === Set.fromList stream
   where
     sub1 =

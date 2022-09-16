@@ -6,7 +6,7 @@ import Path (Abs, Dir, File, Path, parseAbsFile, relfile, toFilePath)
 import Path.IO (findExecutable, isLocationOccupied)
 import Ribosome (pathText)
 import Ribosome.Final (inFinal_)
-import Ribosome.Menu.Data.MenuItem (MenuItem)
+import Ribosome.Menu (MenuItem)
 import qualified Streamly.Data.Fold as Fold
 import qualified Streamly.Internal.Unicode.Stream as Stream
 import qualified Streamly.Prelude as Stream

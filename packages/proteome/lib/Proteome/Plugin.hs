@@ -1,7 +1,6 @@
 module Proteome.Plugin where
 
 import Conc (ConcStack, Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
-import Path (Abs, File, Path)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
@@ -31,24 +30,21 @@ import Ribosome (
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.Report (LogReport)
-import Ribosome.Menu (NvimMenus, interpretMenus)
-import Ribosome.Menu.Effect.MenuLoop (MenuLoops)
-import Ribosome.Menu.Interpreter.MenuLoop (interpretMenuLoops)
+import Ribosome.Menu (Filter, MenuFilter, Menus, NvimMenus, defaultFilter, interpretMenuLoops, interpretMenus)
+import Ribosome.Menu.Data.FilterMode (FilterMode)
 
-import Proteome.Add (proAdd, proAddCmd, proAddMenu)
+import Proteome.Add (AddState, proAdd, proAddCmd, proAddMenu)
 import Proteome.BufEnter (Mru, bufEnter)
-import Proteome.Buffers (proBuffers)
+import Proteome.Buffers (BuffersState, proBuffers)
 import Proteome.Config (proReadConfig)
-import Proteome.Data.AddItem (AddItem)
 import Proteome.Data.Env (Env)
-import Proteome.Data.GrepOutputLine (GrepOutputLine)
-import Proteome.Data.ListedBuffer (ListedBuffer)
+import Proteome.Data.FilesState (FilesState)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
 import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
-import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
+import Proteome.Grep (GrepState, proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
@@ -70,10 +66,11 @@ type ProteomeProdStack =
   [
     Persist PersistBuffers !! PersistError,
     PersistPath !! PersistPathError,
-    MenuLoops AddItem,
-    MenuLoops ListedBuffer,
-    MenuLoops GrepOutputLine,
-    MenuLoops (Path Abs File)
+    Menus AddState,
+    Menus BuffersState,
+    Menus GrepState,
+    Menus FilesState,
+    MenuFilter (FilterMode Filter)
   ] ++ NvimMenus ++ ProteomeStack
 
 handlers ::
@@ -169,6 +166,7 @@ interpretProteomeProdStack ::
 interpretProteomeProdStack =
   interpretProteomeStack .
   interpretMenus .
+  defaultFilter .
   interpretMenuLoops .
   interpretMenuLoops .
   interpretMenuLoops .

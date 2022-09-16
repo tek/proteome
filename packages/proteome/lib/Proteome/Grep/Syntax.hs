@@ -13,11 +13,20 @@ lineNumber :: Text
 lineNumber =
   "\57505"
 
+asterisk :: SyntaxItem
+asterisk =
+  item { siOptions = options, siParams = params }
+  where
+    item = syntaxMatch "ProGrepAsterisk" [r|^ \*|]
+    options = ["skipwhite"]
+    params = Map.fromList [("nextgroup", "ProGrepPath")]
+
 path :: SyntaxItem
 path =
-  item { siParams = params }
+  item { siOptions = options, siParams = params }
   where
-    item = syntaxMatch "ProGrepPath" ([r|^.*\ze|] <> lineNumber)
+    item = syntaxMatch "ProGrepPath" ([r|.*\ze|] <> lineNumber)
+    options = ["contained", "skipwhite"]
     params = Map.fromList [("nextgroup", "ProGrepLN")]
 
 ln :: SyntaxItem
@@ -63,6 +72,10 @@ sync :: SyntaxItem
 sync =
   syntaxVerbatim "syntax sync minlines=1"
 
+hlAsterisk :: HiLink
+hlAsterisk =
+  HiLink "ProGrepAsterisk" "Todo"
+
 hlPath :: HiLink
 hlPath =
   HiLink "ProGrepPath" "Type"
@@ -88,6 +101,6 @@ grepSyntax =
   Syntax items [] links
   where
     items =
-      [path, ln, line, col, colon, text_, sync]
+      [asterisk, path, ln, line, col, colon, text_, sync]
     links =
-      [hlPath, hlLn, hlLine, hlCol, hlText]
+      [hlAsterisk, hlPath, hlLn, hlLine, hlCol, hlText]

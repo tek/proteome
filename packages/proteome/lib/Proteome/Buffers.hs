@@ -19,32 +19,37 @@ import Ribosome (
 import Ribosome.Api (
   bufferGetName,
   bufferGetNumber,
+  bufferIsFile,
+  buflisted,
+  ensureMainWindow,
   nvimBufIsLoaded,
   nvimCommand,
+  nvimCwd,
+  setCurrentBuffer,
   vimGetCurrentBuffer,
   vimGetCurrentWindow,
   vimSetCurrentWindow,
   )
-import Ribosome.Api.Buffer (bufferIsFile, buflisted, setCurrentBuffer)
-import Ribosome.Api.Path (nvimCwd)
-import Ribosome.Api.Window (ensureMainWindow)
-import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Menu (
+  Filter (Fuzzy),
   Mappings,
   MenuAction (Render),
   MenuItem (MenuItem),
-  MenuLoops,
   MenuWidget,
+  ModalMenus,
+  ModalState,
   NvimMenuUi,
   WindowMenu,
   deleteSelected,
   menuState,
+  modal,
   staticNvimMenu,
   unselected,
   use,
   withFocus,
   withSelection',
   )
+import Ribosome.Scratch (ScratchOptions (..))
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Buffers.Syntax (buffersSyntax)
@@ -59,6 +64,9 @@ newtype BufferAction =
   Load ListedBuffer
   deriving stock (Eq, Show)
 
+type BuffersState =
+  ModalState ListedBuffer
+
 loadListedBuffer ::
   Member Rpc r =>
   ListedBuffer ->
@@ -67,7 +75,7 @@ loadListedBuffer (ListedBuffer buffer number _) =
   ifM (nvimBufIsLoaded buffer) (setCurrentBuffer buffer) (nvimCommand [exon|buffer #{show number}|])
 
 load ::
-  MenuWidget ListedBuffer r BufferAction
+  MenuWidget BuffersState r BufferAction
 load =
   withFocus (pure . Load)
 
@@ -99,7 +107,7 @@ deleteListedBuffersWith deleter bufs =
 deleteWith ::
   Member Rpc r =>
   Text ->
-  MenuWidget ListedBuffer r a
+  MenuWidget BuffersState r a
 deleteWith deleter =
   menuState $ withSelection' \ delete -> do
     keep <- fmap (view #meta) <$> use unselected
@@ -150,7 +158,7 @@ buffers = do
 
 actions ::
   Member Rpc r =>
-  Mappings ListedBuffer r BufferAction
+  Mappings BuffersState r BufferAction
 actions =
   [
     ("<cr>", load),
@@ -171,7 +179,7 @@ bufferAction = \case
 type BuffersStack ui =
   [
     NvimMenuUi ui,
-    MenuLoops ListedBuffer,
+    ModalMenus ListedBuffer,
     AtomicState Env,
     Settings !! SettingError,
     Rpc !! RpcError,
@@ -186,7 +194,7 @@ buffersMenu ::
 buffersMenu = do
   items <- buffers
   result <- mapReport do
-    staticNvimMenu items def scratchOptions actions
+    staticNvimMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
   handleResult bufferAction result
   where
     scratchOptions =

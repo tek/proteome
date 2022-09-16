@@ -25,7 +25,7 @@ import Path (
 import Path.IO (doesDirExist, findExecutable, walkDir)
 import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
 import Ribosome (pathText)
-import Ribosome.Menu.Data.MenuItem (MenuItem, simpleMenuItem)
+import Ribosome.Menu (MenuItem (MenuItem))
 import Ribosome.Menu.Stream.Util (takeUntilNothing)
 import qualified Streamly.Prelude as Stream
 import Streamly.Prelude (IsStream, SerialT)
@@ -137,14 +137,18 @@ withBaseIndicators bases =
     uniq as =
       Set.toList (Set.fromList (NonEmpty.toList as))
 
-formatFileLine ::
+fileMenuItem ::
   Path Abs Dir ->
   Maybe Text ->
   Path Abs File ->
-  Text
-formatFileLine base baseIndicator path =
-  " * " <> maybe "" indicator baseIndicator <> toText (maybe (toFilePath path) toFilePath relativePath)
+  MenuItem (Path Abs File)
+fileMenuItem base baseIndicator path =
+  MenuItem path text display
   where
+    display =
+      " * " <> maybe "" indicator baseIndicator <> text
+    text =
+      toText (maybe (toFilePath path) toFilePath relativePath)
     relativePath =
       stripProperPrefix base path
     indicator name =
@@ -169,7 +173,7 @@ filesNative conf paths = do
   pure (menuItem <$> chanStream chan)
   where
     menuItem (FileScanItem base baseIndicator path) =
-      simpleMenuItem path (formatFileLine base baseIndicator path)
+      fileMenuItem base baseIndicator path
 
 rgExcludes :: FilesConfig -> [Text]
 rgExcludes (FilesConfig _ _ _ _ wilds) =
@@ -192,7 +196,7 @@ rgMenuItem ::
 rgMenuItem bases file = do
   path <- parseAbsFile (toString file)
   (base, baseIndicator) <- findBase path bases
-  pure (simpleMenuItem path (formatFileLine base baseIndicator path))
+  pure (fileMenuItem base baseIndicator path)
 
 filesRg ::
   Path Abs File ->

@@ -8,7 +8,7 @@ import Ribosome.Api (bufferPath, currentBufferPath, vimGetBuffers)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
 import qualified Ribosome.Data.FileBuffer as FileBuffer
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
-import Ribosome.Menu.Interpreter.MenuLoop (promptInput)
+import Ribosome.Menu.Interpreter.Menu (promptInput)
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent (Mapping))
 import qualified Ribosome.Settings as Settings
 import Test.Tasty (TestTree, testGroup)
