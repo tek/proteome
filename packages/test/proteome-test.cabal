@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.34.7.
 --
 -- see: https://github.com/sol/hpack
 
@@ -28,6 +28,9 @@ library
   hs-source-dirs:
       lib
   default-extensions:
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
       AllowAmbiguousTypes
       ApplicativeDo
       BangPatterns
@@ -89,9 +92,6 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      StandaloneKindSignatures
-      OverloadedLabels
-      ImpredicativeTypes
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin
   build-depends:
       base >=4.12 && <5
@@ -131,6 +131,9 @@ test-suite proteome-unit
   hs-source-dirs:
       test
   default-extensions:
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
       AllowAmbiguousTypes
       ApplicativeDo
       BangPatterns
@@ -192,9 +195,6 @@ test-suite proteome-unit
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      StandaloneKindSignatures
-      OverloadedLabels
-      ImpredicativeTypes
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson

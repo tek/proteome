@@ -20,12 +20,10 @@ import Ribosome.Menu (
   MenuItem (..),
   MenuResult,
   MenuWidget,
-  Menus,
   ModalState,
-  NvimMenuUi,
-  WindowMenu,
+  ModalWindowMenus,
   modal,
-  staticNvimMenu,
+  staticWindowMenu,
   traverseSelection_,
   )
 import Ribosome.Scratch (scratch, syntax)
@@ -134,10 +132,9 @@ menuAdd =
   traverseSelection_ \ (AddItem tpe name) ->
     add (ProjectName name) (Just (ProjectType tpe)) True
 
-type AddStack ui =
+type AddStack =
   [
-    NvimMenuUi ui,
-    Menus AddState,
+    ModalWindowMenus () AddItem !! RpcError,
     AtomicState Env,
     Reader PluginName,
     Settings !! SettingError,
@@ -147,19 +144,19 @@ type AddStack ui =
   ]
 
 addMenu ::
-  Members (AddStack ui) r =>
+  Members AddStack r =>
   Members [Rpc, Settings, Stop ResolveError, Stop AddError, Stop RpcError] r =>
   Sem r (MenuResult ())
 addMenu = do
   projectConfig <- Settings.get Settings.projectConfig
   projects <- sort <$> availableProjects projectConfig
-  staticNvimMenu projects (modal Fuzzy) (def & #items .~ scratchOptions) [("<cr>", menuAdd)]
+  staticWindowMenu projects (modal Fuzzy) (def & #items .~ scratchOptions) [("<cr>", menuAdd)]
   where
     scratchOptions =
       (scratch "proteome-add") { syntax = [addSyntax] }
 
 proAddMenu ::
-  Members (AddStack WindowMenu) r =>
+  Members AddStack r =>
   Handler r ()
 proAddMenu =
   resumeReport @Rpc $

@@ -33,13 +33,11 @@ import Ribosome.Menu (
   Mappings,
   MenuItem,
   MenuWidget,
-  Menus,
   ModalState,
-  NvimMenuUi,
-  WindowMenu,
+  ModalWindowMenus,
   menuState,
   modal,
-  nvimMenu,
+  windowMenu,
   withFocus,
   withSelection,
   )
@@ -188,10 +186,9 @@ handleErrors =
   mapReport @ReplaceError .
   pluginLogReports
 
-type GrepStack ui =
+type GrepStack =
   [
-    NvimMenuUi ui,
-    Menus GrepState,
+    ModalWindowMenus () GrepOutputLine !! RpcError,
     Settings !! SettingError,
     Scratch !! RpcError,
     Rpc !! RpcError,
@@ -203,7 +200,7 @@ type GrepStack ui =
   ]
 
 grepWith ::
-  Members (GrepStack ui) r =>
+  Members GrepStack r =>
   Members GrepErrorStack r =>
   Member (Stop Report) r =>
   [Text] ->
@@ -213,7 +210,7 @@ grepWith ::
 grepWith opt path patt =
   mapReport @RpcError do
     items <- grepItems path patt opt
-    result <- nvimMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
+    result <- windowMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
     handleResult grepAction result
   where
     scratchOptions =
@@ -235,7 +232,7 @@ askUser purpose args = do
   if Text.null spec then stop (GrepError.EmptyUserInput purpose) else pure spec
 
 grepWithNative ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   [Text] ->
   Maybe Text ->
   Maybe Args ->
@@ -248,7 +245,7 @@ grepWithNative opt pathSpec pattSpec = do
     grepWith opt path patt
 
 proGrepIn ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   Maybe Text ->
   Maybe Args ->
   Handler r ()
@@ -256,7 +253,7 @@ proGrepIn =
   grepWithNative []
 
 proGrepOpt ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   Text ->
   Maybe Args ->
   Handler r ()
@@ -266,7 +263,7 @@ proGrepOpt opt patt = do
   grepWithNative (Text.words opt) (Just (pathText cwd)) patt
 
 proGrepOptIn ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   Text ->
   Maybe Text ->
   Maybe Args ->
@@ -275,14 +272,14 @@ proGrepOptIn opt =
   grepWithNative (Text.words opt)
 
 proGrep ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   Maybe Args ->
   Handler r ()
 proGrep =
   proGrepOpt ""
 
 proGrepList ::
-  Members (GrepStack WindowMenu) r =>
+  Members GrepStack r =>
   Text ->
   Maybe Text ->
   Maybe Text ->

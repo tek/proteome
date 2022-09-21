@@ -30,21 +30,23 @@ import Ribosome (
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.Report (LogReport)
-import Ribosome.Menu (Filter, MenuFilter, Menus, NvimMenus, defaultFilter, interpretMenuLoops, interpretMenus)
-import Ribosome.Menu.Data.FilterMode (FilterMode)
+import Ribosome.Menu (ModalWindowMenus, NvimMenus, WindowMenus, interpretMenus, interpretNvimMenus)
 
-import Proteome.Add (AddState, proAdd, proAddCmd, proAddMenu)
+import Proteome.Add (proAdd, proAddCmd, proAddMenu)
 import Proteome.BufEnter (Mru, bufEnter)
-import Proteome.Buffers (BuffersState, proBuffers)
+import Proteome.Buffers (proBuffers)
 import Proteome.Config (proReadConfig)
+import Proteome.Data.AddItem (AddItem)
 import Proteome.Data.Env (Env)
 import Proteome.Data.FilesState (FilesState)
+import Proteome.Data.GrepOutputLine (GrepOutputLine)
+import Proteome.Data.ListedBuffer (ListedBuffer)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
 import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
-import Proteome.Grep (GrepState, proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
+import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
@@ -66,11 +68,10 @@ type ProteomeProdStack =
   [
     Persist PersistBuffers !! PersistError,
     PersistPath !! PersistPathError,
-    Menus AddState,
-    Menus BuffersState,
-    Menus GrepState,
-    Menus FilesState,
-    MenuFilter (FilterMode Filter)
+    ModalWindowMenus () AddItem !! RpcError,
+    ModalWindowMenus () ListedBuffer !! RpcError,
+    ModalWindowMenus () GrepOutputLine !! RpcError,
+    WindowMenus () FilesState !! RpcError
   ] ++ NvimMenus ++ ProteomeStack
 
 handlers ::
@@ -165,12 +166,11 @@ interpretProteomeProdStack ::
   InterpretersFor ProteomeProdStack r
 interpretProteomeProdStack =
   interpretProteomeStack .
+  interpretNvimMenus .
   interpretMenus .
-  defaultFilter .
-  interpretMenuLoops .
-  interpretMenuLoops .
-  interpretMenuLoops .
-  interpretMenuLoops .
+  interpretMenus .
+  interpretMenus .
+  interpretMenus .
   interpretPersistPath True .
   interpretPersist "buffers" .
   withAsync_ prepare

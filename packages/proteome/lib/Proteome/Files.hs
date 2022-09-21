@@ -31,20 +31,19 @@ import Ribosome.Menu (
   Mappings,
   MenuAction,
   MenuWidget,
-  Menus,
-  NvimMenuUi,
   Prompt (..),
   PromptConfig (OnlyInsert),
   PromptMode,
   PromptText (PromptText),
-  WindowMenu,
+  WindowMenus,
   menuOk,
   menuState,
   menuSuccess,
   menuUpdatePrompt,
   modal,
-  nvimMenu,
-  withSelection, (%=),
+  windowMenu,
+  withSelection,
+  (%=),
   )
 import Ribosome.Menu.Mappings (insert, withInsert)
 import Ribosome.Menu.MenuState (mode)
@@ -267,17 +266,16 @@ fileAction = \case
   NoAction ->
     unit
 
-type FilesStack ui =
+type FilesStack =
   [
-    NvimMenuUi ui,
-    Menus FilesState,
+    WindowMenus () FilesState !! RpcError,
     Log,
     Async,
     Embed IO
   ]
 
 filesMenu ::
-  Members (FilesStack ui) r =>
+  Members FilesStack r =>
   Members [Stop FilesError, Stop Report, Settings, Rpc] r =>
   Path Abs Dir ->
   [Text] ->
@@ -286,7 +284,7 @@ filesMenu cwd pathSpecs = do
   mapReport @RpcError do
     conf <- filesConfig
     items <- fmap (fmap fileSegments) <$> files conf nePaths
-    result <- nvimMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths)
+    result <- windowMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths)
     handleResult fileAction result
   where
     window =
@@ -305,7 +303,7 @@ filesMenu cwd pathSpecs = do
       mapMaybe (parsePath cwd) pathSpecs
 
 proFiles ::
-  Members (FilesStack WindowMenu) r =>
+  Members FilesStack r =>
   Members [Rpc !! RpcError, Settings !! SettingError] r =>
   ArgList ->
   Handler r ()

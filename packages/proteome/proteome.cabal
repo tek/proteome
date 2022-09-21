@@ -83,6 +83,9 @@ library
   hs-source-dirs:
       lib
   default-extensions:
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
       AllowAmbiguousTypes
       ApplicativeDo
       BangPatterns
@@ -144,9 +147,6 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      StandaloneKindSignatures
-      OverloadedLabels
-      ImpredicativeTypes
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin
   build-depends:
       Glob
@@ -189,6 +189,9 @@ executable proteome
   hs-source-dirs:
       app
   default-extensions:
+      StandaloneKindSignatures
+      OverloadedLabels
+      ImpredicativeTypes
       AllowAmbiguousTypes
       ApplicativeDo
       BangPatterns
@@ -250,9 +253,6 @@ executable proteome
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      StandaloneKindSignatures
-      OverloadedLabels
-      ImpredicativeTypes
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Widentities -Wunused-packages -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.12 && <5

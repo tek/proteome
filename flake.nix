@@ -20,7 +20,7 @@
       streamly-process = minimal (source.root streamly-process);
     };
 
-  in ribosome.lib.flake ({ config, lib, ... }: {
+  in ribosome.lib.pro ({ config, lib, ... }: {
     base = ./.;
     inherit overrides;
     depsFull = [ribosome];

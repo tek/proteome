@@ -36,14 +36,12 @@ import Ribosome.Menu (
   MenuAction (Render),
   MenuItem (MenuItem),
   MenuWidget,
-  ModalMenus,
   ModalState,
-  NvimMenuUi,
-  WindowMenu,
+  ModalWindowMenus,
   deleteSelected,
   menuState,
   modal,
-  staticNvimMenu,
+  staticWindowMenu,
   unselected,
   use,
   withFocus,
@@ -176,10 +174,9 @@ bufferAction = \case
   Load buf ->
     loadListedBuffer buf
 
-type BuffersStack ui =
+type BuffersStack =
   [
-    NvimMenuUi ui,
-    ModalMenus ListedBuffer,
+    ModalWindowMenus () ListedBuffer !! RpcError,
     AtomicState Env,
     Settings !! SettingError,
     Rpc !! RpcError,
@@ -187,14 +184,14 @@ type BuffersStack ui =
   ]
 
 buffersMenu ::
-  ∀ ui r .
-  Members (BuffersStack ui) r =>
+  ∀ r .
+  Members BuffersStack r =>
   Members [Rpc, Stop Report] r =>
   Sem r ()
 buffersMenu = do
   items <- buffers
   result <- mapReport do
-    staticNvimMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
+    staticWindowMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
   handleResult bufferAction result
   where
     scratchOptions =
@@ -207,7 +204,7 @@ buffersMenu = do
       "proteome-buffers"
 
 proBuffers ::
-  Members (BuffersStack WindowMenu) r =>
+  Members BuffersStack r =>
   Handler r ()
 proBuffers =
   resumeReport @Rpc do
