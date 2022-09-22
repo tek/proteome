@@ -1,14 +1,25 @@
 # Intro
 
-**proteome** is a [Neovim] plugin written in [Haskell] and powered by [ribosome] and [nvim-hs].
+**proteome** is a [Neovim] plugin written in [Haskell] and powered by [Ribosome].
 
 It provides project-specific configuration file loading and performs runtime tasks on projects.
 
 # Install
 
-The plugin can be loaded by specifying the Github repo to a package manager like any other, but in order to start it,
-the [Nix] build tools needs to be available.
-Nix will fetch Proteome's dependencies and build its sources when the plugin is loaded.
+The plugin can be loaded by specifying the repo to a package manager like any other, for example by cloning it in a
+subdirectory of `'packpath'` or using one of the many plugin managers.
+
+```vim
+Plug 'tek/proteome'
+```
+
+Since the plugin is written in Haskell, its executable has to be fetched or built on the first start.
+
+* If the [Nix package manager](https://nixos.org/learn.html) is available, the plugin will be fetched from the Nix cache
+  (or built if the current commit isn't in the cache)
+* Otherwise it will be downloaded from Github's releases.
+* If the variable `g:proteome_fetch_bin` is set to `1`, Nix is ignored and the binary is downloaded from Github
+  regardless.
 
 # Overview
 
@@ -84,9 +95,7 @@ languages to a project based on the main type.
 
 # Project Specific Config
 
-When **chromatin** triggers plugin initialization, **proteome** loads the
-following sequence of files from the `project` subdirectory in your
-`runtimepath`:
+On startup, Proteome loads the following sequence of files from the `project` subdirectory in your `runtimepath`:
 
 * `all.vim`
 * `type.vim`
@@ -292,8 +301,7 @@ command! Rm ProRemove
 
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
-[ribosome]: https://github.com/tek/ribosome
-[chromatin]: https://github.com/tek/chromatin
+[Ribosome]: https://github.com/tek/ribosome
 [nvim-hs]: https://github.com/neovimhaskell/nvim-hs
 [nvim-hs.vim]: https://github.com/neovimhaskell/nvim-hs.vim
 [nix]: https://nixos.org
