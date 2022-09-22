@@ -31,7 +31,7 @@ import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProjec
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType, unProjectType))
-import Proteome.Tags (tagsCommand)
+import Proteome.Tags.Gen (tagsCommand)
 
 formatLang :: Maybe ProjectLang -> Text
 formatLang (Just (ProjectLang lang)) = lang

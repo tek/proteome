@@ -12,7 +12,7 @@ import Proteome.BufEnter (bufEnter)
 import Proteome.Data.AddOptions (AddOptions (AddOptions))
 import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
 import qualified Proteome.Settings as Settings (projectConfig, tagsArgs, tagsCommand, tagsFork)
-import Proteome.Tags (proTags)
+import Proteome.Tags.Gen (proGenTags)
 import qualified Proteome.Test.Dirs as Dirs
 import Proteome.Test.Project (cn, createTestProject, fn, tp)
 import Proteome.Test.Run (proteomeTest)
@@ -29,7 +29,7 @@ test_multi =
     Settings.update Settings.tagsFork False
     proAdd $ AddOptions fn tp (Just False)
     proAdd $ AddOptions cn tp (Just False)
-    proTags
+    proGenTags
     bufEnter
     let ftags = projectsDir </> Dirs.hask </> Dirs.flag </> [relfile|.tags|]
     let ctags = projectsDir </> Dirs.hask </> Dirs.cil </> [relfile|.tags|]

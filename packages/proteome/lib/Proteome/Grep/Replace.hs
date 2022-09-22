@@ -160,6 +160,7 @@ replaceSave (Replace (ScratchState _ _ buffer _ _ _ _) lines') = do
     badReplacement =
       stop ReplaceError.BadReplacement
 
+-- TODO quit after saving, controlled by setting
 proReplaceSave ::
   Members [AtomicState Env, Rpc !! RpcError, Resource] r =>
   Handler r ()

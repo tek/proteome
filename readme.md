@@ -107,8 +107,43 @@ multiple times when executing `:wa`.
 
 # Tags
 
-The command `ProTags` triggers the execution of `ctags` or another tag
-generation tool.
+Proteome can generate and navigate tags.
+
+![tags menu](ops/img/tags-menu.png "The tags menu displaying results for traverse_")
+
+## Navigation
+
+Suggested mappings:
+
+```vim
+nnoremap <c-]> <cmd>ProNextTag<cr>
+nnoremap g] <cmd>ProTag<cr>
+```
+
+### `ProNextTag [name]`
+
+Jump to the tag for the given name or the name under the cursor if omitted.
+
+If the command is issued repeatedly without moving the cursor, jump to the next tag of the same name.
+
+### `ProTags [regex]`
+
+Open a menu showing all tags matching the given regex.
+
+The menu extracts the package and module from the file path if possible (currently implemented for Haskell and Nix
+paths).
+
+If the regex is omitted, load all available tags.
+Since a tag file often contains hundreds of thousands of entries, this may be extremely slow.
+
+### `ProTag [name]`
+
+Open a menu show all tags that match the given name, or name under the cursor if omitted, exactly.
+
+### `ProGenTags`
+
+This command triggers the execution of `ctags` or another tag generation tool.
+
 It can be configured with these variables:
 
 * `g:proteome_tags_command` The executable, like `ctags`.

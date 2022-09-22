@@ -30,13 +30,14 @@ import Ribosome (
 import Ribosome.Data.PersistPathError (PersistPathError)
 import Ribosome.Effect.PersistPath (PersistPath)
 import Ribosome.Host.Data.Report (LogReport)
-import Ribosome.Menu (ModalWindowMenus, NvimMenus, WindowMenus, interpretMenus, interpretNvimMenus)
+import Ribosome.Menu (ModalWindowMenus, NvimMenus, WindowMenus, interpretMenus, interpretWindowMenu)
 
 import Proteome.Add (proAdd, proAddCmd, proAddMenu)
 import Proteome.BufEnter (Mru, bufEnter)
 import Proteome.Buffers (proBuffers)
 import Proteome.Config (proReadConfig)
 import Proteome.Data.AddItem (AddItem)
+import Proteome.Data.CurrentTag (CurrentTag)
 import Proteome.Data.Env (Env)
 import Proteome.Data.FilesState (FilesState)
 import Proteome.Data.GrepOutputLine (GrepOutputLine)
@@ -53,11 +54,15 @@ import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Quit (proQuit)
 import Proteome.Save (proSave)
-import Proteome.Tags (TagsLock, proTags)
+import Proteome.Tags.Cycle (proNextTag)
+import Proteome.Tags.Gen (TagsLock, proGenTags)
+import Proteome.Tags.Menu (proTag, proTags)
+import Proteome.Tags.State (TagsState)
 
 type ProteomeStack =
   [
     AtomicState Env,
+    AtomicState (Maybe CurrentTag),
     Lock @@ LoadBuffersLock,
     Lock @@ StoreBuffersLock,
     Lock @@ TagsLock,
@@ -71,7 +76,8 @@ type ProteomeProdStack =
     ModalWindowMenus () AddItem !! RpcError,
     ModalWindowMenus () ListedBuffer !! RpcError,
     ModalWindowMenus () GrepOutputLine !! RpcError,
-    WindowMenus () FilesState !! RpcError
+    WindowMenus () FilesState !! RpcError,
+    WindowMenus () TagsState !! RpcError
   ] ++ NvimMenus ++ ProteomeStack
 
 handlers ::
@@ -85,7 +91,13 @@ handlers =
   <>
   rpc "ProSave" Async proSave
   <>
+  rpc "ProGenTags" Async proGenTags
+  <>
   rpc "ProTags" Async proTags
+  <>
+  rpc "ProTag" Async proTag
+  <>
+  rpc "ProNextTag" Async proNextTag
   <>
   rpc "ProGrep" Async proGrep
   <>
@@ -157,6 +169,7 @@ interpretProteomeStack =
   interpretLockReentrant . untag .
   interpretLockReentrant . untag .
   interpretLockReentrant . untag .
+  interpretAtomic def .
   interpretAtomic def
 
 interpretProteomeProdStack ::
@@ -166,7 +179,8 @@ interpretProteomeProdStack ::
   InterpretersFor ProteomeProdStack r
 interpretProteomeProdStack =
   interpretProteomeStack .
-  interpretNvimMenus .
+  interpretWindowMenu .
+  interpretMenus .
   interpretMenus .
   interpretMenus .
   interpretMenus .

@@ -17,7 +17,7 @@
     in {
       proteome = fast;
       proteome-test = fast inputs;
-      streamly-process = minimal (source.root streamly-process);
+      streamly-process = hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy";
     };
 
   in ribosome.lib.pro ({ config, lib, ... }: {

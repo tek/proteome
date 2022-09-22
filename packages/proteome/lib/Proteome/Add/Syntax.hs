@@ -1,17 +1,14 @@
 module Proteome.Add.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
-import Ribosome.Data.Syntax (
-  HiLink (HiLink),
-  Syntax (Syntax),
-  SyntaxItem (siOptions, siParams),
-  )
+import Ribosome.Data.Syntax.Syntax (HiLink (HiLink), Syntax (Syntax))
+import Ribosome.Data.SyntaxItem (SyntaxItem (options, params))
 import Ribosome.Syntax (syntaxMatch, syntaxVerbatim)
 import Text.RawString.QQ (r)
 
 asterisk :: SyntaxItem
 asterisk =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProAddAsterisk" [r|^ \*|]
     options = ["skipwhite"]

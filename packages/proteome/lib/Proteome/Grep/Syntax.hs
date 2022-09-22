@@ -1,11 +1,8 @@
 module Proteome.Grep.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
-import Ribosome.Data.Syntax (
-  HiLink (HiLink),
-  Syntax (Syntax),
-  SyntaxItem (siOptions, siParams),
-  )
+import Ribosome.Data.Syntax.Syntax (HiLink (HiLink), Syntax (Syntax))
+import Ribosome.Data.SyntaxItem (SyntaxItem (options, params))
 import Ribosome.Syntax (syntaxMatch, syntaxVerbatim)
 import Text.RawString.QQ (r)
 
@@ -15,7 +12,7 @@ lineNumber =
 
 asterisk :: SyntaxItem
 asterisk =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepAsterisk" [r|^ \*|]
     options = ["skipwhite"]
@@ -23,7 +20,7 @@ asterisk =
 
 path :: SyntaxItem
 path =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepPath" ([r|.*\ze|] <> lineNumber)
     options = ["contained", "skipwhite"]
@@ -31,7 +28,7 @@ path =
 
 ln :: SyntaxItem
 ln =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepLN" lineNumber
     options = ["contained", "skipwhite"]
@@ -39,7 +36,7 @@ ln =
 
 line :: SyntaxItem
 line =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepLine" [r|\d\+\ze:|]
     options = ["contained"]
@@ -47,7 +44,7 @@ line =
 
 colon :: SyntaxItem
 colon =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepColon" [r|:|]
     options = ["contained"]
@@ -55,7 +52,7 @@ colon =
 
 col :: SyntaxItem
 col =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProGrepCol" [r|\d\+|]
     options = ["contained", "skipwhite"]
@@ -63,7 +60,7 @@ col =
 
 text_ :: SyntaxItem
 text_ =
-  item { siOptions = options }
+  item { options }
   where
     item = syntaxMatch "ProGrepText" [r|.\+|]
     options = ["contained"]

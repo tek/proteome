@@ -4951,11 +4951,11 @@
         "prelate": "prelate_2"
       },
       "locked": {
-        "lastModified": 1663720309,
-        "narHash": "sha256-UANcgN7srjLsGc8NkTL0TWEkfzdkdyXFm2x1zOy2zzM=",
+        "lastModified": 1663884373,
+        "narHash": "sha256-IoDhSTVUC9DMVacAhN9I4XRogyjSyWs2tDCJ9zeWr3A=",
         "ref": "refs/heads/main",
-        "rev": "a31ea4e0ed6d3d966b325724869ded4bb73ea7cf",
-        "revCount": 760,
+        "rev": "94d953ed84ce9734bb61759a2078f1a7eedc7a49",
+        "revCount": 776,
         "type": "git",
         "url": "https://git.tryp.io/tek/ribosome"
       },

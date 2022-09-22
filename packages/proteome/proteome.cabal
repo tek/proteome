@@ -34,6 +34,7 @@ library
       Proteome.Data.AddError
       Proteome.Data.AddItem
       Proteome.Data.AddOptions
+      Proteome.Data.CurrentTag
       Proteome.Data.Env
       Proteome.Data.FilenameError
       Proteome.Data.FileScanItem
@@ -79,7 +80,15 @@ library
       Proteome.Save
       Proteome.Settings
       Proteome.System.Path
-      Proteome.Tags
+      Proteome.Tags.Cycle
+      Proteome.Tags.Gen
+      Proteome.Tags.Mappings
+      Proteome.Tags.Menu
+      Proteome.Tags.Nav
+      Proteome.Tags.Query
+      Proteome.Tags.State
+      Proteome.Tags.Stream
+      Proteome.Tags.Syntax
   hs-source-dirs:
       lib
   default-extensions:
@@ -159,6 +168,8 @@ library
     , filepattern
     , lens
     , lens-regex-pcre
+    , microlens
+    , nonempty-zipper
     , parsers
     , path
     , path-io

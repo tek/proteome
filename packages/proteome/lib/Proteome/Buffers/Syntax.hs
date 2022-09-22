@@ -1,18 +1,13 @@
 module Proteome.Buffers.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
-import Ribosome.Syntax (
-  HiLink (HiLink),
-  Syntax (Syntax),
-  SyntaxItem (siOptions, siParams),
-  syntaxMatch,
-  syntaxVerbatim,
-  )
+import Ribosome.Data.SyntaxItem (SyntaxItem (options, params))
+import Ribosome.Syntax (HiLink (HiLink), Syntax (Syntax), syntaxMatch, syntaxVerbatim)
 import Text.RawString.QQ (r)
 
 asterisk :: SyntaxItem
 asterisk =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProBuffersAsterisk" [r|^ \*|]
     options = ["skipwhite"]
@@ -20,7 +15,7 @@ asterisk =
 
 number :: SyntaxItem
 number =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProBuffersNumber" [r|\d\+|]
     options = ["contained", "skipwhite"]
@@ -28,7 +23,7 @@ number =
 
 line :: SyntaxItem
 line =
-  item { siOptions = options }
+  item {options}
   where
     item = syntaxMatch "ProBuffersName" ".*$"
     options = ["contained"]

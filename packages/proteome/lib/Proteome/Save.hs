@@ -7,7 +7,7 @@ import Ribosome.Effect.Persist (Persist)
 import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.PersistBuffers (StoreBuffersLock, storeBuffers)
-import Proteome.Tags (TagsLock, proTags)
+import Proteome.Tags.Gen (TagsLock, proGenTags)
 
 proSave ::
   Member (Persist PersistBuffers !! PersistError) r =>
@@ -15,5 +15,5 @@ proSave ::
   Members [Lock @@ StoreBuffersLock, AtomicState Env, Rpc !! RpcError, Reports, Resource, Log, Async, Embed IO] r =>
   Handler r ()
 proSave = do
-  proTags
+  proGenTags
   resumeReport @Rpc $ resumeReport @(Persist _) $ storeBuffers

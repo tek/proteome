@@ -1,4 +1,4 @@
-module Proteome.Tags where
+module Proteome.Tags.Gen where
 
 import Conc (Lock, lockOrSkip_)
 import qualified Data.List as List
@@ -167,11 +167,11 @@ execution = \case
   False ->
     mapReport
 
-proTags ::
+proGenTags ::
   Members [AtomicState Env, Settings !! SettingError, DataLog LogReport, Lock @@ TagsLock, Reports] r =>
   Members [Log, Resource, Async, Embed IO] r =>
   Handler r ()
-proTags =
+proGenTags =
   resumeReport @Settings $ whenM (Settings.get Settings.tagsEnable) do
     main <- atomicGets Env.mainProject
     extra <- atomicGets Env.projects

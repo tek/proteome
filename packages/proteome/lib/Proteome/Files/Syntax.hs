@@ -1,18 +1,13 @@
 module Proteome.Files.Syntax where
 
 import qualified Data.Map.Strict as Map (fromList)
-import Ribosome.Syntax (
-  HiLink (HiLink),
-  Syntax (Syntax),
-  SyntaxItem (siOptions, siParams),
-  syntaxMatch,
-  syntaxVerbatim,
-  )
+import Ribosome.Data.SyntaxItem (SyntaxItem (options, params))
+import Ribosome.Syntax (HiLink (HiLink), Syntax (Syntax), syntaxMatch, syntaxVerbatim)
 import Text.RawString.QQ (r)
 
 asterisk :: SyntaxItem
 asterisk =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProFilesAsterisk" [r|^ \*|]
     options = ["skipwhite"]
@@ -20,7 +15,7 @@ asterisk =
 
 base :: SyntaxItem
 base =
-  item { siOptions = options, siParams = params }
+  item {options, params}
   where
     item = syntaxMatch "ProFilesBase" [r|\[[^]]\+\]|]
     options = ["skipwhite", "contained"]
@@ -28,7 +23,7 @@ base =
 
 name :: SyntaxItem
 name =
-  item { siOptions = options }
+  item {options}
   where
     item = syntaxMatch "ProFilesName" ".*"
     options = ["contained"]

@@ -92,6 +92,8 @@ in {
       "filepattern"
       "lens"
       "lens-regex-pcre"
+      "microlens"
+      "nonempty-zipper"
       "parsers"
       "path"
       "path-io"

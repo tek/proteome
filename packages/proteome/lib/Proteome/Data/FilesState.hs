@@ -73,4 +73,4 @@ instance MenuMode FileSegments FilesMode where
     Just [exon|🔧 #{renderSegment segment}|]
 
   filterMode (FilesMode mode segment) =
-    FilterMode mode (flip segmentExtract segment)
+    FilterMode mode (Just . flip segmentExtract segment)
