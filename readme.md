@@ -1,6 +1,6 @@
 # Intro
 
-**proteome** is a [Neovim] plugin written in [Haskell] and powered by [Ribosome].
+**Proteome** is a [Neovim] plugin written in [Haskell] and powered by [Ribosome].
 
 It provides project-specific configuration file loading and performs runtime tasks on projects.
 
@@ -56,7 +56,7 @@ All parts are optional, but you probably want at least one of `baseDirs`,
 
 # Project Detection
 
-**proteome** needs to determine the name and type of your project.
+**Proteome** needs to determine the name and type of your project.
 The type can be arbitrarily defined for your own purposes, but mostly you
 should want it to represent the project's main language.
 The builtin tools can detect the type from the contents or the path of the
