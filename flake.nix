@@ -36,6 +36,10 @@
     githubOrg = "tek";
     cachixName = "tek";
     cachixKey = "tek.cachix.org-1:+sdc73WFq8aEKnrVv5j/kuhmnW2hQJuqdPJF5SnaCBk=";
+    hackage = {
+      versionFile = "ops/version.nix";
+      packages = ["proteome"];
+    };
     hpack = {
       packages = import ./ops/hpack.nix { inherit config lib; };
       defaultApp = "proteome";

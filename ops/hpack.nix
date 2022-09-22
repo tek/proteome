@@ -26,7 +26,7 @@ let
   };
 
   meta = {
-    version = "0.1.0.0";
+    version = import ./version.nix;
     license = "BSD-2-Clause-Patent";
     license-file = "LICENSE";
     author = "Torsten Schmits";
