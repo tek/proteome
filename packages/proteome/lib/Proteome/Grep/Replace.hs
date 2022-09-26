@@ -2,6 +2,7 @@ module Proteome.Grep.Replace where
 
 import qualified Data.List.NonEmpty as NonEmpty (toList)
 import qualified Data.Text as Text
+import Lens.Micro.Extras (view)
 import Path (parseAbsFile)
 import Prelude hiding (group)
 import Ribosome (
@@ -29,8 +30,7 @@ import qualified Ribosome.Scratch as Scratch
 
 import qualified Proteome.Data.Env as Env (replace)
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
-import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
 import Proteome.Data.ReplaceError (ReplaceError)
@@ -52,7 +52,7 @@ replaceBuffer lines' = do
   atomicModify' (#replace ?~ Replace scratch lines')
   where
     content =
-      GrepOutputLine.content <$> lines'
+      view #content <$> lines'
     options =
       def {
         Scratch.name = ScratchId scratchName,
@@ -97,7 +97,7 @@ replaceLine ::
   Text ->
   GrepOutputLine ->
   Sem r (Maybe Buffer)
-replaceLine updatedLine (GrepOutputLine path line _ _) = do
+replaceLine updatedLine (GrepOutputLine path line _ _ _ _) = do
   exists <- isJust <$> bufferForFile path
   unless exists (addBuffer (pathText path))
   () <- vimCallFunction "bufload" [toMsgpack path]
@@ -110,7 +110,7 @@ replaceLine updatedLine (GrepOutputLine path line _ _) = do
       [updatedLine | not (Text.null updatedLine)]
 
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
-lineNumberDesc (_, GrepOutputLine _ number _ _) =
+lineNumberDesc (_, GrepOutputLine _ number _ _ _ _) =
   -number
 
 replaceFloatOptions :: FloatOptions

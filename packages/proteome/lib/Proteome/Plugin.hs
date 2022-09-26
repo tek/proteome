@@ -40,14 +40,13 @@ import Proteome.Data.AddItem (AddItem)
 import Proteome.Data.CurrentTag (CurrentTag)
 import Proteome.Data.Env (Env)
 import Proteome.Data.FilesState (FilesState)
-import Proteome.Data.GrepOutputLine (GrepOutputLine)
 import Proteome.Data.ListedBuffer (ListedBuffer)
 import Proteome.Data.PersistBuffers (PersistBuffers)
 import Proteome.Data.ResolveError (ResolveError)
 import Proteome.Diag (proDiag)
 import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
-import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
+import Proteome.Grep (GrepState, proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
 import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
@@ -75,7 +74,7 @@ type ProteomeProdStack =
     PersistPath !! PersistPathError,
     ModalWindowMenus () AddItem !! RpcError,
     ModalWindowMenus () ListedBuffer !! RpcError,
-    ModalWindowMenus () GrepOutputLine !! RpcError,
+    WindowMenus () GrepState !! RpcError,
     WindowMenus () FilesState !! RpcError,
     WindowMenus () TagsState !! RpcError
   ] ++ NvimMenus ++ ProteomeStack

@@ -3,7 +3,7 @@ module Proteome.Data.Replace where
 import Prelude hiding (lines)
 import Ribosome (ScratchState)
 
-import Proteome.Data.GrepOutputLine (GrepOutputLine)
+import Proteome.Data.GrepState (GrepOutputLine)
 
 data Replace =
   Replace {

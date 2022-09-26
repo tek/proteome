@@ -14,7 +14,7 @@ import Ribosome.Menu.Prompt (PromptEvent (Mapping))
 import qualified Streamly.Internal.Data.Stream.IsStream as Streamly
 import Test.Tasty (TestTree, testGroup)
 
-import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import qualified Proteome.Grep as Grep
 import Proteome.Grep (grepWith, uniqueGrepLines)
 import Proteome.Grep.Process (grepMenuItems)
@@ -64,7 +64,7 @@ test_grepDuplicates =
     1 === length output3
     where
       item col =
-        [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target") "" ""]
+        [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target" "/path/to" "file") "" ""]
 
 test_grep :: TestTree
 test_grep =

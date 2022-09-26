@@ -34,7 +34,7 @@ import Ribosome.Menu (
   MenuItem,
   MenuWidget,
   ModalState,
-  ModalWindowMenus,
+  WindowMenus,
   menuState,
   modal,
   windowMenu,
@@ -48,8 +48,8 @@ import Streamly.Prelude (IsStream, SerialT)
 import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyUserInput))
-import qualified Proteome.Data.GrepOutputLine as GrepOutputLine
-import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import qualified Proteome.Data.GrepState as GrepState
+import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.ReplaceError (ReplaceError)
 import Proteome.Grep.Process (defaultCmdline, grepCmdline, grepMenuItems)
 import Proteome.Grep.Replace (deleteLines, replaceBuffer)
@@ -85,15 +85,15 @@ navigate path line col = do
 selectResult ::
   MenuWidget GrepState r GrepAction
 selectResult = do
-  withFocus \ (GrepOutputLine path line col _) ->
+  withFocus \ (GrepOutputLine path line col _ _ _) ->
     pure (Select path line col)
 
 yankResult ::
   Members [Rpc, Resource, Embed IO] r =>
   MenuWidget GrepState r GrepAction
 yankResult =
-  withFocus \ (GrepOutputLine _ _ _ txt) ->
-    NoAction <$ setregLine (Register.Special "\"") [txt]
+  withFocus \ (GrepOutputLine _ _ _ content _ _) ->
+    NoAction <$ setregLine (Register.Special "\"") [content]
 
 replaceResult ::
   MenuWidget GrepState r GrepAction
@@ -107,7 +107,7 @@ deleteResult =
 
 menuItemSameLine :: MenuItem GrepOutputLine -> MenuItem GrepOutputLine -> Bool
 menuItemSameLine l r =
-  GrepOutputLine.sameLine (l ^. #meta) (r ^. #meta)
+  GrepState.sameLine (l ^. #meta) (r ^. #meta)
 
 uniqBy ::
   Functor (t IO) =>
@@ -188,7 +188,7 @@ handleErrors =
 
 type GrepStack =
   [
-    ModalWindowMenus () GrepOutputLine !! RpcError,
+    WindowMenus () GrepState !! RpcError,
     Settings !! SettingError,
     Scratch !! RpcError,
     Rpc !! RpcError,

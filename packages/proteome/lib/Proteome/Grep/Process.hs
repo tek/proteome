@@ -16,7 +16,7 @@ import Streamly.System.Process (ProcessFailure)
 
 import qualified Proteome.Data.GrepError as GrepError (GrepError (..))
 import Proteome.Data.GrepError (GrepError)
-import Proteome.Data.GrepOutputLine (GrepOutputLine)
+import Proteome.Data.GrepState (GrepOutputLine)
 import Proteome.Grep.Parse (parseGrepOutput)
 import Proteome.System.Path (findExe)
 

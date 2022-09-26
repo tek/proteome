@@ -42,7 +42,7 @@ library
       Proteome.Data.FilesError
       Proteome.Data.FilesState
       Proteome.Data.GrepError
-      Proteome.Data.GrepOutputLine
+      Proteome.Data.GrepState
       Proteome.Data.ListedBuffer
       Proteome.Data.PersistBuffers
       Proteome.Data.Project

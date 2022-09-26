@@ -12,7 +12,7 @@ import Text.Parser.Char (anyChar, char, noneOf)
 import Text.Parser.Combinators (manyTill)
 import Text.Parser.Token (TokenParsing, natural)
 
-import Proteome.Data.GrepOutputLine (GrepOutputLine (GrepOutputLine))
+import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine), grepOutputLine)
 import Proteome.Grep.Syntax (lineNumber)
 
 grepParser ::
@@ -21,7 +21,7 @@ grepParser ::
   Path Abs Dir ->
   m GrepOutputLine
 grepParser cwd =
-  GrepOutputLine <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
+  grepOutputLine <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
   where
     path = do
       s <- manyTill (noneOf ":") (char ':')
@@ -30,8 +30,8 @@ grepParser cwd =
       (fromInteger <$> natural) <* char ':'
 
 formatGrepLine :: Path Abs Dir -> GrepOutputLine -> Text
-formatGrepLine cwd (GrepOutputLine path line col text) =
-  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip text}|]
+formatGrepLine cwd (GrepOutputLine path line col content _ _) =
+  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip content}|]
   where
     relativePath =
       maybe (pathText path) pathText (stripProperPrefix cwd path)
