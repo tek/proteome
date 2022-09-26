@@ -68,7 +68,7 @@ segmentExtract (MenuItem GrepOutputLine {..} _ render) = \case
 
 cycle :: Segment -> Segment
 cycle = \case
-  Full -> Name
+  Full -> Content
   Content -> Path
   Path -> Name
   Name -> Dir
