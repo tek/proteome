@@ -213,7 +213,7 @@ actions bases =
     (withInsert "<cr>", editFile),
     (insert "<tab>", tab (NonEmpty.toList bases)),
     (insert "<c-y>", createFile bases),
-    (insert "<c-s>", cycleSegment)
+    (withInsert "<c-s>", cycleSegment)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)

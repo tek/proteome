@@ -34,12 +34,16 @@ import Ribosome.Menu (
   MenuItem,
   MenuWidget,
   WindowMenus,
+  menuOk,
   menuState,
   modal,
   windowMenu,
   withFocus,
   withSelection,
+  (%=),
   )
+import Ribosome.Menu.Mappings (withInsert)
+import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Settings as Settings
 import qualified Streamly.Internal.Data.Stream.IsStream as Stream
 import Streamly.Prelude (IsStream, SerialT)
@@ -146,6 +150,12 @@ grepItems path patt opt = do
   items <- grepMenuItems cwd exe args
   pure (uniqueGrepLines items)
 
+cycleSegment :: MenuWidget GrepState r GrepAction
+cycleSegment =
+  menuState do
+    mode . #segment %= GrepState.cycle
+    menuOk
+
 actions ::
   Members [Scratch, Rpc, Rpc !! RpcError, AtomicState Env, Stop ReplaceError, Resource, Embed IO] r =>
   Mappings GrepState r GrepAction
@@ -154,7 +164,8 @@ actions =
     ("<cr>", selectResult),
     ("y", yankResult),
     ("r", replaceResult),
-    ("d", deleteResult)
+    ("d", deleteResult),
+    (withInsert "<c-s>", cycleSegment)
   ]
 
 grepAction ::
