@@ -31,6 +31,7 @@ import qualified Ribosome.Scratch as Scratch
 import qualified Proteome.Data.Env as Env (replace)
 import Proteome.Data.Env (Env)
 import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
+import qualified Proteome.Data.GrepState as GrepState
 import Proteome.Data.Replace (Replace (Replace))
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
 import Proteome.Data.ReplaceError (ReplaceError)
@@ -97,11 +98,11 @@ replaceLine ::
   Text ->
   GrepOutputLine ->
   Sem r (Maybe Buffer)
-replaceLine updatedLine (GrepOutputLine path line _ _ _ _) = do
-  exists <- isJust <$> bufferForFile path
-  unless exists (addBuffer (pathText path))
-  () <- vimCallFunction "bufload" [toMsgpack path]
-  FileBuffer buffer _ <- stopNote (ReplaceError.CouldntLoadBuffer path) =<< bufferForFile path
+replaceLine updatedLine (GrepOutputLine {file, line}) = do
+  exists <- isJust <$> bufferForFile file
+  unless exists (addBuffer (pathText file))
+  () <- vimCallFunction "bufload" [toMsgpack file]
+  FileBuffer buffer _ <- stopNote (ReplaceError.CouldntLoadBuffer file) =<< bufferForFile file
   bufferSetLines buffer line (line + 1) False replacement
   deleteExtraBlankLine buffer line
   pure (bool (Just buffer) Nothing exists)
@@ -110,8 +111,8 @@ replaceLine updatedLine (GrepOutputLine path line _ _ _ _) = do
       [updatedLine | not (Text.null updatedLine)]
 
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
-lineNumberDesc (_, GrepOutputLine _ number _ _ _ _) =
-  -number
+lineNumberDesc (_, GrepOutputLine {line}) =
+  -line
 
 replaceFloatOptions :: FloatOptions
 replaceFloatOptions =

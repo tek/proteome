@@ -9,10 +9,11 @@ import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, 
 
 data GrepOutputLine =
   GrepOutputLine {
-    path :: Path Abs File,
+    file :: Path Abs File,
     line :: Int,
     col :: Maybe Int,
     content :: Text,
+    path :: Text,
     name :: Text,
     dir :: Text
   }
@@ -20,8 +21,8 @@ data GrepOutputLine =
   deriving anyclass (MsgpackEncode)
 
 sameLine :: GrepOutputLine -> GrepOutputLine -> Bool
-sameLine (GrepOutputLine p1 l1 _ _ _ _) (GrepOutputLine p2 l2 _ _ _ _) =
-  p1 == p2 && l1 == l2
+sameLine l r =
+  file l == file r && line l == line r
 
 grepOutputLine ::
   Path Abs File ->
@@ -29,66 +30,72 @@ grepOutputLine ::
   Maybe Int ->
   Text ->
   GrepOutputLine
-grepOutputLine path line col content =
+grepOutputLine file line col content =
   GrepOutputLine {
-    name = pathText (filename path),
-    dir = pathText (parent path),
+    path = pathText file,
+    name = pathText (filename file),
+    dir = pathText (parent file),
     ..
   }
 
 data Segment =
   Full
   |
+  Content
+  |
+  Path
+  |
   Name
   |
   Dir
-  |
-  Content
   deriving stock (Eq, Show, Ord)
 
 renderSegment :: Segment -> Text
 renderSegment = \case
   Full -> "full"
+  Content -> "content"
+  Path -> "path"
   Name -> "name"
   Dir -> "dir"
-  Content -> "content"
 
 segmentExtract :: MenuItem GrepOutputLine -> Segment -> Text
 segmentExtract (MenuItem GrepOutputLine {..} _ render) = \case
   Full -> render
+  Content -> content
+  Path -> path
   Name -> name
   Dir -> dir
-  Content -> content
 
 cycle :: Segment -> Segment
 cycle = \case
   Full -> Name
+  Content -> Path
+  Path -> Name
   Name -> Dir
-  Dir -> Content
-  Content -> Full
+  Dir -> Full
 
-data FilesMode =
-  FilesMode {
+data GrepMode =
+  GrepMode {
     mode :: Filter,
     segment :: Segment
   }
   deriving stock (Eq, Show, Ord, Generic)
 
-type FilesState =
-  Modal FilesMode GrepOutputLine
+type GrepState =
+  Modal GrepMode GrepOutputLine
 
-instance MenuMode GrepOutputLine FilesMode where
-  type Filter FilesMode =
+instance MenuMode GrepOutputLine GrepMode where
+  type Filter GrepMode =
     FilterMode Filter
 
-  cycleFilter (FilesMode mode segment) =
-    FilesMode (cycleFilter mode) segment
+  cycleFilter (GrepMode mode segment) =
+    GrepMode (cycleFilter mode) segment
 
-  renderFilter (FilesMode mode _) =
+  renderFilter (GrepMode mode _) =
     renderFilter mode
 
-  renderExtra (FilesMode _ segment) =
+  renderExtra (GrepMode _ segment) =
     Just [exon|🔧 #{renderSegment segment}|]
 
-  filterMode (FilesMode mode segment) =
+  filterMode (GrepMode mode segment) =
     FilterMode mode (Just . flip segmentExtract segment)

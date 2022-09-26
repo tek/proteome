@@ -30,11 +30,11 @@ grepParser cwd =
       (fromInteger <$> natural) <* char ':'
 
 formatGrepLine :: Path Abs Dir -> GrepOutputLine -> Text
-formatGrepLine cwd (GrepOutputLine path line col content _ _) =
+formatGrepLine cwd (GrepOutputLine file line col content _ _ _) =
   [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip content}|]
   where
     relativePath =
-      maybe (pathText path) pathText (stripProperPrefix cwd path)
+      maybe (pathText file) pathText (stripProperPrefix cwd file)
 
 parseGrepOutput ::
   Members [Log, Embed IO] r =>

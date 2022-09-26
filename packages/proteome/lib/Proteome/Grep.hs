@@ -33,7 +33,6 @@ import Ribosome.Menu (
   Mappings,
   MenuItem,
   MenuWidget,
-  ModalState,
   WindowMenus,
   menuState,
   modal,
@@ -49,16 +48,13 @@ import Proteome.Data.Env (Env)
 import Proteome.Data.GrepError (GrepError)
 import qualified Proteome.Data.GrepError as GrepError (GrepError (EmptyUserInput))
 import qualified Proteome.Data.GrepState as GrepState
-import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
+import Proteome.Data.GrepState (GrepMode (GrepMode), GrepOutputLine (GrepOutputLine), GrepState, Segment (Full))
 import Proteome.Data.ReplaceError (ReplaceError)
 import Proteome.Grep.Process (defaultCmdline, grepCmdline, grepMenuItems)
 import Proteome.Grep.Replace (deleteLines, replaceBuffer)
 import Proteome.Grep.Syntax (grepSyntax)
 import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings (grepCmdline)
-
-type GrepState =
-  ModalState GrepOutputLine
 
 data GrepAction =
   Select (Path Abs File) Int (Maybe Int)
@@ -85,14 +81,14 @@ navigate path line col = do
 selectResult ::
   MenuWidget GrepState r GrepAction
 selectResult = do
-  withFocus \ (GrepOutputLine path line col _ _ _) ->
-    pure (Select path line col)
+  withFocus \ (GrepOutputLine {file, line, col}) ->
+    pure (Select file line col)
 
 yankResult ::
   Members [Rpc, Resource, Embed IO] r =>
   MenuWidget GrepState r GrepAction
 yankResult =
-  withFocus \ (GrepOutputLine _ _ _ content _ _) ->
+  withFocus \ (GrepOutputLine {content}) ->
     NoAction <$ setregLine (Register.Special "\"") [content]
 
 replaceResult ::
@@ -210,7 +206,7 @@ grepWith ::
 grepWith opt path patt =
   mapReport @RpcError do
     items <- grepItems path patt opt
-    result <- windowMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
+    result <- windowMenu items (modal (GrepMode Fuzzy Full)) (def & #items .~ scratchOptions) actions
     handleResult grepAction result
   where
     scratchOptions =
