@@ -114,12 +114,7 @@ in {
     executables.proteome = exe "proteome" "app" {
       dependencies = ["proteome"];
     };
-  };
-
-  proteome-test = merge (project "proteome-test") {
-    synopsis = "Proteome tests";
-    description = "See https://hackage.haskell.org/package/proteome/docs/Proteome.html";
-    tests.proteome-unit = exe "proteome-test" "test" {
+    tests.proteome-unit = exe "proteome" "test" {
       dependencies = [
         "aeson"
         "exon"

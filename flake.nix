@@ -13,37 +13,25 @@
   let
     overrides = { hackage, source, minimal, pkgs, buildInputs, fast, ... }:
     let
-      inputs = buildInputs [pkgs.neovim pkgs.tmux pkgs.xterm pkgs.ripgrep];
+      inputs = buildInputs [pkgs.neovim pkgs.ripgrep];
     in {
-      proteome = fast;
-      proteome-test = fast inputs;
+      proteome = fast inputs;
       streamly-process = hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy";
     };
 
   in ribosome.lib.pro ({ config, lib, ... }: {
-    base = ./.;
     inherit overrides;
     depsFull = [ribosome];
     compat.enable = false;
     devGhc.compiler = "ghc902";
-    packages = {
-      proteome = ./packages/proteome;
-      proteome-test = ./packages/test;
-    };
-    main = "proteome";
+    packages.proteome = ./packages/proteome;
     exe = "proteome";
     branch = "main";
     githubOrg = "tek";
     cachixName = "tek";
     cachixKey = "tek.cachix.org-1:+sdc73WFq8aEKnrVv5j/kuhmnW2hQJuqdPJF5SnaCBk=";
-    hackage = {
-      versionFile = "ops/version.nix";
-      packages = ["proteome"];
-    };
-    hpack = {
-      packages = import ./ops/hpack.nix { inherit config lib; };
-      defaultApp = "proteome";
-    };
+    hackage.versionFile = "ops/version.nix";
+    hpack.packages = import ./ops/hpack.nix { inherit config lib; };
     ghcid.shellConfig.buildInputs = with config.devGhc.pkgs; [pkgs.neovim pkgs.tmux];
     ghci = {
       preludePackage = "prelate";
