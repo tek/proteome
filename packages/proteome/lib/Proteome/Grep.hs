@@ -1,8 +1,8 @@
 module Proteome.Grep where
 
-import Control.Lens (view)
 import qualified Data.Text as Text
 import Exon (exon)
+import Lens.Micro.Extras (view)
 import Path (Abs, Dir, File, Path)
 import Ribosome (
   Args,

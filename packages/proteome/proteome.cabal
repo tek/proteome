@@ -166,7 +166,6 @@ library
     , exon
     , extra
     , filepattern
-    , lens
     , lens-regex-pcre
     , microlens
     , nonempty-zipper
@@ -373,7 +372,6 @@ test-suite proteome-unit
       aeson
     , base >=4.12 && <5
     , exon
-    , lens
     , lens-regex-pcre
     , path
     , path-io
@@ -384,7 +382,6 @@ test-suite proteome-unit
     , prelate >=0.1
     , proteome
     , ribosome
-    , ribosome-host
     , ribosome-menu
     , ribosome-test
     , streamly

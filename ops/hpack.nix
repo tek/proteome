@@ -90,7 +90,6 @@ in {
       "exon"
       "extra"
       "filepattern"
-      "lens"
       "lens-regex-pcre"
       "microlens"
       "nonempty-zipper"
@@ -118,7 +117,6 @@ in {
       dependencies = [
         "aeson"
         "exon"
-        "lens"
         "path"
         "path-io"
         "pcre-heavy"
@@ -126,7 +124,6 @@ in {
         "proteome"
         "lens-regex-pcre"
         "ribosome"
-        "ribosome-host"
         "ribosome-menu"
         "ribosome-test"
         "streamly"

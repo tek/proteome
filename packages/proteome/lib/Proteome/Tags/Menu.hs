@@ -59,7 +59,7 @@ tagsAction = \case
   Navigate path line -> do
     unlessM (doesFileExist path) do
       stop (fromText [exon|File doesn't exist: #{pathText path}|])
-    loadOrEdit path line
+    void (loadOrEdit path line)
 
 type TagsStack =
   [

@@ -1,12 +1,12 @@
 module Proteome.Files where
 
-import Control.Lens (view)
 import Control.Monad (foldM)
 import Data.Either.Extra (eitherToMaybe)
 import Data.List.Extra (dropEnd)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Text as Text
+import Lens.Micro.Extras (view)
 import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome (

@@ -18,14 +18,15 @@ data TagLoc p =
   TagLoc {
     name :: Text,
     path :: p,
-    line :: Int
+    line :: Int,
+    col :: Int
   }
   deriving stock (Eq, Show, Generic)
 
 tagLoc :: Ribosome.Tag -> Maybe (TagLoc Text)
 tagLoc t = do
   line <- readMaybe (toString (t ^. #cmd))
-  pure TagLoc {name = t ^. #name, path = t ^. #filename, line = line - 1}
+  pure TagLoc {name = t ^. #name, path = t ^. #filename, line = line - 1, col = 0}
 
 data RawTagSegments =
   RawTagSegments {

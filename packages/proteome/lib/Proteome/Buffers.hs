@@ -1,9 +1,9 @@
 module Proteome.Buffers where
 
-import Control.Lens (elemOf, view)
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Text as Text
 import Exon (exon)
+import Lens.Micro.Extras (view)
 import Ribosome (
   Handler,
   Report,
@@ -88,7 +88,7 @@ compensateForMissingActiveBuffer marked (next : _) = do
   prev <- vimGetCurrentWindow
   void ensureMainWindow
   current <- vimGetCurrentBuffer
-  when (elemOf (each . #buffer) current marked) (loadListedBuffer next)
+  when (any (\ b -> current == b ^. #buffer) marked) (loadListedBuffer next)
   vimSetCurrentWindow prev
 
 deleteListedBuffersWith ::

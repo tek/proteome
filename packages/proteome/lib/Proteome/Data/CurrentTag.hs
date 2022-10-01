@@ -9,7 +9,8 @@ import Proteome.Tags.State (TagLoc)
 data CurrentTag =
   CurrentTag {
     name :: Text,
-    locations :: Zipper (TagLoc (Path Abs File))
+    locations :: Zipper (TagLoc (Path Abs File)),
+    bufferWasLoaded :: Bool
   }
   deriving stock (Eq, Show, Generic)
 

@@ -147,7 +147,7 @@ Since a tag file often contains hundreds of thousands of entries, this may be ex
 
 ### `ProTag [name]`
 
-Open a menu show all tags that match the given name, or name under the cursor if omitted, exactly.
+Open a menu showing all tags that match the given name, or name under the cursor if omitted, exactly.
 
 ### `ProGenTags`
 

@@ -19,7 +19,7 @@ loadOrEdit ::
   Member Rpc r =>
   Path Abs File ->
   Int ->
-  Sem r ()
+  Sem r Bool
 loadOrEdit file line = do
   existingBuffer <- join <$> (traverse (filterUnloaded . FileBuffer.buffer) =<< bufferForFile file)
   window <- nvimGetCurrentWin
@@ -27,3 +27,4 @@ loadOrEdit file line = do
   setCursor window line 0
   nvimCommand "normal! zv"
   nvimCommand "normal! zz"
+  pure (isJust existingBuffer)

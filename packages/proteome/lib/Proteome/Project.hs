@@ -1,6 +1,6 @@
 module Proteome.Project where
 
-import qualified Control.Lens as Lens (element, firstOf)
+import Lens.Micro.Extras (preview)
 import Path (Abs, Dir, Path, dirname, parent)
 
 import Proteome.Data.Env (Env)
@@ -24,7 +24,7 @@ currentProject ::
   Sem r (Maybe Project)
 currentProject = do
   index <- atomicGets Env.currentProjectIndex
-  Lens.firstOf (Lens.element index) <$> allProjects
+  preview (ix index) <$> allProjects
 
 pathData :: Path Abs Dir -> (ProjectRoot, ProjectName, ProjectType)
 pathData root =

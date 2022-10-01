@@ -4,8 +4,8 @@ import qualified Data.List.NonEmpty.Zipper as Zipper
 import Exon (exon)
 import Log (Severity (Info))
 import Path (Abs, File, Path)
-import Ribosome (Args (Args), Report (Report), Rpc, toMsgpack, Handler, RpcError, resumeReport)
-import Ribosome.Api (currentBufferPath, currentLine, nvimCallFunction)
+import Ribosome (Args (Args), Handler, Report (Report), Rpc, RpcError, resumeReport, toMsgpack)
+import Ribosome.Api (bufferGetOption, currentBufferPath, currentCursor, nvimCallFunction, nvimGetCurrentBuf, wipeBuffer)
 
 import qualified Proteome.Data.CurrentTag as CurrentTag
 import Proteome.Data.CurrentTag (pattern CurrentLoc, CurrentTag (CurrentTag), cycleLoc)
@@ -16,32 +16,32 @@ import qualified Proteome.Tags.State as State
 import Proteome.Tags.State (TagLoc (TagLoc))
 
 nav ::
-  Member Rpc r =>
+  Members [AtomicState (Maybe CurrentTag), Rpc] r =>
   CurrentTag ->
   Sem r ()
-nav (CurrentLoc TagLoc {..}) =
-  loadOrEdit path line
+nav cur@(CurrentLoc TagLoc {..}) = do
+  loaded <- loadOrEdit path line
+  unless (cur ^. #bufferWasLoaded) do
+    buf <- nvimGetCurrentBuf
+    unlessM (bufferGetOption buf "modified") do
+      wipeBuffer buf
+  atomicPut (Just (cur & #bufferWasLoaded .~ loaded))
 
 continue ::
   Member Rpc r =>
   CurrentTag ->
-  Text ->
   Sem r Bool
-continue CurrentTag {locations = Zipper.current -> TagLoc {..}} newName = do
-  bufLine <- currentLine
+continue CurrentTag {locations = Zipper.current -> TagLoc {..}} = do
+  (bufLine, bufCol) <- currentCursor
   bufPath <- currentBufferPath
-  pure (elem path bufPath && bufLine == line && name == newName)
+  pure (elem path bufPath && bufLine == line && bufCol == col)
 
 cycle ::
   Members [AtomicState (Maybe CurrentTag), Rpc] r =>
   CurrentTag ->
   Sem r ()
-cycle cur = do
-  atomicPut (Just newCur)
-  nav newCur
-  where
-    newCur =
-      cur & #locations %~ cycleLoc
+cycle =
+  nav . (#locations %~ cycleLoc)
 
 storeAndNav ::
   Members [AtomicState (Maybe CurrentTag), Rpc] r =>
@@ -49,11 +49,7 @@ storeAndNav ::
   NonEmpty (TagLoc (Path Abs File)) ->
   Sem r ()
 storeAndNav name locs = do
-  atomicPut (Just cur)
-  nav cur
-  where
-    cur =
-      CurrentTag name (Zipper.fromNonEmpty locs)
+  nav (CurrentTag name (Zipper.fromNonEmpty locs) True)
 
 start ::
   Members [AtomicState (Maybe CurrentTag), AtomicState Env, Rpc, Stop Report, Embed IO] r =>
@@ -74,7 +70,7 @@ nextTag ::
 nextTag name =
   atomicGet >>= \case
     Just cur ->
-      ifM (continue cur name) (cycle cur) (start name)
+      ifM (continue cur) (cycle cur) (start name)
     Nothing ->
       start name
 
