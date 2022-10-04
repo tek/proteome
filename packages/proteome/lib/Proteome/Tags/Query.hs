@@ -34,7 +34,7 @@ truncAndPad n t =
 
 renderTag :: Tag -> Text
 renderTag Tag {path, segments = TagSegments {..}} =
-  [exon|#{maybe "" renderPackage package}#{fromMaybe path modulePath}|]
+  [exon|#{renderPackage (fromMaybe "local" package)}#{fromMaybe path modulePath}|]
   where
     renderPackage p =
       [exon|📦 #{truncAndPad 20 p} |]
