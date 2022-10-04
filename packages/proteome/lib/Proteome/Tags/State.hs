@@ -2,7 +2,7 @@ module Proteome.Tags.State where
 
 import Control.Lens.Regex.Text (Match, group, regex)
 import Data.Char (isUpper)
-import Data.List.Extra (takeWhileEnd)
+import Data.List.Extra (dropEnd, takeWhileEnd)
 import qualified Data.Text as Text
 import Exon (exon)
 import Lens.Micro.Extras (preview, view)
@@ -74,10 +74,10 @@ nixPackage =
 haskellModule :: Text -> Maybe Text
 haskellModule =
   Just .
-  Text.dropEnd 3 .
   Text.intercalate "." .
   takeWhileEnd firstUpper .
-  Text.split ('/' ==)
+  dropEnd 1 .
+  Text.split \ c -> ('/' == c) || ('.' == c)
   where
     firstUpper seg =
       any (isUpper . fst) (Text.uncons seg)
