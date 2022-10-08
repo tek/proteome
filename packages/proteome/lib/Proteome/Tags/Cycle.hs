@@ -22,7 +22,8 @@ nav ::
 nav cur@(CurrentLoc TagLoc {..}) = do
   buf <- nvimGetCurrentBuf
   loaded <- loadOrEdit path line
-  unless (cur ^. #bufferWasLoaded) do
+  newBuf <- nvimGetCurrentBuf
+  unless (cur ^. #bufferWasLoaded || buf == newBuf) do
     unlessM (bufferGetOption buf "modified") do
       wipeBuffer buf
   atomicPut (Just (cur & #bufferWasLoaded .~ loaded))
