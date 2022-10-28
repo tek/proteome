@@ -130,6 +130,7 @@ readStderr =
         Right l -> spin (buf |> decodeUtf8 l)
         Left _ -> pure (toList buf)
 
+-- TODO add timeout to kill the process
 executeTags ::
   Members [Settings !! SettingError, Reports, Stop TagsError, Log, Resource, Embed IO] r =>
   ProjectRoot ->

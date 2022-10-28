@@ -101,19 +101,13 @@ handlers =
   <>
   rpc "ProGrep" Async proGrep
   <>
-  rpc "ProGrepIn" Async proGrepIn
-  <>
   rpc "ProGrepOpt" Async proGrepOpt
-  <>
-  rpc "ProGrepOptIn" Async proGrepOptIn
   <>
   rpc "ProReplaceSave" Async proReplaceSave
   <>
   rpc "ProReplaceQuit" Async proReplaceQuit
   <>
   rpc "ProBuffers" Async proBuffers
-  <>
-  rpc "ProFiles" Async proFiles
   <>
   rpc "ProPrev" Async proPrev
   <>
@@ -127,6 +121,12 @@ handlers =
   <>
   [
     rpcFunction "ProGrepList" Sync proGrepList,
+    rpcFunction "ProGrepIn" Async proGrepIn,
+    completeBuiltin "dir" (rpcCommand "ProGrepIn" Async proGrepIn),
+    rpcFunction "ProGrepOptIn" Async proGrepOptIn,
+    completeBuiltin "dir" (rpcCommand "ProGrepOptIn" Async proGrepOptIn),
+    rpcFunction "ProFiles" Async proFiles,
+    completeBuiltin "dir" (rpcCommand "ProFiles" Async proFiles),
     rpcFunction "ProAdd" Async proAdd,
     rpcCommand "ProAdd" Async proAddCmd,
     rpcCommand "ProAddMenu" Async proAddMenu,
