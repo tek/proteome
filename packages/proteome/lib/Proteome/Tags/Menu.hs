@@ -18,7 +18,7 @@ import Ribosome (
   resumeReport,
   )
 import Ribosome.Host.Data.Report (ReportLog)
-import Ribosome.Menu (Filter (Fuzzy), MenuItem, MenuResult, WindowMenus, modal, windowMenu)
+import Ribosome.Menu (Filter (Fuzzy), MenuItem (MenuItem), MenuResult, WindowMenus, modal, windowMenu)
 import qualified Streamly.Prelude as Stream
 import Streamly.Prelude (SerialT)
 
@@ -31,25 +31,30 @@ import Proteome.Tags.Query (query)
 import Proteome.Tags.State (
   RawTagSegments,
   Segment (Module, Name),
-  Tag,
+  Tag (Tag),
   TagSegments,
   TagsMode (TagsMode),
   TagsState,
   tagSegmentsFor,
   )
+import qualified Proteome.Tags.State as State
 import Proteome.Tags.Stream (readTags)
 import Proteome.Tags.Syntax (tagsSyntax)
+import qualified Ribosome.Menu as Menu
+import Ribosome.Api (parseNvimFile)
 
 getTags ::
   Members [AtomicState Env, Rpc] r =>
   (RawTagSegments -> TagSegments) ->
   Maybe Text ->
-  Sem r (SerialT IO (MenuItem Tag))
+  Sem r (Either Tag (SerialT IO (MenuItem Tag)))
 getTags mkSegments = \case
   Just rex -> do
-    Stream.fromList <$> query mkSegments rex
+    query mkSegments rex <&> \case
+      [MenuItem tag _ _] -> Left tag
+      tags -> Right (Stream.fromList tags)
   Nothing ->
-    readTags mkSegments
+    Right <$> readTags mkSegments
 
 tagsAction ::
   Members [Rpc, Stop Report, Embed IO] r =>
@@ -60,6 +65,17 @@ tagsAction = \case
     unlessM (doesFileExist path) do
       stop (fromText [exon|File doesn't exist: #{pathText path}|])
     void (loadOrEdit path line)
+
+navigateUnique ::
+  Member Rpc r =>
+  Tag ->
+  Sem r (MenuResult TagsAction)
+navigateUnique Tag {..} = do
+  parseNvimFile path <&> \case
+    Just file ->
+      Menu.Success (Navigate file line)
+    Nothing ->
+      Menu.Error [exon|Invalid tag path: #{path}|]
 
 type TagsStack =
   [
@@ -76,9 +92,12 @@ tagsMenu ::
   Sem r (MenuResult TagsAction)
 tagsMenu rex = do
   tpe <- atomicGets mainType
-  tags <- getTags (tagSegmentsFor tpe) rex
-  mapReport do
-    windowMenu tags (modal (TagsMode Fuzzy mode)) (def & #items .~ scratchOptions) mappings
+  getTags (tagSegmentsFor tpe) rex >>= \case
+    Left tag ->
+      navigateUnique tag
+    Right tags ->
+      mapReport do
+        windowMenu tags (modal (TagsMode Fuzzy mode)) (def & #items .~ scratchOptions) mappings
   where
     mode =
       if isJust rex then Module else Name
