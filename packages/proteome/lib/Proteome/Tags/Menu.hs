@@ -47,11 +47,12 @@ getTags ::
   Members [AtomicState Env, Rpc] r =>
   (RawTagSegments -> TagSegments) ->
   Maybe Text ->
-  Sem r (Either Tag (SerialT IO (MenuItem Tag)))
+  Sem r (Either (Maybe Tag) (SerialT IO (MenuItem Tag)))
 getTags mkSegments = \case
   Just rex -> do
     query mkSegments rex <&> \case
-      [MenuItem tag _ _] -> Left tag
+      [] -> Left Nothing
+      [MenuItem tag _ _] -> Left (Just tag)
       tags -> Right (Stream.fromList tags)
   Nothing ->
     Right <$> readTags mkSegments
@@ -93,7 +94,9 @@ tagsMenu ::
 tagsMenu rex = do
   tpe <- atomicGets mainType
   getTags (tagSegmentsFor tpe) rex >>= \case
-    Left tag ->
+    Left Nothing ->
+      pure (Menu.Error "No matching tags")
+    Left (Just tag) ->
       navigateUnique tag
     Right tags ->
       mapReport do
