@@ -25,10 +25,12 @@ runtime ::
   Text ->
   Sem r [Text]
 runtime path = do
-  vimCommand [exon|runtime! #{fpath}|]
-  globRtp fpath
+  vimCommand [exon|runtime! #{lpath}|]
+  vimCommand [exon|runtime! #{vpath}|]
+  globRtp lpath <> globRtp vpath
   where
-    fpath = path <> ".vim"
+    lpath = path <> ".lua"
+    vpath = path <> ".vim"
 
 runtimeConf ::
   Member Rpc r =>
@@ -46,7 +48,7 @@ typeProjectConf ::
   Sem r [Text]
 typeProjectConf confDir (ProjectName name') (ProjectType tpe') = do
   tpePaths <- runtimeConf confDir tpe'
-  namePaths <- runtimeConf confDir $ tpe' <> "/" <> name'
+  namePaths <- runtimeConf confDir (tpe' <> "/" <> name')
   pure $ tpePaths <> namePaths
 
 readConfigMeta ::
