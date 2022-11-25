@@ -182,6 +182,8 @@ Mappings:
 * `y` to yank the matching line
 * `r` to start replace mode
 * `d` to delete the matching line
+* `<c-s>` to cycle the matched segments – full, content, path, file name, directory
+* `<c-f>` to cycle the filter type – fuzzy, prefix, regex, substring
 
 Deleting a line will compensate for resulting double empty lines.
 
@@ -253,9 +255,12 @@ The default is to use `rg`, with fallback on a builtin directory traversal algor
 
 Mappings:
 * `<space>` to mark an item
-* `<cr>` edit a file
-* `<tab>` complete the longest common prefix of existing directories
-* `<c-y>` edit a new file with the path given on the prompt, creating necessary directories
+* `<cr>` to edit a file
+* `<tab>` to complete the longest common prefix of existing directories
+* `<c-y>` to edit a new file with the path given on the prompt, creating necessary directories
+* `<c-d>` to insert the current buffer's directory
+* `<c-s>` to cycle the matched segments – full, filename, directory
+* `<c-f>` to cycle the filter type – fuzzy, prefix, regex, substring
 
 Config:
 * `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
