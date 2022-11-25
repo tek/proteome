@@ -7,7 +7,7 @@ import Path.IO (createDirIfMissing)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (UnitTest, assert, assertEq, assertJust, evalMaybe, runTestAuto, unitTest, (===))
 import Ribosome (mapReport)
-import Ribosome.Api (currentBufferPath)
+import Ribosome.Api (currentBufferPath, edit)
 import Ribosome.Menu (promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
@@ -76,6 +76,31 @@ test_filesCreate =
       filesMenu base [toText (toFilePath base)]
     assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
 
+createCurDirEvents :: [PromptEvent]
+createCurDirEvents =
+  [
+    Mapping "<c-d>",
+    Update "path/to/dir/file",
+    Mapping "<c-y>"
+  ]
+
+-- TODO this and above need to use MenuTest to directly manipulate the prompt
+test_filesCreateCurDir :: UnitTest
+test_filesCreateCurDir =
+  proteomeTest do
+    Settings.update Settings.filesUseRg False
+    base <- Test.tempDir baseRel
+    let targetDir = base </> createRel
+    cur <- Test.tempFile ["cur"] (baseRel </> createRel </> [relfile|cur|])
+    createDirIfMissing True targetDir
+    edit cur
+    mapReport @FilesError $ promptInput createCurDirEvents do
+      filesMenu base [toText (toFilePath base)]
+    assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
+  where
+    createRel = [reldir|path/to/dir|]
+    baseRel = [reldir|files/create|]
+
 filesMultiDirTest :: Bool -> UnitTest
 filesMultiDirTest rg = do
   runTestAuto $ asyncToIOFinal do
@@ -114,6 +139,7 @@ test_files =
     unitTest "edit a file" test_filesEdit,
     unitTest "exclude patterns" test_filesExclude,
     unitTest "create a file" test_filesCreate,
+    unitTest "create a file after inserting the current directory" test_filesCreateCurDir,
     unitTest "show dir prefix, native" test_filesMultiDirNative,
     unitTest "show dir prefix, rg" test_filesMultiDirRg
   ]

@@ -7,7 +7,23 @@ import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import Data.List.NonEmpty.Extra (maximumOn1)
 import qualified Data.Text as Text
 import Lens.Micro.Extras (view)
-import Path (Abs, Dir, File, Path, Rel, parent, parseAbsDir, parseRelDir, parseRelFile, toFilePath, (</>))
+import qualified Log
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  SomeBase (Abs, Rel),
+  parent,
+  parseAbsDir,
+  parseRelDir,
+  parseSomeFile,
+  prjSomeBase,
+  stripProperPrefix,
+  toFilePath,
+  (</>),
+  )
 import Path.IO (createDirIfMissing, doesDirExist, listDirRel)
 import Ribosome (
   Handler,
@@ -18,9 +34,10 @@ import Ribosome (
   SettingError,
   Settings,
   mapReport,
+  pathText,
   resumeReport,
   )
-import Ribosome.Api (nvimGetOption)
+import Ribosome.Api (currentBufferPath, nvimGetOption)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)
 import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
@@ -187,7 +204,9 @@ createFile bases = do
   PromptText promptText <- view #text <$> ask
   let
     parse counts =
-      (base counts </>) <$> parseRelFile (toString promptText)
+      parseSomeFile (toString promptText) <&> \case
+        Abs p -> p
+        Rel p -> base counts </> p
   subdirCounts <- traverse (existingSubdirCount (dirSegments promptText)) bases
   maybe (err promptText) (menuSuccess . Create) (parse subdirCounts)
   where
@@ -204,16 +223,31 @@ cycleSegment =
     mode . #segment %= FilesState.cycle
     menuOk
 
+insertFileDir ::
+  Member Log r =>
+  Maybe (SomeBase File) ->
+  MenuWidget FilesState r FileAction
+insertFileDir = \case
+  Just bufPath -> do
+    let dir = prjSomeBase (pathText . parent) bufPath
+    Prompt _ m _ <- ask
+    menuUpdatePrompt (Prompt (Text.length dir) m (PromptText dir))
+  Nothing -> do
+    Log.info "Current buffer is not associated with a path"
+    menuOk
+
 actions ::
-  Members [Stop FilesError, Embed IO] r =>
+  Members [Stop FilesError, Log, Embed IO] r =>
   NonEmpty (Path Abs Dir) ->
+  Maybe (SomeBase File) ->
   Mappings FilesState r FileAction
-actions bases =
+actions bases bufPath =
   [
     (withInsert "<cr>", editFile),
     (insert "<tab>", tab (NonEmpty.toList bases)),
     (insert "<c-y>", createFile bases),
-    (withInsert "<c-s>", cycleSegment)
+    (withInsert "<c-s>", cycleSegment),
+    (insert "<c-d>", insertFileDir bufPath)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
@@ -283,8 +317,9 @@ filesMenu ::
 filesMenu cwd pathSpecs = do
   mapReport @RpcError do
     conf <- filesConfig
+    bufPath <- current
     items <- fmap (fmap fileSegments) <$> files conf nePaths
-    result <- windowMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths)
+    result <- windowMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths bufPath)
     handleResult fileAction result
   where
     window =
@@ -301,6 +336,9 @@ filesMenu cwd pathSpecs = do
       fromMaybe (cwd :| []) (nonEmpty absPaths)
     absPaths =
       mapMaybe (parsePath cwd) pathSpecs
+    current =
+      currentBufferPath <&> fmap \ p ->
+        fromMaybe (Abs p) (Rel <$> stripProperPrefix cwd p)
 
 proFiles ::
   Members FilesStack r =>
