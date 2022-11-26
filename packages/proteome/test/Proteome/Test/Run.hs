@@ -1,6 +1,6 @@
 module Proteome.Test.Run where
 
-import Conc (Restoration, interpretAtomic)
+import Conc (interpretAtomic)
 import Log (Severity (Debug, Trace))
 import Path (reldir)
 import qualified Polysemy.Test as Test
@@ -41,7 +41,7 @@ interpretPersistTest test = do
   interpretPersistPathAt True persistDir (interpretPersist "buffers" test)
 
 interpretProteomeStackTest ::
-  Members [Race, Resource, Mask Restoration, Embed IO] r =>
+  Members [Race, Resource, Mask, Embed IO] r =>
   InterpretersFor ProteomeTestStack r
 interpretProteomeStackTest =
   interpretProteomeStack .

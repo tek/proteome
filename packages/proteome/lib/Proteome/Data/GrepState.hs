@@ -94,7 +94,7 @@ instance MenuMode GrepOutputLine GrepMode where
   renderFilter (GrepMode mode _) =
     renderFilter mode
 
-  renderExtra (GrepMode _ segment) =
+  renderExtra (GrepMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
   filterMode (GrepMode mode segment) =

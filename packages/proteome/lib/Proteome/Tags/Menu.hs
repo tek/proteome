@@ -80,7 +80,7 @@ navigateUnique Tag {..} = do
 
 type TagsStack =
   [
-    WindowMenus () TagsState !! RpcError,
+    WindowMenus TagsState !! RpcError,
     Settings !! SettingError,
     Rpc !! RpcError,
     Log

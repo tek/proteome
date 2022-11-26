@@ -23,21 +23,30 @@ Since the plugin is written in Haskell, its executable has to be fetched or buil
 
 # Overview
 
-The principle of this plugin is that when you run Neovim, the current directory
-may host a project with a type and name, and that you want to set up
-configuration specific to this project.
+For the project configuration feature, Proteome determines the project type and name on startup based on several
+configurable heuristics.
+Based on that data, Neovim config files in `{runtimepath}/project` and `{runtimepath}/project` are sourced.
 
-The plugin figures out the type and name on startup and, if that was
-successful, proceeds to load configuration from several files in
-`{runtimepath}/project`.
+In addition to this, the plugin provides the following functionality:
 
-Additional projects can be added at runtime; you can then switch the working
-directory between them.
+* [File picking and creation](#files)
+* [Grepping](#grep)
+* [Tag file creation and navigation](#tags)
+* [Buffer listing](#buffers)
+* [Copying, moving and removing files](#file-paths)
+
+Most of these tasks are performed in pop up menus with fuzzy matching that have common mappings:
+
+* `j/k`: Navigate in normal mode
+* `<c-j>/<c-k>`: Navigate in insert mode
+* `<space>`: Toggle an item for batch processing
+* `*`: Toggle all items
+* `<esc>` and `<c-c>`: Quit without action
+* `<c-f>`: Cycle the filter type – fuzzy, prefix, regex, substring
 
 ## Configuration
 
-The most important configuration is read from the variable
-`g:proteome_project_config` with the schema:
+The most important configuration is read from the variable `g:proteome_project_config` with the schema:
 
 ```vim
 {
@@ -54,7 +63,7 @@ The most important configuration is read from the variable
 All parts are optional, but you probably want at least one of `baseDirs`,
 `typeDirs` and `typeMarkers`.
 
-# Project Detection
+# Project detection
 
 **Proteome** needs to determine the name and type of your project.
 The type can be arbitrarily defined for your own purposes, but mostly you
@@ -62,7 +71,7 @@ should want it to represent the project's main language.
 The builtin tools can detect the type from the contents or the path of the
 project.
 
-## Project Content
+## Project content
 
 The project config variable's key `typeMarkers` is read as a mapping of project
 type names to filename globs that are matched against the working directory.
@@ -70,7 +79,7 @@ If any of the globs match, the corresponding type will be used for the project.
 A few defaults are built-in, so if you're lucky you won't have to configure
 anything.
 
-## Project Path
+## Project path
 
 Path based type detection uses the project config keys `baseDirs`, `typeDirs`
 and `projectTypes`.
@@ -88,12 +97,12 @@ and name.
 The `typeDirs` variable is similar to that, it assumes `basedir/name`, with
 `basedir` taken from the values and the type from the keys in the config.
 
-## Additional Types and Languages
+## Additional types and languages
 
 The `typeMap`, `langMap` and `langsMap` settings can be used to add types and
 languages to a project based on the main type.
 
-# Project Specific Config
+# Project-specific config
 
 On startup, Proteome loads the following sequence of files from the `project` subdirectory in your `runtimepath`:
 
@@ -114,62 +123,35 @@ An autocmd will execute it for you whenever you save a file, waiting a number
 of seconds (`g:proteome_save_interval`) between executions to avoid running
 multiple times when executing `:wa`.
 
-# Tags
+# Files
 
-Proteome can generate and navigate tags.
+The command `ProFiles` takes a list of directories and lists all files inside, recursively.
+If no arguments were given, the current working directory is used.
+The default is to use `rg`, with fallback on a builtin directory traversal algorithm.
 
-![tags menu](ops/img/tags-menu.png "The tags menu displaying results for traverse_")
+Mappings:
+* `<cr>` to edit a file
+* `<tab>` to complete the longest common prefix of existing directories
+* `<c-y>` to edit a new file with the path given on the prompt, creating necessary directories
+* `<c-b>` to cycle the base dir for file creation
+* `<c-d>` to insert the current buffer's directory
+* `<c-s>` to cycle the matched segments – full, filename, directory
 
-## Navigation
+See the [overview](#overview) for common mappings.
 
-Suggested mappings:
+When directories have been specified, one of them is treated as "active" and displayed in the status window.
+This directory is used as the base path when creating new files, and it can be changed by pressing `<c-b>`.
+When inserting the current buffer's dir or tab completing, the base dir is updated with the best match for the inserted
+path.
 
-```vim
-nnoremap <c-]> <cmd>ProNextTag<cr>
-nnoremap g] <cmd>ProTag<cr>
-```
+Config:
+* `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
+* `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
+* `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
+* `g:proteome_files_exclude_wildignore` Boolean indicating whether to honor the nvim option `'wildignore'`
+* `g:proteome_files_use_rg` Set to `v:false` to prevent the file name collection from using `rg`
 
-### `ProNextTag [name]`
-
-Jump to the tag for the given name or the name under the cursor if omitted.
-
-If the command is issued repeatedly without moving the cursor, jump to the next tag of the same name.
-
-### `ProTags [regex]`
-
-Open a menu showing all tags matching the given regex.
-
-The menu extracts the package and module from the file path if possible (currently implemented for Haskell and Nix
-paths).
-
-If the regex is omitted, load all available tags.
-Since a tag file often contains hundreds of thousands of entries, this may be extremely slow.
-
-### `ProTag [name]`
-
-Open a menu showing all tags that match the given name, or name under the cursor if omitted, exactly.
-
-### `ProGenTags`
-
-This command triggers the execution of `ctags` or another tag generation tool.
-
-It can be configured with these variables:
-
-* `g:proteome_tags_command` The executable, like `ctags`.
-* `g:proteome_tags_args` A template string for the arguments passed to the command.
-* `g:proteome_tags_file_name` The final name for the tags file, default `.tags`.
-
-To prevent the tag file from being gone while the tagger is running, the
-process outputs first to a temporary file and renames it if it was successful.
-
-The args template can contain several variable that will be filled in before
-executing the command:
-
-* `{langsComma}` A comma-separated list of project languages (default is the project type).
-* `{tagFile}` The temporary file name that the command should write to.
-* `{root}` The project root directory, useful when having multiple projects.
-
-The default template, for `ctags`, is `-R --languages={langsComma} -f {tagFile} {root}`.
+The regexes are matches against the entire path.
 
 # Grep
 
@@ -183,7 +165,8 @@ Mappings:
 * `r` to start replace mode
 * `d` to delete the matching line
 * `<c-s>` to cycle the matched segments – full, content, path, file name, directory
-* `<c-f>` to cycle the filter type – fuzzy, prefix, regex, substring
+
+See the [overview](#overview) for common mappings.
 
 Deleting a line will compensate for resulting double empty lines.
 
@@ -220,7 +203,7 @@ Example for `rg`:
 let g:proteome_grep_cmdline = 'rg --vimgrep --no-heading --multiline'
 ```
 
-## Replace Mode
+## Replace mode
 
 When starting replace mode, all marked lines are loaded into a scratch buffer.
 When this buffer is saved, the modified lines will be written to the
@@ -228,6 +211,65 @@ corresponding files.
 
 If a line is left empty, it will be deleted, along with the line taking its
 place, if both surrounding lines are either whitespace or the buffer edge.
+
+# Tags
+
+Proteome can generate and navigate tags.
+
+![tags menu](ops/img/tags-menu.png "The tags menu displaying results for traverse_")
+
+## Navigation
+
+Suggested mappings:
+
+```vim
+nnoremap <c-]> <cmd>ProNextTag<cr>
+nnoremap g] <cmd>ProTag<cr>
+```
+
+### `ProNextTag [name]`
+
+Jump to the tag for the given name or the name under the cursor if omitted.
+
+If the command is issued repeatedly without moving the cursor, jump to the next tag of the same name.
+
+### `ProTags [regex]`
+
+Open a menu showing all tags matching the given regex.
+See the [overview](#overview) for key mappings.
+
+The menu extracts the package and module from the file path if possible (currently implemented for Haskell and Nix
+paths).
+
+If the regex is omitted, load all available tags.
+Since a tag file often contains hundreds of thousands of entries, this may be extremely slow.
+
+### `ProTag [name]`
+
+Open a menu showing all tags that match the given name, or name under the cursor if omitted, exactly.
+See the [overview](#overview) for key mappings.
+
+### `ProGenTags`
+
+This command triggers the execution of `ctags` or another tag generation tool.
+
+It can be configured with these variables:
+
+* `g:proteome_tags_command` The executable, like `ctags`.
+* `g:proteome_tags_args` A template string for the arguments passed to the command.
+* `g:proteome_tags_file_name` The final name for the tags file, default `.tags`.
+
+To prevent the tag file from being gone while the tagger is running, the
+process outputs first to a temporary file and renames it if it was successful.
+
+The args template can contain several variable that will be filled in before
+executing the command:
+
+* `{langsComma}` A comma-separated list of project languages (default is the project type).
+* `{tagFile}` The temporary file name that the command should write to.
+* `{root}` The project root directory, useful when having multiple projects.
+
+The default template, for `ctags`, is `-R --languages={langsComma} -f {tagFile} {root}`.
 
 # Buffers
 
@@ -242,36 +284,13 @@ Mappings:
 * `w` to wipe a buffer
 * `W` to wipe a buffer, discarding changes
 
+See the [overview](#overview) for common mappings.
+
 Config:
 * `g:proteome_buffers_current_last` Boolean indicating whether to display the
   active buffer at the end of the MRU list
 
-# Files
-
-The command `ProFiles` takes a list of directories and lists all files inside,
-recursively.
-Selecting multiple files is supported.
-The default is to use `rg`, with fallback on a builtin directory traversal algorithm.
-
-Mappings:
-* `<space>` to mark an item
-* `<cr>` to edit a file
-* `<tab>` to complete the longest common prefix of existing directories
-* `<c-y>` to edit a new file with the path given on the prompt, creating necessary directories
-* `<c-d>` to insert the current buffer's directory
-* `<c-s>` to cycle the matched segments – full, filename, directory
-* `<c-f>` to cycle the filter type – fuzzy, prefix, regex, substring
-
-Config:
-* `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
-* `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
-* `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
-* `g:proteome_files_exclude_wildignore` Boolean indicating whether to honor the nvim option `'wildignore'`
-* `g:proteome_files_use_rg` Set to `v:false` to prevent the file name collection from using `rg`
-
-The regexes are matches against the entire path.
-
-# File Paths
+# File paths
 
 The commands `ProMove` and `ProCopy` move or copy the current buffer's file to
 the specified location, considering whether the destination is a directory.
@@ -307,6 +326,4 @@ command! Rm ProRemove
 [Neovim]: https://github.com/neovim/neovim
 [Haskell]: https://www.haskell.org
 [Ribosome]: https://github.com/tek/ribosome
-[nvim-hs]: https://github.com/neovimhaskell/nvim-hs
-[nvim-hs.vim]: https://github.com/neovimhaskell/nvim-hs.vim
 [nix]: https://nixos.org

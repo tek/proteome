@@ -1,11 +1,14 @@
 module Proteome.Data.FilesState where
 
-import Path (Abs, File, Path, filename, parent)
+import qualified Data.List.NonEmpty.Zipper as Zipper
+import Data.List.NonEmpty.Zipper (Zipper)
+import qualified Data.Text as Text
+import Exon (exon)
+import Path (Abs, Dir, File, Path, Rel, filename, parent)
 import Ribosome (pathText)
 import Ribosome.Menu (Filter, MenuItem (MenuItem), Modal)
 import qualified Ribosome.Menu.MenuState as MenuState
-import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, renderFilter))
-import Exon (exon)
+import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, renderFilter), MenuState)
 
 data FileSegments =
   FileSegments {
@@ -56,8 +59,21 @@ data FilesMode =
   }
   deriving stock (Eq, Show, Ord, Generic)
 
-type FilesState =
-  Modal FilesMode FileSegments
+data BaseDir =
+  BaseDir {
+    absolute :: Path Abs Dir,
+    relative :: Maybe (Path Rel Dir),
+    isCwd :: Bool
+  }
+  deriving stock (Eq, Show, Generic)
+
+data FilesState =
+  FilesState {
+    modal :: Modal FilesMode FileSegments,
+    bases :: Zipper BaseDir,
+    bufferPath :: Either Text (Path Rel Dir, BaseDir)
+  }
+  deriving stock (Show, Generic)
 
 instance MenuMode FileSegments FilesMode where
   type Filter FilesMode =
@@ -69,8 +85,34 @@ instance MenuMode FileSegments FilesMode where
   renderFilter (FilesMode mode _) =
     renderFilter mode
 
-  renderExtra (FilesMode _ segment) =
+  renderExtra (FilesMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
   filterMode (FilesMode mode segment) =
     FilterMode mode (Just . flip segmentExtract segment)
+
+cycleBase ::
+  Zipper BaseDir ->
+  Zipper BaseDir
+cycleBase bases =
+  fromMaybe (Zipper.start bases) (Zipper.right bases)
+
+instance MenuState FilesState where
+  type Item FilesState = FileSegments
+  type Mode FilesState = FilesMode
+
+  core = #modal . #core
+
+  mode = #modal . #mode
+
+  histories = #modal . #history
+
+  renderStatus FilesState {bases} space =
+    case base of
+      Just b -> [[exon|🌳 #{Text.takeEnd (space - 2) (Text.dropWhileEnd ('/' ==) b)}|]]
+      Nothing -> []
+    where
+      base = case Zipper.current bases of
+        BaseDir _ _ True -> Nothing
+        BaseDir _ (Just relative) _ -> Just (pathText relative)
+        BaseDir absolute _ _ -> Just (pathText absolute)

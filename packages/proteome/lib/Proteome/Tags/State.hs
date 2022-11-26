@@ -143,7 +143,7 @@ instance MenuMode Tag TagsMode where
   renderFilter (TagsMode mode _) =
     renderFilter mode
 
-  renderExtra (TagsMode _ segment) =
+  renderExtra (TagsMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
   filterMode (TagsMode mode segment) =

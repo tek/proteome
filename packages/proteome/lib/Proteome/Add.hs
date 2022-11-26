@@ -134,7 +134,7 @@ menuAdd =
 
 type AddStack =
   [
-    ModalWindowMenus () AddItem !! RpcError,
+    ModalWindowMenus AddItem !! RpcError,
     AtomicState Env,
     Reader PluginName,
     Settings !! SettingError,

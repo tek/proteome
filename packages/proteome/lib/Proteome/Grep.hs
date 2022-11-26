@@ -195,7 +195,7 @@ handleErrors =
 
 type GrepStack =
   [
-    WindowMenus () GrepState !! RpcError,
+    WindowMenus GrepState !! RpcError,
     Settings !! SettingError,
     Scratch !! RpcError,
     Rpc !! RpcError,

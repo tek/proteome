@@ -1,6 +1,6 @@
 module Proteome.Plugin where
 
-import Conc (ConcStack, Lock, Restoration, interpretAtomic, interpretLockReentrant, withAsync_)
+import Conc (ConcStack, Lock, interpretAtomic, interpretLockReentrant, withAsync_)
 import Polysemy.Chronos (ChronosTime)
 import Ribosome (
   BootError,
@@ -73,18 +73,18 @@ type ProteomeProdStack =
   [
     Persist PersistBuffers !! PersistError,
     PersistPath !! PersistPathError,
-    ModalWindowMenus () AddItem !! RpcError,
-    ModalWindowMenus () ListedBuffer !! RpcError,
-    WindowMenus () GrepState !! RpcError,
-    WindowMenus () FilesState !! RpcError,
-    WindowMenus () TagsState !! RpcError
+    ModalWindowMenus AddItem !! RpcError,
+    ModalWindowMenus ListedBuffer !! RpcError,
+    WindowMenus GrepState !! RpcError,
+    WindowMenus FilesState !! RpcError,
+    WindowMenus TagsState !! RpcError
   ] ++ NvimMenus ++ ProteomeStack
 
 handlers ::
   Members ProteomeProdStack r =>
   Members [Settings !! SettingError, Scratch !! RpcError, Rpc !! RpcError, Reports, Reader PluginName] r =>
   Members ConcStack r =>
-  Members [DataLog LogReport, ChronosTime, Log, Mask Restoration, Race, Resource, Async, Embed IO, Final IO] r =>
+  Members [DataLog LogReport, ChronosTime, Log, Mask, Race, Resource, Async, Embed IO, Final IO] r =>
   [RpcHandler r]
 handlers =
   rpc "ProDiag" Async proDiag
@@ -162,7 +162,7 @@ prepare = do
   resumeLogReport @Rpc projectConfigAfter
 
 interpretProteomeStack ::
-  Members [Race, Resource, Mask Restoration, Embed IO] r =>
+  Members [Race, Resource, Mask, Embed IO] r =>
   InterpretersFor ProteomeStack r
 interpretProteomeStack =
   interpretLockReentrant . untag .
@@ -173,9 +173,9 @@ interpretProteomeStack =
   interpretAtomic def
 
 interpretProteomeProdStack ::
-  Member (EventConsumer eres Event) r =>
+  Member (EventConsumer Event) r =>
   Members [Rpc !! RpcError, Settings !! SettingError, Scratch !! RpcError, Reader PluginName, DataLog LogReport] r =>
-  Members [Error BootError, Race, Log, Resource, Mask Restoration, Async, Embed IO, Final IO] r =>
+  Members [Error BootError, Race, Log, Resource, Mask, Async, Embed IO, Final IO] r =>
   InterpretersFor ProteomeProdStack r
 interpretProteomeProdStack =
   interpretProteomeStack .

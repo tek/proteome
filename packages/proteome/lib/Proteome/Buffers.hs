@@ -176,7 +176,7 @@ bufferAction = \case
 
 type BuffersStack =
   [
-    ModalWindowMenus () ListedBuffer !! RpcError,
+    ModalWindowMenus ListedBuffer !! RpcError,
     AtomicState Env,
     Settings !! SettingError,
     Rpc !! RpcError,

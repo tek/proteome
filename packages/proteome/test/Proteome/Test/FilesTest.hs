@@ -6,20 +6,27 @@ import Path (Abs, Dir, Path, isProperPrefixOf, reldir, relfile, toFilePath, (</>
 import Path.IO (createDirIfMissing)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (UnitTest, assert, assertEq, assertJust, evalMaybe, runTestAuto, unitTest, (===))
-import Ribosome (mapReport)
-import Ribosome.Api (currentBufferPath, edit)
-import Ribosome.Menu (promptInput)
+import Ribosome (Report, mapReport, pathText)
+import Ribosome.Api (bufferContent, currentBufferPath, edit)
+import Ribosome.Api.Input (feedKey)
+import qualified Ribosome.Menu as MenuResult
+import Ribosome.Menu (defaultMappings, promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import qualified Ribosome.Menu.Effect.MenuTest as MenuTest
+import Ribosome.Menu.MenuTest (testNativeMenu)
 import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
+import qualified Ribosome.Scratch as Scratch
 import qualified Ribosome.Settings as Settings
+import Ribosome.Test (assertWait, testError)
 import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 import Text.Regex.PCRE.Heavy (re)
 
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Data.FilesError (FilesError)
-import Proteome.Files (filesMenu)
+import Proteome.Files (FileAction (Create), actions, fileAction, filesMenu, filesMenuConfig)
 import Proteome.Files.Source (files)
+import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Run (proteomeTest)
 
@@ -84,22 +91,76 @@ createCurDirEvents =
     Mapping "<c-y>"
   ]
 
--- TODO this and above need to use MenuTest to directly manipulate the prompt
 test_filesCreateCurDir :: UnitTest
 test_filesCreateCurDir =
-  proteomeTest do
+  proteomeTest $ testError @FilesError do
     Settings.update Settings.filesUseRg False
     base <- Test.tempDir baseRel
-    let targetDir = base </> createRel
-    cur <- Test.tempFile ["cur"] (baseRel </> createRel </> [relfile|cur|])
-    createDirIfMissing True targetDir
+    dir1 <- Test.tempDir sub1
+    dir2 <- Test.tempDir sub2
+    dir3 <- Test.tempDir sub3
+    let target = dir3 </> [relfile|sub/file|]
+    Test.tempFile ["other"] (sub1 </> [relfile|sub/cur|])
+    cur <- Test.tempFile ["cur"] (sub2 </> [relfile|sub/cur|])
     edit cur
-    mapReport @FilesError $ promptInput createCurDirEvents do
-      filesMenu base [toText (toFilePath base)]
-    assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
+    (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3]
+    result <- testNativeMenu items (window ^. #prompt) s (window ^. #items) (defaultMappings <> actions) do
+      prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
+      status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
+      feedKey "<c-d>"
+      assertWait (bufferContent (prompt ^. #buffer)) (assertEq ["sub/"])
+      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir2"] . drop 1)
+      traverse_ @[] feedKey ["f", "i", "l", "e"]
+      feedKey "<c-b>"
+      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir3"] . drop 1)
+      feedKey "<c-y>"
+      MenuTest.result
+    MenuResult.Success (Create target) === result
+    handleResult fileAction result
+    assertJust target =<< currentBufferPath
   where
-    createRel = [reldir|path/to/dir|]
-    baseRel = [reldir|files/create|]
+    sub1 = baseRel </> [reldir|dir1|]
+    sub2 = baseRel </> [reldir|dir2|]
+    sub3 = baseRel </> [reldir|dir3|]
+    baseRel = [reldir|files/create-cur|]
+
+test_filesCreateTab :: UnitTest
+test_filesCreateTab =
+  proteomeTest $ testError @FilesError do
+    Settings.update Settings.filesUseRg False
+    base <- Test.tempDir baseRel
+    dir1 <- Test.tempDir sub1
+    dir2 <- Test.tempDir sub2
+    dir3 <- Test.tempDir sub3
+    dir4 <- Test.tempDir sub4
+    let target = dir4 </> [relfile|second-good/file|]
+    Test.tempFile [] (sub1 </> [relfile|first/cur|])
+    Test.tempFile [] (sub2 </> [relfile|second-bad/cur|])
+    Test.tempFile [] (sub3 </> [relfile|second-good/cur|])
+    Test.tempFile [] (sub4 </> [relfile|second-good/cur|])
+    (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3, pathText dir4]
+    result <- testNativeMenu items (window ^. #prompt) s (window ^. #items) (defaultMappings <> actions) do
+      prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
+      status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
+      feedKey "s"
+      feedKey "<tab>"
+      assertWait (bufferContent (prompt ^. #buffer)) (assertEq ["second-"])
+      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir2"] . drop 1)
+      feedKey "g"
+      feedKey "<tab>"
+      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir3"] . drop 1)
+      traverse_ @[] feedKey ["f", "i", "l", "e"]
+      feedKey "<c-b>"
+      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir4"] . drop 1)
+      feedKey "<c-y>"
+      MenuTest.result
+    MenuResult.Success (Create target) === result
+  where
+    sub1 = baseRel </> [reldir|dir1|]
+    sub2 = baseRel </> [reldir|dir2|]
+    sub3 = baseRel </> [reldir|dir3|]
+    sub4 = baseRel </> [reldir|dir4|]
+    baseRel = [reldir|files/create-cur|]
 
 filesMultiDirTest :: Bool -> UnitTest
 filesMultiDirTest rg = do
@@ -112,7 +173,7 @@ filesMultiDirTest rg = do
     Test.tempFile ["content"] (sub2 </> [relfile|file2|])
     Test.tempFile ["content"] (sub1 </> [relfile|file.foo|])
     Test.tempFile ["content"] (sub1 </> [relfile|file.bar|])
-    fs <- files conf' (dir1 :| [dir2])
+    fs <- files conf' [dir1, dir2]
     stream <- fmap MenuItem.render <$> embed (Stream.toList fs)
     target === Set.fromList stream
   where
@@ -140,6 +201,7 @@ test_files =
     unitTest "exclude patterns" test_filesExclude,
     unitTest "create a file" test_filesCreate,
     unitTest "create a file after inserting the current directory" test_filesCreateCurDir,
+    unitTest "create a file after tabbing" test_filesCreateTab,
     unitTest "show dir prefix, native" test_filesMultiDirNative,
     unitTest "show dir prefix, rg" test_filesMultiDirRg
   ]

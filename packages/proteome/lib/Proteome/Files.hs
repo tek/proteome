@@ -2,9 +2,7 @@ module Proteome.Files where
 
 import Control.Monad (foldM)
 import Data.Either.Extra (eitherToMaybe)
-import Data.List.Extra (dropEnd)
-import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
-import Data.List.NonEmpty.Extra (maximumOn1)
+import qualified Data.List.NonEmpty.Zipper as Zipper
 import qualified Data.Text as Text
 import Lens.Micro.Extras (view)
 import qualified Log
@@ -15,11 +13,12 @@ import Path (
   Path,
   Rel,
   SomeBase (Abs, Rel),
+  isProperPrefixOf,
   parent,
   parseAbsDir,
   parseRelDir,
   parseSomeFile,
-  prjSomeBase,
+  reldir,
   stripProperPrefix,
   toFilePath,
   (</>),
@@ -46,32 +45,44 @@ import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
   Filter (Fuzzy),
   Mappings,
-  MenuAction,
+  MenuItem,
   MenuWidget,
   Prompt (..),
   PromptConfig (OnlyInsert),
   PromptMode,
   PromptText (PromptText),
   WindowMenus,
+  WindowOptions,
   menuOk,
+  menuRender,
   menuState,
   menuSuccess,
   menuUpdatePrompt,
   modal,
+  use,
   windowMenu,
   withSelection,
   (%=),
   )
+import Ribosome.Menu.Data.WithCursor (WithCursor)
 import Ribosome.Menu.Mappings (insert, withInsert)
 import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Settings as Settings
+import Streamly.Prelude (SerialT)
 import Text.Regex.PCRE.Light (Regex, compileM)
 
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Data.FilesError (FilesError)
 import qualified Proteome.Data.FilesError as FilesError (FilesError (..))
 import qualified Proteome.Data.FilesState as FilesState
-import Proteome.Data.FilesState (FilesMode (FilesMode), FilesState, Segment (Full), fileSegments)
+import Proteome.Data.FilesState (
+  BaseDir (BaseDir),
+  FileSegments,
+  FilesMode (FilesMode),
+  FilesState (FilesState),
+  Segment (Full),
+  fileSegments,
+  )
 import Proteome.Files.Source (files)
 import Proteome.Files.Syntax (filesSyntax)
 import Proteome.Menu (handleResult)
@@ -90,21 +101,36 @@ editFile ::
 editFile =
   withSelection (pure . Edit . fmap (view #path))
 
+setBase ::
+  Member (State (WithCursor FilesState)) r =>
+  BaseDir ->
+  Sem r ()
+setBase base =
+  #state . #bases %= \ b -> fromMaybe b (Zipper.findRight base (Zipper.start b))
+
 matchingDirs ::
   Member (Embed IO) r =>
-  [Path Abs Dir] ->
+  [BaseDir] ->
   Path Rel Dir ->
-  Sem r [Path Abs Dir]
+  Sem r [(BaseDir, Path Abs Dir)]
 matchingDirs bases path =
-  filterM (fmap (fromRight False) . tryAny . doesDirExist) ((</> path) <$> bases)
+  filterM match withSubpaths
+  where
+    match (_, subpath) =
+      fromRight False <$> tryAny (doesDirExist subpath)
+    withSubpaths =
+      bases <&> \ b -> (b, b ^. #absolute </> path)
 
 dirsWithPrefix ::
   Member (Embed IO) r =>
   Text ->
+  BaseDir ->
   Path Abs Dir ->
-  Sem r [Path Rel Dir]
-dirsWithPrefix (Text.toLower -> prefix) dir =
-  filter (Text.isPrefixOf prefix . Text.toLower . toText . toFilePath) . fst <$> listDirRel dir
+  Sem r [(BaseDir, Path Rel Dir)]
+dirsWithPrefix (Text.toLower -> prefix) base dir = do
+  subs <- fst <$> listDirRel dir
+  let matches = filter (Text.isPrefixOf prefix . Text.toLower . toText . toFilePath) subs
+  pure ((base,) <$> matches)
 
 -- |Search all dirs in @bases@ for relative paths starting with @text@.
 -- First, split the last path segment (after /) off and collect the subdirectories of @bases@ that start with the
@@ -114,16 +140,18 @@ dirsWithPrefix (Text.toLower -> prefix) dir =
 -- Return the remainder and the relative subdir paths.
 matchingPaths ::
   Member (Embed IO) r =>
-  [Path Abs Dir] ->
+  [BaseDir] ->
   Text ->
-  Sem r (Text, [Path Rel Dir])
+  Sem r (Text, [(BaseDir, Path Rel Dir)])
 matchingPaths bases text' =
-  (subpath,) . join <$> (traverse (dirsWithPrefix prefix) =<< dirs)
+  (subpath,) . join <$> (traverse (uncurry (dirsWithPrefix prefix)) =<< dirs)
   where
     subpath =
       maybe "" (toText . toFilePath) dir
     dirs =
-      maybe (pure bases) (matchingDirs bases) dir
+      maybe (pure fallback) (matchingDirs bases) dir
+    fallback =
+      bases <&> \ b -> (b, b ^. #absolute)
     (dir, prefix) =
       first (parseRelDir . toString) $ Text.breakOnEnd "/" text'
 
@@ -135,13 +163,16 @@ commonPrefix a =
 
 tabComplete ::
   Member (Embed IO) r =>
-  [Path Abs Dir] ->
+  [BaseDir] ->
   Text ->
-  Sem r (Maybe Text)
+  Sem r (Maybe (BaseDir, Text))
 tabComplete bases promptText = do
-  existingBases <- filterM doesDirExist bases
+  existingBases <- filterM (doesDirExist . view #absolute) bases
   (subpath, paths) <- matchingPaths existingBases promptText
-  pure (mappend subpath <$> commonPrefix (toText . toFilePath <$> paths))
+  let
+    base = fst <$> head paths
+    prefix = mappend subpath <$> commonPrefix (pathText . snd <$> paths)
+  pure (pairA base prefix)
 
 tabUpdatePrompt ::
   PromptMode ->
@@ -150,17 +181,27 @@ tabUpdatePrompt ::
 tabUpdatePrompt st prefix =
   Prompt (Text.length prefix) st (PromptText prefix)
 
+matchingBase ::
+  [BaseDir] ->
+  Text ->
+  Maybe BaseDir
+matchingBase bases prefix =
+  trs (bases, prefix)
+  Nothing
+
 tab ::
   Member (Embed IO) r =>
-  [Path Abs Dir] ->
   MenuWidget FilesState r FileAction
-tab bases = do
-  Prompt _ promptState (PromptText promptText) <- ask
-  tabComplete bases promptText >>= \case
-    Just prefix ->
-      menuUpdatePrompt (tabUpdatePrompt promptState prefix)
-    Nothing ->
-      menuOk
+tab = do
+  menuState do
+    Prompt _ promptState (PromptText promptText) <- ask
+    bases <- toList <$> use (#state . #bases)
+    tabComplete bases promptText >>= \case
+      Just (base, prefix) -> do
+        setBase base
+        menuUpdatePrompt (tabUpdatePrompt promptState prefix)
+      Nothing ->
+        menuOk
 
 createAndEditFile ::
   Members [Rpc, Stop FilesError, Embed IO] r =>
@@ -195,27 +236,26 @@ existingSubdirCount =
         Left _ ->
           pure count
 
+currentBase ::
+  Member (State (WithCursor FilesState)) r =>
+  Sem r BaseDir
+currentBase =
+  Zipper.current <$> use (#state . #bases)
+
 createFile ::
-  Member (Reader Prompt) r =>
   Members [Stop FilesError, Embed IO] r =>
-  NonEmpty (Path Abs Dir) ->
-  Sem r (Maybe (MenuAction FileAction))
-createFile bases = do
-  PromptText promptText <- view #text <$> ask
+  MenuWidget FilesState r FileAction
+createFile = do
+  PromptText promptText <- asks (view #text)
+  base <- menuState currentBase
   let
-    parse counts =
+    path =
       parseSomeFile (toString promptText) <&> \case
         Abs p -> p
-        Rel p -> base counts </> p
-  subdirCounts <- traverse (existingSubdirCount (dirSegments promptText)) bases
-  maybe (err promptText) (menuSuccess . Create) (parse subdirCounts)
+        Rel p -> base ^. #absolute </> p
+  maybe (err promptText) (menuSuccess . Create) path
   where
-    base counts =
-      fst $ maximumOn1 snd (NonEmpty.zip bases counts)
-    dirSegments =
-      dropEnd 1 . Text.splitOn "/"
-    err =
-      stop . FilesError.InvalidFilePath
+    err = stop . FilesError.InvalidFilePath
 
 cycleSegment :: MenuWidget FilesState r FileAction
 cycleSegment =
@@ -223,31 +263,38 @@ cycleSegment =
     mode . #segment %= FilesState.cycle
     menuOk
 
+cycleBase :: MenuWidget FilesState r FileAction
+cycleBase =
+  menuState do
+    #state . #bases %= FilesState.cycleBase
+    menuRender
+
+-- TODO unify with tabUpdatePrompt
 insertFileDir ::
   Member Log r =>
-  Maybe (SomeBase File) ->
   MenuWidget FilesState r FileAction
-insertFileDir = \case
-  Just bufPath -> do
-    let dir = prjSomeBase (pathText . parent) bufPath
-    Prompt _ m _ <- ask
-    menuUpdatePrompt (Prompt (Text.length dir) m (PromptText dir))
-  Nothing -> do
-    Log.info "Current buffer is not associated with a path"
-    menuOk
+insertFileDir =
+  menuState $ use (#state . #bufferPath) >>= \case
+    Right (bufDir, base) -> do
+      let dir = pathText bufDir
+      Prompt _ m _ <- ask
+      setBase base
+      menuUpdatePrompt (Prompt (Text.length dir) m (PromptText dir))
+    Left reason -> do
+      Log.info reason
+      menuOk
 
 actions ::
   Members [Stop FilesError, Log, Embed IO] r =>
-  NonEmpty (Path Abs Dir) ->
-  Maybe (SomeBase File) ->
   Mappings FilesState r FileAction
-actions bases bufPath =
+actions =
   [
     (withInsert "<cr>", editFile),
-    (insert "<tab>", tab (NonEmpty.toList bases)),
-    (insert "<c-y>", createFile bases),
+    (insert "<tab>", tab),
+    (insert "<c-y>", createFile),
     (withInsert "<c-s>", cycleSegment),
-    (insert "<c-d>", insertFileDir bufPath)
+    (withInsert "<c-d>", insertFileDir),
+    (withInsert "<c-b>", cycleBase)
   ]
 
 parsePath :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
@@ -302,11 +349,52 @@ fileAction = \case
 
 type FilesStack =
   [
-    WindowMenus () FilesState !! RpcError,
+    WindowMenus FilesState !! RpcError,
     Log,
     Async,
     Embed IO
   ]
+
+resolveBufPath ::
+  Member Rpc r =>
+  NonEmpty BaseDir ->
+  Sem r (Either Text (Path Rel Dir, BaseDir))
+resolveBufPath bases =
+  runError do
+    path <- parent <$> (note "Current buffer is not associated with a path" =<< currentBufferPath)
+    (rel, base) <- note "Current buffer is not in any of the specified base dirs" do
+      base <- find (flip isProperPrefixOf path . view #absolute) bases
+      rel <- stripProperPrefix (base ^. #absolute) path
+      pure (rel, base)
+    pure (rel, base)
+
+-- | The base dirs aren't checked for existence since the user might want to create a file in them anyway.
+filesMenuConfig ::
+  Members [Stop FilesError, Settings, Rpc, Log, Async, Embed IO] r =>
+  Path Abs Dir ->
+  [Text] ->
+  Sem r (
+    SerialT IO (MenuItem FileSegments),
+    FilesState,
+    WindowOptions
+  )
+filesMenuConfig cwd pathSpecs = do
+  conf <- filesConfig
+  bufPath <- resolveBufPath baseDirs
+  items <- fmap (fmap fileSegments) <$> files conf (view #absolute <$> baseDirs)
+  pure (items, FilesState (modal (FilesMode Fuzzy Full)) (Zipper.fromNonEmpty baseDirs) bufPath, window)
+  where
+    window = def & #prompt .~ OnlyInsert & #items .~ opt
+    opt =
+      def {
+        name = ScratchId name,
+        syntax = [filesSyntax],
+        filetype = Just name
+      }
+    name = "proteome-files"
+    baseDirs = fromMaybe [BaseDir cwd (Just [reldir|.|]) True] (nonEmpty specDirs)
+    specDirs = absPaths <&> \ p -> BaseDir p (stripProperPrefix cwd p) False
+    absPaths = mapMaybe (parsePath cwd) pathSpecs
 
 filesMenu ::
   Members FilesStack r =>
@@ -316,29 +404,9 @@ filesMenu ::
   Sem r ()
 filesMenu cwd pathSpecs = do
   mapReport @RpcError do
-    conf <- filesConfig
-    bufPath <- current
-    items <- fmap (fmap fileSegments) <$> files conf nePaths
-    result <- windowMenu items (modal (FilesMode Fuzzy Full)) window (actions nePaths bufPath)
+    (items, s, window) <- filesMenuConfig cwd pathSpecs
+    result <- windowMenu items s window actions
     handleResult fileAction result
-  where
-    window =
-      def & #prompt .~ OnlyInsert & #items .~ opt
-    opt =
-      def {
-        name = ScratchId name,
-        syntax = [filesSyntax],
-        filetype = Just name
-      }
-    name =
-      "proteome-files"
-    nePaths =
-      fromMaybe (cwd :| []) (nonEmpty absPaths)
-    absPaths =
-      mapMaybe (parsePath cwd) pathSpecs
-    current =
-      currentBufferPath <&> fmap \ p ->
-        fromMaybe (Abs p) (Rel <$> stripProperPrefix cwd p)
 
 proFiles ::
   Members FilesStack r =>

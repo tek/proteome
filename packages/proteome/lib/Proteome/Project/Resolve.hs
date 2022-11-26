@@ -2,8 +2,7 @@ module Proteome.Project.Resolve where
 
 import Control.Monad (foldM)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
-import Data.List (nub)
-import Data.List.Extra (firstJust)
+import Data.List.Extra (nubOrd)
 import Data.Map.Strict ((!?))
 import qualified Data.Map.Strict as Map (toList, union)
 import Exon (exon)
@@ -164,7 +163,7 @@ resolveByRoot (ProjectConfig _ _ _ _ typeMarkers _ _) name explicit root =
     fromExplicit = find (hasProjectRoot root) explicit
 
 augment ::
-  Eq a =>
+  Ord a =>
   Ord k =>
   Map k [a] ->
   k ->
@@ -172,7 +171,7 @@ augment ::
   [a]
 augment m tpe as =
   case m !? tpe of
-    Just extra -> nub $ as ++ extra
+    Just extra -> nubOrd (as ++ extra)
     Nothing -> as
 
 augmentTypes :: ProjectConfig -> ProjectType -> [ProjectType] -> [ProjectType]
