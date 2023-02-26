@@ -18,7 +18,7 @@ import Ribosome (
   resumeReport,
   toMsgpack,
   )
-import Ribosome.Api (bufferGetLines, bufferSetLines, bufferSetOption, nvimCommand, vimCallFunction)
+import Ribosome.Api (bufferGetLines, bufferSetLines, bufferSetOption, nvimCommand, vimCallFunction, windowSetOption)
 import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
@@ -30,8 +30,8 @@ import qualified Ribosome.Scratch as Scratch
 
 import qualified Proteome.Data.Env as Env (replace)
 import Proteome.Data.Env (Env)
-import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import qualified Proteome.Data.GrepState as GrepState
+import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
 import Proteome.Data.ReplaceError (ReplaceError)
@@ -48,6 +48,7 @@ replaceBuffer lines' = do
   scratch <- Scratch.show content options
   let buffer = Scratch.buffer scratch
   bufferSetOption buffer "buftype" ("acwrite" :: Text)
+  windowSetOption (Scratch.window scratch) "spell" False
   bufferAutocmd buffer "BufWriteCmd" def { group = Just "ProteomeReplace" } "silent! ProReplaceSave"
   bufferAutocmd buffer "BufUnload" def { group = Just "ProteomeReplace" } "silent! ProReplaceQuit"
   atomicModify' (#replace ?~ Replace scratch lines')
