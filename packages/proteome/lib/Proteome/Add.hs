@@ -122,8 +122,8 @@ availableProjects ::
   Members [Stop AddError, Embed IO] r =>
   ProjectConfig ->
   Sem r [MenuItem AddItem]
-availableProjects (ProjectConfig.baseDirs -> dirs) =
-  join <$> traverse availableProjectsInBase dirs
+availableProjects config =
+  join <$> traverse availableProjectsInBase config.baseDirs
 
 menuAdd ::
   Members [Settings, Rpc, AtomicState Env, Reader PluginName, Stop ResolveError, Log, Embed IO] r =>

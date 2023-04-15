@@ -67,7 +67,7 @@ readConfigProject ::
   Project ->
   Sem r [Text]
 readConfigProject confDir project = do
-  paths <- traverse (runtimeConf confDir . coerce) (Project.types project)
+  paths <- traverse (runtimeConf confDir . coerce) project.types
   metaPaths <- readConfigMeta confDir project
   pure $ join paths <> metaPaths
 
@@ -93,7 +93,7 @@ proReadConfig ::
   Handler r ()
 proReadConfig = do
   resumeReport @Rpc do
-    main <- atomicGets Env.mainProject
+    main <- atomicGets (.mainProject)
     configs <- readConfig "project" main
     logConfig configs
     afterConfigs <- readConfig "project_after" main

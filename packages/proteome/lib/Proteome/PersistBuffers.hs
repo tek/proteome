@@ -38,7 +38,7 @@ projectPaths ::
   Member (AtomicState Env) r =>
   Sem r (Maybe (Path Abs Dir, Path Rel Dir))
 projectPaths =
-  examine <$> atomicGets Env.mainProject
+  examine <$> atomicGets (.mainProject)
   where
     examine (Project (DirProject (ProjectName name) (ProjectRoot root) (Just (ProjectType tpe))) _ _ _) =
       (root,) <$> ((</>) <$> parseRelDir (toString tpe) <*> parseRelDir (toString name))
@@ -51,7 +51,7 @@ storeBuffers ::
   Sem r ()
 storeBuffers =
   tag $ lockOrSkip_ $ projectPaths >>= traverse_ \ (cwd, path) -> do
-    names <- traverse bufferGetName =<< filterM buflisted =<< atomicGets Env.buffers
+    names <- traverse bufferGetName =<< filterM buflisted =<< atomicGets (.buffers)
     files <- catMaybes <$> traverse (existingFile cwd) names
     Persist.store (Just (path </> file)) (PersistBuffers (listToMaybe files) files)
 
@@ -71,7 +71,7 @@ restoreBuffers (PersistBuffers active rest) = do
   traverse_ loadActive active
   traverse_ add rest
   buffers <- traverse bufferForFile rest
-  atomicModify' (#buffers .~ (FileBuffer.buffer <$> catMaybes buffers))
+  atomicModify' (#buffers .~ ((.buffer) <$> catMaybes buffers))
   where
     add a =
       vimCommand ("silent! badd " <> toText (toFilePath a))

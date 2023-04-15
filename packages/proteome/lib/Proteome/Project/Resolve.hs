@@ -41,7 +41,7 @@ projectFromSpec (ProjectSpec name root tpe types lang langs) =
   Project (DirProject name root tpe) types lang langs
 
 hasProjectRoot :: ProjectRoot -> ProjectSpec -> Bool
-hasProjectRoot root spec = root == PS.root spec
+hasProjectRoot root spec = root == spec.root
 
 hasProjectTypeName :: ProjectType -> ProjectName -> ProjectSpec -> Bool
 hasProjectTypeName tpe' name' (ProjectSpec name _ (Just tpe) _ _ _) =
@@ -202,7 +202,7 @@ fromName ::
   Maybe ProjectType ->
   Sem r Project
 fromName explicit config name tpe = do
-  let baseDirs = ProjectConfig.baseDirs config
+  let baseDirs = config.baseDirs
   byType <- join <$> traverse (resolveByType baseDirs explicit name) tpe
   byName <- resolveByName baseDirs name
   let byNameOrVirtual = fromMaybe (virtualProject name) byName
@@ -276,7 +276,7 @@ rootBaseDirs bases name root@(ProjectRoot rootDir) =
 
 projectName :: ProjectRoot -> ProjectName
 projectName =
-  ProjectName . dropSlash . dirname . unProjectRoot
+  ProjectName . dropSlash . dirname . (.unProjectRoot)
 
 firstJustMOr ::
   Monad m =>

@@ -15,7 +15,7 @@ data CurrentTag =
   deriving stock (Eq, Show, Generic)
 
 pattern CurrentLoc :: TagLoc (Path Abs File) -> CurrentTag
-pattern CurrentLoc loc <- (Zipper.current . locations -> loc)
+pattern CurrentLoc loc <- (Zipper.current . (.locations) -> loc)
 {-# complete CurrentLoc #-}
 
 cycleLoc ::

@@ -40,7 +40,7 @@ updateBufferMru ::
   Sem r ()
 updateBufferMru buffer = do
   tag $ lock do
-    old <- atomicGets Env.buffers
+    old <- atomicGets (.buffers)
     new <- filterM buflisted (nub (buffer : old))
     atomicModify' (#buffers .~ new)
 

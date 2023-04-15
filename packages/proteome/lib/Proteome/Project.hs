@@ -15,15 +15,15 @@ allProjects ::
   Member (AtomicState Env) r =>
   Sem r [Project]
 allProjects = do
-  main <- atomicGets Env.mainProject
-  extra <- atomicGets Env.projects
+  main <- atomicGets (.mainProject)
+  extra <- atomicGets (.projects)
   pure $ main : extra
 
 currentProject ::
   Member (AtomicState Env) r =>
   Sem r (Maybe Project)
 currentProject = do
-  index <- atomicGets Env.currentProjectIndex
+  index <- atomicGets (.currentProjectIndex)
   preview (ix index) <$> allProjects
 
 pathData :: Path Abs Dir -> (ProjectRoot, ProjectName, ProjectType)

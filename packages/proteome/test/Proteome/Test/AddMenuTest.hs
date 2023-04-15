@@ -32,6 +32,6 @@ test_addMenu =
     Settings.update Settings.projectConfig (ProjectConfig [projectsDir] def def def def def def)
     testError @AddError (testError @ResolveError do
       promptInput addEvents addMenu)
-    projects <- atomicGets Env.projects
+    projects <- atomicGets (.projects)
     let root = projectsDir </> Dirs.hask </> Dirs.flag
     [Project (DirProject fn (ProjectRoot root) (Just tp)) [] (Just l) []] === projects

@@ -66,7 +66,7 @@ loadConfig ::
   Text ->
   Sem r ()
 loadConfig dir =
-  logConfig =<< readConfig dir =<< atomicGets Env.mainProject
+  logConfig =<< readConfig dir =<< atomicGets (.mainProject)
 
 projectConfig ::
   Members [AtomicState Env, Rpc] r =>

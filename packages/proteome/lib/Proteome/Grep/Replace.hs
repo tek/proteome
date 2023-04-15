@@ -46,9 +46,9 @@ replaceBuffer ::
   Sem r ()
 replaceBuffer lines' = do
   scratch <- Scratch.show content options
-  let buffer = Scratch.buffer scratch
+  let buffer = scratch.buffer
   bufferSetOption buffer "buftype" ("acwrite" :: Text)
-  windowSetOption (Scratch.window scratch) "spell" False
+  windowSetOption scratch.window "spell" False
   bufferAutocmd buffer "BufWriteCmd" def { group = Just "ProteomeReplace" } "silent! ProReplaceSave"
   bufferAutocmd buffer "BufUnload" def { group = Just "ProteomeReplace" } "silent! ProReplaceQuit"
   atomicModify' (#replace ?~ Replace scratch lines')
@@ -168,7 +168,7 @@ proReplaceSave ::
   Handler r ()
 proReplaceSave =
   resumeReport $ mapReport do
-    traverse_ replaceSave =<< atomicGets Env.replace
+    traverse_ replaceSave =<< atomicGets (.replace)
 
 proReplaceQuit ::
   Member (AtomicState Env) r =>

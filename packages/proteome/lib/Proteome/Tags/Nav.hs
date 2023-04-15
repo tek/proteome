@@ -21,7 +21,7 @@ loadOrEdit ::
   Int ->
   Sem r Bool
 loadOrEdit file line = do
-  existingBuffer <- join <$> (traverse (filterUnloaded . FileBuffer.buffer) =<< bufferForFile file)
+  existingBuffer <- join <$> (traverse (filterUnloaded . (.buffer)) =<< bufferForFile file)
   window <- nvimGetCurrentWin
   maybe (edit file) (nvimWinSetBuf window) existingBuffer
   setCursor window line 0

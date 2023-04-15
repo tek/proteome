@@ -34,4 +34,4 @@ test_mru =
     updateBuffers
     vimCommand "bdelete! 2"
     updateBuffers
-    assertJust [buf1, buf3] . sequence =<< traverse bufferPath =<< atomicGets Env.buffers
+    assertJust [buf1, buf3] . sequence =<< traverse bufferPath =<< atomicGets (.buffers)

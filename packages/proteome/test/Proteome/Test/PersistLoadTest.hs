@@ -44,7 +44,7 @@ test_loadPersistedBuffers =
     3 === length buffers
     active <- currentBufferPath
     assertJust (fixDir </> [relfile|file2|]) active
-    (target fixDir ===) =<< traverse bufferGetName =<< atomicGets Env.buffers
+    (target fixDir ===) =<< traverse bufferGetName =<< atomicGets (.buffers)
   where
     target fixDir =
       pathText . (fixDir </>) <$> [[relfile|file1|], [relfile|file2|], [relfile|file3|]]

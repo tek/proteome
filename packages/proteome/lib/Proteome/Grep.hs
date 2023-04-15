@@ -248,7 +248,7 @@ grepWithNative opt pathSpec pattSpec = do
   handleErrors do
     path <- nvimDir =<< maybe (askUser "directory" [".", "dir"]) pure pathSpec
     patt <- resumeReport @Rpc $ mapReport @GrepError do
-      maybe (askUser "pattern" []) (pure . unArgs) pattSpec
+      maybe (askUser "pattern" []) (pure . (.unArgs)) pattSpec
     grepWith opt path patt
 
 proGrepIn ::

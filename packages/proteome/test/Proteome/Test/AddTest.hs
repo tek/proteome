@@ -22,7 +22,7 @@ test_add =
     projectsDir <- Test.fixturePath [reldir|projects|]
     Settings.update Settings.projectConfig (ProjectConfig [projectsDir] def def def def def def)
     proAdd $ AddOptions fn tp (Just False)
-    ps <- atomicGets Env.projects
+    ps <- atomicGets (.projects)
     haskPath <- stopNote "parse dir" (parseRelDir (toString hask))
     flagPath <-  stopNote "parse dir" (parseRelDir (toString flag))
     let root = projectsDir </> haskPath </> flagPath

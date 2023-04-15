@@ -22,7 +22,7 @@ data GrepOutputLine =
 
 sameLine :: GrepOutputLine -> GrepOutputLine -> Bool
 sameLine l r =
-  file l == file r && line l == line r
+  l.file == r.file && l.line == r.line
 
 grepOutputLine ::
   Path Abs File ->

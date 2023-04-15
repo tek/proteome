@@ -100,7 +100,7 @@ deleteListedBuffersWith deleter bufs =
   nvimCommand [exon|#{deleter} #{numbers}|]
   where
     numbers =
-      unwords (show . ListedBuffer.number <$> NonEmpty.toList bufs)
+      unwords (show . (.number) <$> NonEmpty.toList bufs)
 
 deleteWith ::
   Member Rpc r =>
@@ -136,23 +136,19 @@ buffers ::
   Sem r [MenuItem ListedBuffer]
 buffers = do
   cwd <- nvimCwd
-  bufs <- filterM bufferIsFile =<< filterM buflisted =<< atomicGets Env.buffers
+  bufs <- filterM bufferIsFile =<< filterM buflisted =<< atomicGets (.buffers)
   numbers <- traverse bufferGetNumber bufs
   names <- traverse bufferGetName bufs
   let items = item (pathText cwd) (padding numbers) <$> zip3 bufs numbers names
   ifM (Settings.or False Settings.buffersCurrentLast) (moveCurrentLast items) (pure items)
   where
-    padding =
-      Text.length . show . maximum
+    padding = Text.length . show . fromMaybe 0 . maximum
     item cwd pad (buf, num, name) =
-      MenuItem (ListedBuffer buf num name) text' text'
+      MenuItem (ListedBuffer buf num name) text text
       where
-        text' =
-          " * " <> padded pad (show num) <> "  " <> strip cwd name
-    padded pad num =
-      Text.replicate (pad - Text.length num) " " <> num
-    strip cwd name =
-      fromMaybe name $ Text.stripPrefix cwd name
+        text = " * " <> padded pad (show num) <> "  " <> strip cwd name
+    padded pad num = Text.replicate (pad - Text.length num) " " <> num
+    strip cwd name = fromMaybe name $ Text.stripPrefix cwd name
 
 actions ::
   Member Rpc r =>

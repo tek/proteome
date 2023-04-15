@@ -55,7 +55,7 @@ formatTagsArgs langs (ProjectRoot root) fileName formatString =
   foldl' @[] replaceFormatItem formatString formats
   where
     formats = [
-      ("langsComma", Text.intercalate "," (fmap unProjectLang langs)),
+      ("langsComma", Text.intercalate "," (fmap (.unProjectLang) langs)),
       ("tagFile", toText . toFilePath $ root </> fileName),
       ("root", toText . toFilePath $ root)
       ]
@@ -174,8 +174,8 @@ proGenTags ::
   Handler r ()
 proGenTags =
   resumeReport @Settings $ whenM (Settings.get Settings.tagsEnable) do
-    main <- atomicGets Env.mainProject
-    extra <- atomicGets Env.projects
+    main <- atomicGets (.mainProject)
+    extra <- atomicGets (.projects)
     fork <- Settings.get Settings.tagsFork
     execution fork $ tag $ lockOrSkip_ do
       res <- sequenceConcurrently (runStop . projectTags <$> main : extra)

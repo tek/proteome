@@ -29,7 +29,7 @@ setupBuffers = do
   edit buf1
   edit buf2
   edit buf3
-  bufs <- traverse (fmap (fmap FileBuffer.buffer) . bufferForFile) [buf3, buf2, buf1]
+  bufs <- traverse (fmap (fmap (.buffer)) . bufferForFile) [buf3, buf2, buf1]
   atomicModify' (#buffers .~ catMaybes bufs)
   pure (buf1, buf2, buf3)
 
@@ -46,7 +46,7 @@ test_bufferPath :: UnitTest
 test_bufferPath =
   proteomeTest do
     (_, _, _) <- setupBuffers
-    assertEq bufferLines . fmap MenuItem.text =<< buffers
+    assertEq bufferLines . fmap (.text) =<< buffers
 
 test_loadBuffer :: UnitTest
 test_loadBuffer =
@@ -94,7 +94,7 @@ test_currentBufferPosition =
     (_, _, buf3) <- setupBuffers
     Settings.update Settings.buffersCurrentLast True
     bufs <- buffers
-    assertJust (pathText buf3) (ListedBuffer.name . MenuItem.meta <$> last bufs)
+    assertJust (pathText buf3) ((.name) . (.meta) <$> last bufs)
 
 test_buffers :: TestTree
 test_buffers =

@@ -72,9 +72,9 @@ formatMain ::
 formatMain (Project meta types lang langs) = do
   metaContent <- formatMeta meta langs
   pure $ metaContent <> [
-    "types: " <> Text.intercalate ", " (unProjectType <$> types),
+    "types: " <> Text.intercalate ", " ((.unProjectType) <$> types),
     "main language: " <> formatLang lang,
-    "languages: " <> Text.intercalate ", " (unProjectLang <$> langs)
+    "languages: " <> Text.intercalate ", " ((.unProjectLang) <$> langs)
     ]
 
 formatExtraProjects ::
@@ -89,7 +89,7 @@ formatExtraProjectsIfNonempty ::
   Members [Settings !! se, AtomicState Env] r =>
   Sem r [Text]
 formatExtraProjectsIfNonempty = do
-  projects <- atomicGets Env.projects
+  projects <- atomicGets (.projects)
   case projects of
     _ : _ -> formatExtraProjects projects
     _ -> pure []
@@ -115,9 +115,9 @@ diagnostics ::
   Members [Settings !! se, AtomicState Env, Reports] r =>
   Sem r [Text]
 diagnostics = do
-  main <- formatMain =<< atomicGets Env.mainProject
+  main <- formatMain =<< atomicGets (.mainProject)
   extra <- formatExtraProjectsIfNonempty
-  confLog <- atomicGets Env.configLog
+  confLog <- atomicGets (.configLog)
   errors <- errorDiagnostics <$> storedReports
   pure $ header <> main <> extra <> ["", "loaded config files:"] <> confLog <> Text.lines (show errors)
   where
