@@ -6,7 +6,7 @@
     hls.url = "github:haskell/haskell-language-server?ref=1.9.0.0";
   };
 
-  outputs = {ribosome, hls, ...}: ribosome.lib.pro ({config, lib, ...}: {
+  outputs = {ribosome, hls, ...}: ribosome.lib.pro ({config, ...}: {
     compiler = "ghc925";
     depsFull = [ribosome];
     compat.enable = false;
