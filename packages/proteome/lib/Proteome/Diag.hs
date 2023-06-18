@@ -135,7 +135,7 @@ proDiag = do
     options =
       (scratch (ScratchId name)) {
         focus = True,
-        filetype = Just name
+        filetype = Just "markdown"
       }
     name =
       "proteome-diagnostics"
