@@ -50,7 +50,7 @@ createTag mkSegments name path line = do
     segments = mkSegments (RawTagSegments name path)
     tag = Tag {..}
     rendered = renderTag tag
-  pure (MenuItem tag "" [exon| 🟣 #{truncedName} #{rendered}|])
+  pure (MenuItem tag "" [[exon| 🟣 #{truncedName} #{rendered}|]])
   where
     truncedName =
       truncAndPad 20 name

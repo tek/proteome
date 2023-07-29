@@ -42,7 +42,7 @@ renderSegment = \case
 
 segmentExtract :: MenuItem FileSegments -> Segment -> Text
 segmentExtract (MenuItem FileSegments {..} _ render) = \case
-  Full -> render
+  Full -> Text.unlines (toList render)
   Name -> name
   Dir -> dir
 

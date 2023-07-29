@@ -184,7 +184,7 @@ filesMultiDirTest rg = do
     conf' =
       FilesConfig rg False [] [] ["*.foo", "bar"]
     target =
-      Set.fromList [" * [dir1] file.bar", " * [dir1] file1", " * [dir2] file2"]
+      Set.fromList [[" * [dir1] file.bar"], [" * [dir1] file1"], [" * [dir2] file2"]]
 
 test_filesMultiDirNative :: UnitTest
 test_filesMultiDirNative =

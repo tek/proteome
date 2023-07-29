@@ -1,5 +1,6 @@
 module Proteome.Data.GrepState where
 
+import qualified Data.Text as Text
 import Exon (exon)
 import Path (Abs, File, Path, filename, parent)
 import Ribosome (MsgpackEncode, pathText)
@@ -60,7 +61,7 @@ renderSegment = \case
 
 segmentExtract :: MenuItem GrepOutputLine -> Segment -> Text
 segmentExtract (MenuItem GrepOutputLine {..} _ render) = \case
-  Full -> render
+  Full -> Text.unlines (toList render)
   Content -> content
   Path -> path
   Name -> name

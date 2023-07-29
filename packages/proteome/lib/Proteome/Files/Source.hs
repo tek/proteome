@@ -143,7 +143,7 @@ fileMenuItem ::
   Path Abs File ->
   MenuItem (Path Abs File)
 fileMenuItem base baseIndicator path =
-  MenuItem path text display
+  MenuItem path text [display]
   where
     display =
       " * " <> maybe "" indicator baseIndicator <> text

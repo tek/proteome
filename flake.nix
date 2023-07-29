@@ -3,17 +3,15 @@
 
   inputs = {
     ribosome.url = "git+https://git.tryp.io/tek/ribosome";
-    hls.url = "github:haskell/haskell-language-server?ref=1.9.0.0";
   };
 
-  outputs = {ribosome, hls, ...}: ribosome.lib.pro ({config, ...}: {
-    compiler = "ghc925";
+  outputs = {ribosome, ...}: ribosome.lib.pro ({config, ...}: {
     depsFull = [ribosome];
     compat.enable = false;
     hackage.versionFile = "ops/version.nix";
+    gen-overrides.enable = true;
 
     overrides = {hackage, pkgs, buildInputs, fast, notest, ...}: {
-      proteome = fast (buildInputs [pkgs.neovim pkgs.ripgrep]);
       streamly-process = notest (hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy");
     };
 
@@ -32,7 +30,7 @@
         enable = true;
         package = {
           name = "prelate";
-          version = "^>= 0.5.1";
+          version = "^>= 0.6";
         };
         module = "Prelate";
       };
@@ -43,6 +41,10 @@
       src = ./packages/proteome;
 
       cabal.meta.synopsis = "Neovim Project Manager";
+
+      buildInputs = pkgs: [pkgs.neovim pkgs.ripgrep];
+
+      override = api: api.fast;
 
       library = {
         enable = true;
@@ -100,7 +102,6 @@
     };
 
     envs.dev.buildInputs = with config.pkgs; [pkgs.neovim pkgs.tmux];
-    envs.hls.hls.package = hls.packages.${config.system}.haskell-language-server-925;
 
     exe = "proteome";
     branch = "main";

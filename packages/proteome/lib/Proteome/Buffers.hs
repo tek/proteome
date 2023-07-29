@@ -144,7 +144,7 @@ buffers = do
   where
     padding = Text.length . show . fromMaybe 0 . maximum
     item cwd pad (buf, num, name) =
-      MenuItem (ListedBuffer buf num name) text text
+      MenuItem (ListedBuffer buf num name) text [text]
       where
         text = " * " <> padded pad (show num) <> "  " <> strip cwd name
     padded pad num = Text.replicate (pad - Text.length num) " " <> num

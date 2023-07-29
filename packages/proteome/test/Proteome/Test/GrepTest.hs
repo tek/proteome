@@ -64,7 +64,7 @@ test_grepDuplicates =
     1 === length output3
     where
       item col =
-        [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target" "/path/to/file" "/path/to" "file") "" ""]
+        [MenuItem (GrepOutputLine [absfile|/path/to/file|] 0 (Just col) "target" "/path/to/file" "/path/to" "file") "" [""]]
 
 test_grep :: TestTree
 test_grep =

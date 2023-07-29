@@ -56,14 +56,10 @@ col =
   where
     item = syntaxMatch "ProGrepCol" [r|\d\+|]
     options = ["contained", "skipwhite"]
-    params = Map.fromList [("nextgroup", "ProGrepText")]
+    params = mempty
 
 text_ :: SyntaxItem
-text_ =
-  item { options }
-  where
-    item = syntaxMatch "ProGrepText" [r|.\+|]
-    options = ["contained"]
+text_ = syntaxMatch "ProGrepText" [r|^   .\+|]
 
 sync :: SyntaxItem
 sync =

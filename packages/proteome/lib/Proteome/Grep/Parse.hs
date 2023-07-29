@@ -2,7 +2,7 @@ module Proteome.Grep.Parse where
 
 import Chiasma.Data.Ident (generateIdent, identText)
 import Data.Attoparsec.Text (parseOnly)
-import qualified Data.Text as Text (strip)
+import qualified Data.Text as Text
 import Exon (exon)
 import qualified Log
 import Path (Abs, Dir, Path, parseAbsFile, parseRelFile, stripProperPrefix, (</>))
@@ -29,9 +29,12 @@ grepParser cwd =
     number =
       (fromInteger <$> natural) <* char ':'
 
-formatGrepLine :: Path Abs Dir -> GrepOutputLine -> Text
+formatGrepLine :: Path Abs Dir -> GrepOutputLine -> (Text, Text)
 formatGrepLine cwd (GrepOutputLine file line col content _ _ _) =
-  [exon|#{relativePath} #{lineNumber} #{show line}:#{show (fromMaybe 1 col)} #{Text.strip content}|]
+  (
+    [exon|#{relativePath} #{lineNumber} #{show (line + 1)}:#{show (fromMaybe 1 col)}|],
+    Text.strip content
+  )
   where
     relativePath =
       maybe (pathText file) pathText (stripProperPrefix cwd file)
@@ -49,8 +52,7 @@ parseGrepOutput cwd =
       pure (Just (convert ident a))
     item (Left err) =
       Nothing <$ Log.debug [exon|parsing grep output failed: #{toText err}|]
-    convert _ file =
-      MenuItem file text [exon| * #{text}|]
+    convert _ line =
+      MenuItem line [exon|#{h} #{t}|] [[exon| * #{h}|], [exon|   #{t}|]]
       where
-        text =
-          formatGrepLine cwd file
+        (h, t) = formatGrepLine cwd line
