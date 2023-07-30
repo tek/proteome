@@ -62,11 +62,11 @@
         "thax": "thax_10"
       },
       "locked": {
-        "lastModified": 1690681552,
-        "narHash": "sha256-1Re07QR0nqWq+SHUrIogJQyaDp189/vWPZFXVVRV83I=",
+        "lastModified": 1690721320,
+        "narHash": "sha256-bgu4bcdTnECTBbBYH4e3ajwuyC/fS89EELeH1Ub6pPQ=",
         "ref": "refs/heads/main",
-        "rev": "2ad15081b0fd9ef0fcce082b69097c5d565f1d6f",
-        "revCount": 499,
+        "rev": "011b603a348d0ff303880a18b57336fad079821c",
+        "revCount": 500,
         "type": "git",
         "url": "https://git.tryp.io/tek/hix"
       },
@@ -526,11 +526,11 @@
         "hix": "hix_10"
       },
       "locked": {
-        "lastModified": 1690681587,
-        "narHash": "sha256-l44kUbSUt+U9SBnl7SiU2JnyYF8OSituXP85xNaDBt0=",
+        "lastModified": 1690726640,
+        "narHash": "sha256-adXiweTwdv2zw7V+rAvBa1ouc+8nRo7gtjWE8ZznRRk=",
         "ref": "refs/heads/main",
-        "rev": "9f2feca49c5400f62f24c05a893438fd76770d9b",
-        "revCount": 808,
+        "rev": "de3072d319eb7c36a61cca394230b55f324e1644",
+        "revCount": 812,
         "type": "git",
         "url": "https://git.tryp.io/tek/ribosome"
       },
