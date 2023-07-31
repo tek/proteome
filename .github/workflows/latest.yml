@@ -24,7 +24,9 @@ jobs:
           name: tek
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
       - name: 'build'
-        run: nix build .#static
+        run: |
+          nix bundle -o static-binary --bundler github:ralismark/nix-appimage .#static
+          mv static-binary proteome
       - uses: 'marvinpinto/action-automatic-releases@latest'
         name: 'create release'
         with:
@@ -32,4 +34,4 @@ jobs:
           automatic_release_tag: 'latest'
           prerelease: true
           files: |
-            result/bin/proteome
+            proteome
