@@ -7,6 +7,7 @@
 
   outputs = {ribosome, ...}: ribosome.lib.pro ({config, ...}: {
     depsFull = [ribosome];
+    compiler = "ghc94";
     compat.enable = false;
     hackage.versionFile = "ops/version.nix";
     gen-overrides.enable = true;
@@ -33,8 +34,8 @@
       dependencies = ["polysemy" "polysemy-plugin"];
     };
 
-    overrides = {hackage, pkgs, buildInputs, fast, notest, ...}: {
-      streamly-process = notest (hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy");
+    overrides = {hackage, jailbreak, notest, ...}: {
+      streamly-process = jailbreak (notest (hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy"));
     };
 
     packages.proteome = {

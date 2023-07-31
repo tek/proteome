@@ -439,8 +439,8 @@ mkDerivation {
 ;
   streamly = {
   meta = {
-    sha256 = "0jhsdd71kqw0k0aszg1qb1l0wbxl1r73hsmkdgch4vlx43snlc8a";
-    ver = "0.8.2";
+    sha256 = "1w8nhss2rcpbphw2b0d86z7jqxpx38gfn4ahdmd7afg65gzx5bq3";
+    ver = "0.8.3";
   };
   drv = { mkDerivation, atomic-primops, base, containers, deepseq
 , directory, exceptions, filepath, fusion-plugin-types, ghc-prim
@@ -449,8 +449,8 @@ mkDerivation {
 }:
 mkDerivation {
   pname = "streamly";
-  version = "0.8.2";
-  src = /nix/store/7cmrrx1wffjnfy65z4mq9bwbrzg6mcm1-source;
+  version = "0.8.3";
+  src = /nix/store/vgpkpqqmdrq6860xiw3nvh0nm81ji54p-source;
   libraryHaskellDepends = [
     atomic-primops base containers deepseq directory exceptions
     filepath fusion-plugin-types ghc-prim heaps lockfree-queue
@@ -955,8 +955,8 @@ mkDerivation {
 ;
   streamly = {
   meta = {
-    sha256 = "0jhsdd71kqw0k0aszg1qb1l0wbxl1r73hsmkdgch4vlx43snlc8a";
-    ver = "0.8.2";
+    sha256 = "1w8nhss2rcpbphw2b0d86z7jqxpx38gfn4ahdmd7afg65gzx5bq3";
+    ver = "0.8.3";
   };
   drv = { mkDerivation, atomic-primops, base, containers, deepseq
 , directory, exceptions, filepath, fusion-plugin-types, ghc-prim
@@ -965,8 +965,8 @@ mkDerivation {
 }:
 mkDerivation {
   pname = "streamly";
-  version = "0.8.2";
-  src = /nix/store/7cmrrx1wffjnfy65z4mq9bwbrzg6mcm1-source;
+  version = "0.8.3";
+  src = /nix/store/vgpkpqqmdrq6860xiw3nvh0nm81ji54p-source;
   libraryHaskellDepends = [
     atomic-primops base containers deepseq directory exceptions
     filepath fusion-plugin-types ghc-prim heaps lockfree-queue
@@ -1502,8 +1502,8 @@ mkDerivation {
 ;
   streamly = {
   meta = {
-    sha256 = "0jhsdd71kqw0k0aszg1qb1l0wbxl1r73hsmkdgch4vlx43snlc8a";
-    ver = "0.8.2";
+    sha256 = "1w8nhss2rcpbphw2b0d86z7jqxpx38gfn4ahdmd7afg65gzx5bq3";
+    ver = "0.8.3";
   };
   drv = { mkDerivation, atomic-primops, base, containers, deepseq
 , directory, exceptions, filepath, fusion-plugin-types, ghc-prim
@@ -1512,8 +1512,8 @@ mkDerivation {
 }:
 mkDerivation {
   pname = "streamly";
-  version = "0.8.2";
-  src = /nix/store/7cmrrx1wffjnfy65z4mq9bwbrzg6mcm1-source;
+  version = "0.8.3";
+  src = /nix/store/vgpkpqqmdrq6860xiw3nvh0nm81ji54p-source;
   libraryHaskellDepends = [
     atomic-primops base containers deepseq directory exceptions
     filepath fusion-plugin-types ghc-prim heaps lockfree-queue
@@ -2020,8 +2020,8 @@ mkDerivation {
 ;
   streamly = {
   meta = {
-    sha256 = "0jhsdd71kqw0k0aszg1qb1l0wbxl1r73hsmkdgch4vlx43snlc8a";
-    ver = "0.8.2";
+    sha256 = "1w8nhss2rcpbphw2b0d86z7jqxpx38gfn4ahdmd7afg65gzx5bq3";
+    ver = "0.8.3";
   };
   drv = { mkDerivation, atomic-primops, base, containers, deepseq
 , directory, exceptions, filepath, fusion-plugin-types, ghc-prim
@@ -2030,8 +2030,8 @@ mkDerivation {
 }:
 mkDerivation {
   pname = "streamly";
-  version = "0.8.2";
-  src = /nix/store/7cmrrx1wffjnfy65z4mq9bwbrzg6mcm1-source;
+  version = "0.8.3";
+  src = /nix/store/vgpkpqqmdrq6860xiw3nvh0nm81ji54p-source;
   libraryHaskellDepends = [
     atomic-primops base containers deepseq directory exceptions
     filepath fusion-plugin-types ghc-prim heaps lockfree-queue
