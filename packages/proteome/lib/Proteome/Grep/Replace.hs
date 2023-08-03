@@ -18,13 +18,21 @@ import Ribosome (
   resumeReport,
   toMsgpack,
   )
-import Ribosome.Api (bufferGetLines, bufferSetLines, bufferSetOption, nvimCommand, vimCallFunction, windowSetOption)
+import Ribosome.Api (
+  bufferGetLines,
+  bufferSetLines,
+  bufferSetOption,
+  nvimCommand,
+  nvimGetOption,
+  vimCallFunction,
+  windowSetOption,
+  )
 import Ribosome.Api.Autocmd (bufferAutocmd)
 import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
 import Ribosome.Api.Option (withOption)
 import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
-import Ribosome.Data.FloatOptions (FloatOptions (FloatOptions))
+import Ribosome.Float (FloatOptions (FloatOptions), FloatRelative (Editor))
 import Ribosome.Host.Data.RpcType (group)
 import qualified Ribosome.Scratch as Scratch
 
@@ -40,12 +48,36 @@ scratchName :: Text
 scratchName =
   "proteome-replace"
 
+replaceFloatOptions ::
+  Int ->
+  Int ->
+  FloatOptions
+replaceFloatOptions totalWidth totalHeight =
+  FloatOptions {
+    relative = Editor,
+    focusable = True,
+    noautocmd = True,
+    style = Nothing,
+    zindex = Just 1,
+    ..
+  }
+  where
+    FloatOptions {row = _, col = _, width = _, height = _, ..} = def
+    row = margin totalHeight height
+    col = margin totalWidth width
+    margin t l = fromMaybe 0 ((t - l) `div` 2)
+    width = size totalWidth
+    height = size totalHeight
+    size l = ceiling @Double (fromIntegral l * 0.9)
+
 replaceBuffer ::
   Members [Scratch, Rpc, AtomicState Env] r =>
   NonEmpty GrepOutputLine ->
   Sem r ()
 replaceBuffer lines' = do
-  scratch <- Scratch.show content options
+  width <- nvimGetOption "columns"
+  height <- nvimGetOption "lines"
+  scratch <- Scratch.show content (options width height)
   let buffer = scratch.buffer
   bufferSetOption buffer "buftype" ("acwrite" :: Text)
   windowSetOption scratch.window "spell" False
@@ -55,13 +87,17 @@ replaceBuffer lines' = do
   where
     content =
       view #content <$> lines'
-    options =
+    options w h =
       def {
         Scratch.name = ScratchId scratchName,
         Scratch.modify = True,
         Scratch.focus = True,
-        Scratch.filetype = Just scratchName
+        Scratch.filetype = Just scratchName,
+        Scratch.float = Just float,
+        Scratch.maxSize = Just float.height
       }
+      where
+        float = replaceFloatOptions w h
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.
 -- First check whether the line number of the deleted line was line 0 and its content is now empty.
@@ -114,10 +150,6 @@ replaceLine updatedLine (GrepOutputLine {file, line}) = do
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
 lineNumberDesc (_, GrepOutputLine {line}) =
   -line
-
-replaceFloatOptions :: FloatOptions
-replaceFloatOptions =
-  FloatOptions def 1 1 0 0 False def Nothing FloatBorder.None True False (Just def) (Just 1)
 
 withReplaceEnv ::
   Members [Rpc !! RpcError, Rpc, Resource] r =>
