@@ -100,4 +100,5 @@ setupHighlights ::
   Sem r ()
 setupHighlights =
   resumeLogReport @Rpc do
+    nvimSetHl 0 "ProteomeReplaceBullet" (msgpackMap ("link", "Special" :: Text) ("default", True))
     nvimSetHl 0 "ProteomeReplaceFile" (msgpackMap ("link", "Directory" :: Text) ("default", True))

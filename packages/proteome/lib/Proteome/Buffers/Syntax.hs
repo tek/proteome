@@ -34,7 +34,7 @@ sync =
 
 hlAsterisk :: HiLink
 hlAsterisk =
-  HiLink "ProBuffersAsterisk" "Todo"
+  HiLink "ProBuffersAsterisk" "Special"
 
 hlNumber :: HiLink
 hlNumber =

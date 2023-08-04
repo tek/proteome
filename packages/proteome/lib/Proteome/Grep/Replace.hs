@@ -125,7 +125,13 @@ replaceBuffer lines' = do
     virtLineParams :: SomeBase File -> Map Text Object
     virtLineParams path =
       msgpackMap
-        ("virt_lines", [[(toText (fromSomeFile path), "ProteomeReplaceFile")]] :: [[(Text, Text)]])
+        ("virt_lines", [
+          [("", "Normal")],
+          [
+            ("* ", "ProteomeReplaceBullet"),
+            (toText (fromSomeFile path), "ProteomeReplaceFile")
+          ]
+        ] :: [[(Text, Text)]])
         ("virt_lines_above", True)
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.
