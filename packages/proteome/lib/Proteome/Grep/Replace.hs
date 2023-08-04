@@ -1,10 +1,12 @@
 module Proteome.Grep.Replace where
 
-import qualified Data.List.NonEmpty as NonEmpty (toList)
+import Control.Monad (foldM)
+import Data.List (insertBy)
+import qualified Data.Map.Strict as Map
+import Data.MessagePack (Object)
+import Data.Semigroup (Sum (Sum, getSum))
 import qualified Data.Text as Text
-import Lens.Micro.Extras (view)
-import Path (parseAbsFile)
-import Prelude hiding (group)
+import Path (File, SomeBase, fromSomeFile, parseAbsFile)
 import Ribosome (
   Buffer,
   Handler,
@@ -13,6 +15,7 @@ import Ribosome (
   Scratch,
   ScratchId (ScratchId),
   ScratchState (ScratchState),
+  atomic,
   mapReport,
   pathText,
   resumeReport,
@@ -22,7 +25,10 @@ import Ribosome.Api (
   bufferGetLines,
   bufferSetLines,
   bufferSetOption,
+  nvimBufSetExtmark,
+  nvimCallFunction,
   nvimCommand,
+  nvimCreateNamespace,
   nvimGetOption,
   vimCallFunction,
   windowSetOption,
@@ -33,6 +39,7 @@ import Ribosome.Api.Option (withOption)
 import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Float (FloatOptions (FloatOptions), FloatRelative (Editor))
+import Ribosome.Host (msgpackMap)
 import Ribosome.Host.Data.RpcType (group)
 import qualified Ribosome.Scratch as Scratch
 
@@ -79,14 +86,25 @@ replaceBuffer lines' = do
   height <- nvimGetOption "lines"
   scratch <- Scratch.show content (options width height)
   let buffer = scratch.buffer
-  bufferSetOption buffer "buftype" ("acwrite" :: Text)
-  windowSetOption scratch.window "spell" False
+  ns <- nvimCreateNamespace "replace-paths"
   bufferAutocmd buffer "BufWriteCmd" def { group = Just "ProteomeReplace" } "silent! ProReplaceSave"
   bufferAutocmd buffer "BufUnload" def { group = Just "ProteomeReplace" } "silent! ProReplaceQuit"
-  atomicModify' (#replace ?~ Replace scratch lines')
+  () <- atomic do
+    bufferSetOption buffer "buftype" ("acwrite" :: Text)
+    windowSetOption scratch.window "spell" False
+    foldM (addPathLine buffer ns) 0 (Map.toList grouped)
+    nvimCallFunction "winrestview" [toMsgpack (Map.fromList [("topfill" :: Text, 1 :: Int64)])]
+  atomicModify' (#replace ?~ Replace scratch grouped)
   where
-    content =
-      view #content <$> lines'
+    content = fmap (.content) =<< Map.elems grouped
+
+    grouped :: Map (SomeBase File) [GrepOutputLine]
+    grouped = foldl (\ z a -> Map.alter (Just . ins a) a.relative z) mempty lines'
+
+    ins gol = \case
+      Nothing -> [gol]
+      Just old -> insertBy (comparing (.line)) gol old
+
     options w h =
       def {
         Scratch.name = ScratchId scratchName,
@@ -98,6 +116,16 @@ replaceBuffer lines' = do
       }
       where
         float = replaceFloatOptions w h
+
+    addPathLine buf ns index (path, ls) = do
+      nvimBufSetExtmark buf ns index 0 (virtLineParams path)
+      pure (index + length ls)
+
+    virtLineParams :: SomeBase File -> Map Text Object
+    virtLineParams path =
+      msgpackMap
+        ("virt_lines", [[(toText (fromSomeFile path), "ProteomeReplaceFile")]] :: [[(Text, Text)]])
+        ("virt_lines_above", True)
 
 -- If the deleted line was surrounded by blank lines or buffer edges, there will be extraneous whitespace.
 -- First check whether the line number of the deleted line was line 0 and its content is now empty.
@@ -187,9 +215,9 @@ replaceSave ::
   Sem r ()
 replaceSave (Replace (ScratchState _ _ buffer _ _ _ _) lines') = do
   updatedLines <- bufferContent buffer
-  if length updatedLines /= length lines'
+  if length updatedLines /= getSum (foldMap (Sum . length) lines')
   then badReplacement
-  else replaceLines buffer (zip updatedLines (NonEmpty.toList lines'))
+  else replaceLines buffer (zip updatedLines (join (Map.elems lines')))
   where
     badReplacement =
       stop ReplaceError.BadReplacement

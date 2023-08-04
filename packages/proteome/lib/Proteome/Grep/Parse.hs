@@ -5,13 +5,13 @@ import Data.Attoparsec.Text (parseOnly)
 import qualified Data.Text as Text
 import Exon (exon)
 import qualified Log
-import Path (Abs, Dir, Path, parseAbsFile, parseRelFile, stripProperPrefix, (</>))
-import Ribosome (pathText)
+import Path (Abs, Dir, Path, fromSomeFile, parseAbsFile, parseRelFile, (</>))
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Text.Parser.Char (anyChar, char, noneOf)
 import Text.Parser.Combinators (manyTill)
 import Text.Parser.Token (TokenParsing, natural)
 
+import qualified Proteome.Data.GrepState
 import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine), grepOutputLine)
 import Proteome.Grep.Syntax (lineNumber)
 
@@ -21,7 +21,7 @@ grepParser ::
   Path Abs Dir ->
   m GrepOutputLine
 grepParser cwd =
-  grepOutputLine <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
+  grepOutputLine cwd <$> path <*> (subtract 1 <$> number) <*> optional number <*> (toText <$> many anyChar)
   where
     path = do
       s <- manyTill (noneOf ":") (char ':')
@@ -29,15 +29,12 @@ grepParser cwd =
     number =
       (fromInteger <$> natural) <* char ':'
 
-formatGrepLine :: Path Abs Dir -> GrepOutputLine -> (Text, Text)
-formatGrepLine cwd (GrepOutputLine file line col content _ _ _) =
+formatGrepLine :: GrepOutputLine -> (Text, Text)
+formatGrepLine GrepOutputLine {..} =
   (
-    [exon|#{relativePath} #{lineNumber} #{show (line + 1)}:#{show (fromMaybe 1 col)}|],
+    [exon|##{fromSomeFile relative} #{lineNumber} #{show (line + 1)}:#{show (fromMaybe 1 col)}|],
     Text.strip content
   )
-  where
-    relativePath =
-      maybe (pathText file) pathText (stripProperPrefix cwd file)
 
 parseGrepOutput ::
   Members [Log, Embed IO] r =>
@@ -55,4 +52,4 @@ parseGrepOutput cwd =
     convert _ line =
       MenuItem line [exon|#{h} #{t}|] [[exon| * #{h}|], [exon|   #{t}|]]
       where
-        (h, t) = formatGrepLine cwd line
+        (h, t) = formatGrepLine line

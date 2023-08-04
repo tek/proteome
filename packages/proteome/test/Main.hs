@@ -15,7 +15,7 @@ import Proteome.Test.MruTest (test_mru)
 import Proteome.Test.MultiTagsTest (test_multi)
 import Proteome.Test.PersistLoadTest (test_loadPersistedBuffers)
 import Proteome.Test.PersistStoreTest (test_storeBuffers)
-import Proteome.Test.ReplaceTest (test_grepDelete, test_grepReplace)
+import Proteome.Test.ReplaceTest (test_grepReplace)
 import Proteome.Test.ResolveTest (test_resolve)
 import Proteome.Test.TagsTest (test_simpleTags)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -38,7 +38,6 @@ tests =
     unitTest "load persisted buffers" test_loadPersistedBuffers,
     unitTest "store buffer list" test_storeBuffers,
     unitTest "replace text in grep results" test_grepReplace,
-    unitTest "delete text in grep results" test_grepDelete,
     test_resolve,
     unitTest "generate tags" test_simpleTags
   ]

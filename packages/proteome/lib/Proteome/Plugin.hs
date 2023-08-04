@@ -49,7 +49,7 @@ import Proteome.Filename (proCopy, proMove, proRemove)
 import Proteome.Files (proFiles)
 import Proteome.Grep (proGrep, proGrepIn, proGrepList, proGrepOpt, proGrepOptIn)
 import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
-import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain)
+import Proteome.Init (proLoad, proLoadAfter, projectConfig, projectConfigAfter, resolveAndInitMain, setupHighlights)
 import Proteome.PersistBuffers (LoadBuffersLock, StoreBuffersLock, loadBuffers)
 import Proteome.Project.Activate (proNext, proPrev)
 import Proteome.Quit (proQuit)
@@ -155,6 +155,7 @@ prepare ::
   Members [AtomicState Env, Settings !! SettingError, Rpc !! RpcError, Lock @@ LoadBuffersLock, DataLog LogReport] r =>
   Sem r ()
 prepare = do
+  setupHighlights
   resolveError $ resumeLogReport @Settings $ resumeLogReport @Rpc do
     resolveAndInitMain
   resumeLogReport @(Persist _) (resumeLogReport @Rpc loadBuffers)

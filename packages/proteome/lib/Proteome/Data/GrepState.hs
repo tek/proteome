@@ -2,7 +2,7 @@ module Proteome.Data.GrepState where
 
 import qualified Data.Text as Text
 import Exon (exon)
-import Path (Abs, File, Path, filename, parent)
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), filename, parent, stripProperPrefix)
 import Ribosome (MsgpackEncode, pathText)
 import Ribosome.Menu (Filter, MenuItem (MenuItem), Modal)
 import qualified Ribosome.Menu.MenuState as MenuState
@@ -11,6 +11,7 @@ import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, 
 data GrepOutputLine =
   GrepOutputLine {
     file :: Path Abs File,
+    relative :: SomeBase File,
     line :: Int,
     col :: Maybe Int,
     content :: Text,
@@ -26,14 +27,16 @@ sameLine l r =
   l.file == r.file && l.line == r.line
 
 grepOutputLine ::
+  Path Abs Dir ->
   Path Abs File ->
   Int ->
   Maybe Int ->
   Text ->
   GrepOutputLine
-grepOutputLine file line col content =
+grepOutputLine cwd file line col content =
   GrepOutputLine {
     path = pathText file,
+    relative = maybe (Abs file) Rel (stripProperPrefix cwd file),
     name = pathText (filename file),
     dir = pathText (parent file),
     ..

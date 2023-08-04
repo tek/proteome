@@ -2,8 +2,8 @@ module Proteome.Init where
 
 import Exon (exon)
 import qualified Log
-import Ribosome (Handler, Rpc, RpcError, SettingError, Settings, resumeReport)
-import Ribosome.Api (nvimCallFunction, uautocmd)
+import Ribosome (Handler, ReportLog, Rpc, RpcError, SettingError, Settings, msgpackMap, resumeLogReport, resumeReport)
+import Ribosome.Api (nvimCallFunction, nvimSetHl, uautocmd)
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Config (logConfig, readConfig)
@@ -94,3 +94,10 @@ proLoadAfter ::
   Handler r ()
 proLoadAfter =
   resumeReport @Rpc projectConfigAfter
+
+setupHighlights ::
+  Members [Rpc !! RpcError, ReportLog] r =>
+  Sem r ()
+setupHighlights =
+  resumeLogReport @Rpc do
+    nvimSetHl 0 "ProteomeReplaceFile" (msgpackMap ("link", "Directory" :: Text) ("default", True))

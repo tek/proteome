@@ -54,11 +54,11 @@ proteomeTestConf ::
   UnitTest
 proteomeTestConf conf test =
   testPluginConf @ProteomeTestStack testConf interpretProteomeStackTest mempty $ testHandler do
-      projects <- Test.fixturePath [reldir|projects|]
-      mainDir <- Test.fixturePath [reldir|projects/haskell/flagellum|]
-      Settings.update Settings.projectConfig def { baseDirs = [projects] }
-      Settings.update Settings.mainProjectDir mainDir
-      test
+    projects <- Test.fixturePath [reldir|projects|]
+    mainDir <- Test.fixturePath [reldir|projects/haskell/flagellum|]
+    Settings.update Settings.projectConfig def { baseDirs = [projects] }
+    Settings.update Settings.mainProjectDir mainDir
+    test
   where
     testConf =
       TestConfig False (PluginConfig "proteome" conf unit)
