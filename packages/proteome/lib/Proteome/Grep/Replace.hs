@@ -75,8 +75,9 @@ replaceFloatOptions totalWidth totalHeight =
     margin t l = fromMaybe 0 ((t - l) `div` 2)
     width = size totalWidth
     height = size totalHeight
-    size l = ceiling @Double (fromIntegral l * 0.9)
+    size l = ceiling @Double (fromIntegral l * 0.8)
 
+-- TODO add diff indicators via colors
 replaceBuffer ::
   Members [Scratch, Rpc, AtomicState Env] r =>
   NonEmpty GrepOutputLine ->
