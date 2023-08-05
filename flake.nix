@@ -102,8 +102,6 @@
 
     };
 
-    envs.dev.buildInputs = with config.pkgs; [pkgs.neovim pkgs.tmux];
-
     exe = "proteome";
     branch = "main";
     githubOrg = "tek";
