@@ -58,8 +58,9 @@ scratchName =
 replaceFloatOptions ::
   Int ->
   Int ->
+  Int ->
   FloatOptions
-replaceFloatOptions totalWidth totalHeight =
+replaceFloatOptions totalWidth totalHeight maxSize =
   FloatOptions {
     relative = Editor,
     focusable = True,
@@ -74,7 +75,7 @@ replaceFloatOptions totalWidth totalHeight =
     col = margin totalWidth width
     margin t l = fromMaybe 0 ((t - l) `div` 2)
     width = size totalWidth
-    height = size totalHeight
+    height = min maxSize (size totalHeight)
     size l = ceiling @Double (fromIntegral l * 0.8)
 
 -- TODO add diff indicators via colors
@@ -97,14 +98,6 @@ replaceBuffer lines' = do
     nvimCallFunction "winrestview" [toMsgpack (Map.fromList [("topfill" :: Text, 1 :: Int64)])]
   atomicModify' (#replace ?~ Replace scratch grouped)
   where
-    content = fmap (.content) =<< Map.elems grouped
-
-    grouped :: Map (SomeBase File) [GrepOutputLine]
-    grouped = foldl (\ z a -> Map.alter (Just . ins a) a.relative z) mempty lines'
-
-    ins gol = \case
-      Nothing -> [gol]
-      Just old -> insertBy (comparing (.line)) gol old
 
     options w h =
       def {
@@ -113,10 +106,21 @@ replaceBuffer lines' = do
         Scratch.focus = True,
         Scratch.filetype = Just scratchName,
         Scratch.float = Just float,
-        Scratch.maxSize = Just float.height
+        Scratch.resize = False
       }
       where
-        float = replaceFloatOptions w h
+        float = replaceFloatOptions w h lengthWithVirtLines
+
+    lengthWithVirtLines = length content + 2 * Map.size grouped - 1
+
+    content = fmap (.content) =<< Map.elems grouped
+
+    grouped :: Map (SomeBase File) [GrepOutputLine]
+    grouped = foldl (\ z a -> Map.alter (Just . ins a) a.relative z) mempty lines'
+
+    ins gol = \case
+      Nothing -> [gol]
+      Just old -> insertBy (comparing (.line)) gol old
 
     addPathLine buf ns index (path, ls) = do
       nvimBufSetExtmark buf ns index 0 (virtLineParams path)

@@ -5,9 +5,9 @@ import qualified Data.Text as Text
 import qualified Data.Text.IO as Text
 import Path (Abs, File, Path, reldir, relfile, toFilePath)
 import qualified Polysemy.Test as Test
-import Polysemy.Test (Hedgehog, UnitTest, (===))
+import Polysemy.Test (Hedgehog, UnitTest, assertEq, (===))
 import Prelude hiding (group)
-import Ribosome.Api (vimGetBuffers)
+import Ribosome.Api (nvimGetCurrentWin, nvimWinGetHeight, vimGetBuffers)
 import Ribosome.Api.Buffer (buflisted, currentBufferContent, setCurrentBufferContent)
 import Ribosome.Menu (promptInput)
 import Ribosome.Menu.Prompt (PromptEvent (Mapping))
@@ -107,6 +107,7 @@ test_grepReplace =
     file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
     Grep.handleErrors (promptInput replaceEvents (grepWith [] dir pat))
     replaceContent <- currentBufferContent
+    assertEq 12 =<< nvimWinGetHeight =<< nvimGetCurrentWin
     7 === length replaceContent
     setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
     proReplaceSave
