@@ -13,7 +13,7 @@ import qualified Ribosome.Menu as MenuResult
 import Ribosome.Menu (defaultMappings, promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import qualified Ribosome.Menu.Effect.MenuTest as MenuTest
-import Ribosome.Menu.MenuTest (testNativeMenu)
+import Ribosome.Menu.MenuTest (confSet, testNativeMenu)
 import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
 import qualified Ribosome.Scratch as Scratch
 import qualified Ribosome.Settings as Settings
@@ -104,7 +104,7 @@ test_filesCreateCurDir =
     cur <- Test.tempFile ["cur"] (sub2 </> [relfile|sub/cur|])
     edit cur
     (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3]
-    result <- testNativeMenu items (window ^. #prompt) s (window ^. #items) (defaultMappings <> actions) do
+    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) (defaultMappings <> actions) do
       prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
       status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
       feedKey "<c-d>"
@@ -139,7 +139,7 @@ test_filesCreateTab =
     Test.tempFile [] (sub3 </> [relfile|second-good/cur|])
     Test.tempFile [] (sub4 </> [relfile|second-good/cur|])
     (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3, pathText dir4]
-    result <- testNativeMenu items (window ^. #prompt) s (window ^. #items) (defaultMappings <> actions) do
+    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) (defaultMappings <> actions) do
       prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
       status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
       feedKey "s"

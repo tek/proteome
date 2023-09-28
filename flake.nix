@@ -7,7 +7,6 @@
 
   outputs = {ribosome, ...}: ribosome.lib.pro ({config, ...}: {
     depsFull = [ribosome];
-    compiler = "ghc94";
     compat.enable = false;
     hackage.versionFile = "ops/version.nix";
     gen-overrides.enable = true;
@@ -27,12 +26,14 @@
         enable = true;
         package = {
           name = "prelate";
-          version = "^>= 0.6";
+          version = ">= 0.6 && < 0.8";
         };
         module = "Prelate";
       };
       dependencies = ["polysemy" "polysemy-plugin"];
     };
+
+    buildInputs = pkgs: [pkgs.neovim pkgs.ripgrep];
 
     overrides = {hackage, jailbreak, notest, ...}: {
       streamly-process = jailbreak (notest (hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy"));

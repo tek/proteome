@@ -38,6 +38,7 @@ import Ribosome.Menu (
   MenuWidget,
   ModalState,
   ModalWindowMenus,
+  RenderAnchor (AnchorLine),
   deleteSelected,
   menuState,
   modal,
@@ -112,7 +113,7 @@ deleteWith deleter =
     compensateForMissingActiveBuffer delete keep
     deleteListedBuffersWith deleter delete
     deleteSelected
-    pure Render
+    pure (Render AnchorLine)
 
 moveCurrentLast ::
   Member Rpc r =>

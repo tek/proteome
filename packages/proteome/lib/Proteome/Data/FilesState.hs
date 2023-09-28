@@ -8,7 +8,7 @@ import Path (Abs, Dir, File, Path, Rel, filename, parent)
 import Ribosome (pathText)
 import Ribosome.Menu (Filter, MenuItem (MenuItem), Modal)
 import qualified Ribosome.Menu.MenuState as MenuState
-import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, renderFilter), MenuState)
+import Ribosome.Menu.MenuState (MenuMode (cycleFilter, renderFilter, matcher), MenuState)
 
 data FileSegments =
   FileSegments {
@@ -76,8 +76,6 @@ data FilesState =
   deriving stock (Show, Generic)
 
 instance MenuMode FileSegments FilesMode where
-  type Filter FilesMode =
-    FilterMode Filter
 
   cycleFilter (FilesMode mode segment) =
     FilesMode (cycleFilter mode) segment
@@ -88,8 +86,9 @@ instance MenuMode FileSegments FilesMode where
   renderExtra (FilesMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
-  filterMode (FilesMode mode segment) =
-    FilterMode mode (Just . flip segmentExtract segment)
+  matcher (FilesMode mode _) = matcher mode
+
+  extract mode item = Just (segmentExtract item mode.segment)
 
 cycleBase ::
   Zipper BaseDir ->

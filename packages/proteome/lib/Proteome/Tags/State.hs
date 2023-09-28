@@ -10,7 +10,7 @@ import Prelude hiding (group)
 import qualified Ribosome
 import Ribosome.Menu (Filter, MenuItem, Modal)
 import qualified Ribosome.Menu.MenuState as MenuState
-import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, filterMode, renderExtra, renderFilter))
+import Ribosome.Menu.MenuState (MenuMode (cycleFilter, matcher, renderExtra, renderFilter))
 
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 
@@ -134,8 +134,6 @@ type TagsState =
   Modal TagsMode Tag
 
 instance MenuMode Tag TagsMode where
-  type Filter TagsMode =
-    FilterMode Filter
 
   cycleFilter (TagsMode mode segment) =
     TagsMode (cycleFilter mode) segment
@@ -146,5 +144,6 @@ instance MenuMode Tag TagsMode where
   renderExtra (TagsMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
-  filterMode (TagsMode mode segment) =
-    FilterMode mode (flip segmentExtract segment)
+  matcher (TagsMode mode _) = matcher mode
+
+  extract mode item = segmentExtract item mode.segment

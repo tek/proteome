@@ -150,7 +150,7 @@ library
     , polysemy-chronos
     , polysemy-plugin
     , polysemy-process
-    , prelate ==0.6.*
+    , prelate >=0.6 && <0.8
     , prettyprinter
     , raw-strings-qq
     , ribosome
@@ -211,7 +211,7 @@ executable proteome
       base ==4.*
     , polysemy
     , polysemy-plugin
-    , prelate ==0.6.*
+    , prelate >=0.6 && <0.8
     , proteome
   mixins:
       base hiding (Prelude)
@@ -292,7 +292,7 @@ test-suite proteome-test
     , polysemy
     , polysemy-plugin
     , polysemy-test
-    , prelate ==0.6.*
+    , prelate >=0.6 && <0.8
     , proteome
     , ribosome
     , ribosome-menu

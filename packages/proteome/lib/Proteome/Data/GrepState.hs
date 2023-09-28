@@ -6,7 +6,7 @@ import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), filename, parent, stripP
 import Ribosome (MsgpackEncode, pathText)
 import Ribosome.Menu (Filter, MenuItem (MenuItem), Modal)
 import qualified Ribosome.Menu.MenuState as MenuState
-import Ribosome.Menu.MenuState (FilterMode (FilterMode), MenuMode (cycleFilter, renderFilter))
+import Ribosome.Menu.MenuState (MenuMode (cycleFilter, matcher, renderFilter))
 
 data GrepOutputLine =
   GrepOutputLine {
@@ -89,8 +89,6 @@ type GrepState =
   Modal GrepMode GrepOutputLine
 
 instance MenuMode GrepOutputLine GrepMode where
-  type Filter GrepMode =
-    FilterMode Filter
 
   cycleFilter (GrepMode mode segment) =
     GrepMode (cycleFilter mode) segment
@@ -101,5 +99,6 @@ instance MenuMode GrepOutputLine GrepMode where
   renderExtra (GrepMode _ segment) _ =
     Just [exon|🔧 #{renderSegment segment}|]
 
-  filterMode (GrepMode mode segment) =
-    FilterMode mode (Just . flip segmentExtract segment)
+  matcher (GrepMode mode _) = matcher mode
+
+  extract mode item = Just (segmentExtract item mode.segment)

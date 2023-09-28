@@ -54,7 +54,6 @@ import Ribosome.Menu (
   WindowMenus,
   WindowOptions,
   menuOk,
-  menuRender,
   menuState,
   menuSuccess,
   menuUpdatePrompt,
@@ -64,6 +63,7 @@ import Ribosome.Menu (
   withSelection,
   (%=),
   )
+import Ribosome.Menu.Action (menuRenderLine)
 import Ribosome.Menu.Data.WithCursor (WithCursor)
 import Ribosome.Menu.Mappings (insert, withInsert)
 import Ribosome.Menu.MenuState (mode)
@@ -261,13 +261,13 @@ cycleSegment :: MenuWidget FilesState r FileAction
 cycleSegment =
   menuState do
     mode . #segment %= FilesState.cycle
-    menuOk
+    menuRenderLine
 
 cycleBase :: MenuWidget FilesState r FileAction
 cycleBase =
   menuState do
     #state . #bases %= FilesState.cycleBase
-    menuRender
+    menuRenderLine
 
 -- TODO unify with tabUpdatePrompt
 insertFileDir ::
