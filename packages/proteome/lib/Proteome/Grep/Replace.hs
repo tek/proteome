@@ -6,7 +6,7 @@ import qualified Data.Map.Strict as Map
 import Data.MessagePack (Object)
 import Data.Semigroup (Sum (Sum, getSum))
 import qualified Data.Text as Text
-import Path (File, SomeBase, fromSomeFile, parseAbsFile)
+import Path (Abs, File, Path, SomeBase, fromSomeFile, parseAbsFile)
 import Ribosome (
   Buffer,
   Handler,
@@ -48,7 +48,7 @@ import Proteome.Data.Env (Env)
 import qualified Proteome.Data.GrepState as GrepState
 import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))
-import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, CouldntLoadBuffer))
+import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, BufferErrors))
 import Proteome.Data.ReplaceError (ReplaceError)
 
 scratchName :: Text
@@ -170,35 +170,48 @@ fileBuffer path =
   join <$> traverse bufferForFile (parseAbsFile (toString path))
 
 replaceLine ::
-  Members [Rpc, Stop ReplaceError] r =>
+  Member (Rpc !! RpcError) r =>
   Text ->
   GrepOutputLine ->
-  Sem r (Maybe Buffer)
+  Sem r (Maybe (Path Abs File, Text), Maybe Buffer)
 replaceLine updatedLine (GrepOutputLine {file, line}) = do
-  exists <- isJust <$> bufferForFile file
-  unless exists (addBuffer (pathText file))
-  () <- vimCallFunction "bufload" [toMsgpack file]
-  FileBuffer buffer _ <- stopNote (ReplaceError.CouldntLoadBuffer file) =<< bufferForFile file
-  bufferSetLines buffer line (line + 1) False replacement
-  deleteExtraBlankLine buffer line
-  pure (bool (Just buffer) Nothing exists)
+  either loadError withBuffer =<< runStop ensureBuffer
   where
-    replacement =
-      [updatedLine | not (Text.null updatedLine)]
+    withBuffer (exists, buffer) =
+      resuming writeError do
+        bufferSetLines buffer line (line + 1) False replacement
+        deleteExtraBlankLine buffer line
+        pure (Nothing, transientBuffer)
+      where
+        writeError err = pure (Just (file, show err), transientBuffer)
+        transientBuffer = justIf (not exists) buffer
+
+    loadError err = pure (Just (file, err), Nothing)
+
+    ensureBuffer =
+      resumeHoist @RpcError show do
+        exists <- isJust <$> bufferForFile file
+        unless exists (addBuffer (pathText file))
+        () <- vimCallFunction "bufload" [toMsgpack file]
+        FileBuffer buffer _ <- stopNote "Buffer vanished after loading" =<< bufferForFile file
+        pure (exists, buffer)
+
+    replacement = [updatedLine | not (Text.null updatedLine)]
 
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
 lineNumberDesc (_, GrepOutputLine {line}) =
   -line
 
 withReplaceEnv ::
-  Members [Rpc !! RpcError, Rpc, Resource] r =>
-  Sem r [Maybe Buffer] ->
+  Members [Stop ReplaceError, Rpc !! RpcError, Rpc, Resource] r =>
+  Sem r [(Maybe (Path Abs File, Text), Maybe Buffer)] ->
   Sem r ()
 withReplaceEnv run = do
   withOption "hidden" True do
-    transient <- run
+    (errors, transient) <- unzip <$> run
     resume_ (nvimCommand "noautocmd wall")
-    traverse_ wipeBuffer (catMaybes transient)
+    traverse_ (resume_ . wipeBuffer) (catMaybes transient)
+    traverse_ (stop . ReplaceError.BufferErrors) (nonEmpty (catMaybes errors))
 
 replaceLines ::
   Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
