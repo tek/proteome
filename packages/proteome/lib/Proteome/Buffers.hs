@@ -32,8 +32,8 @@ import Ribosome.Api (
   )
 import Ribosome.Menu (
   Filter (Fuzzy),
-  Mappings,
   MenuAction (Render),
+  MenuApp,
   MenuItem (MenuItem),
   MenuWidget,
   ModalState,
@@ -48,6 +48,7 @@ import Ribosome.Menu (
   withFocus,
   withSelection',
   )
+import Ribosome.Menu.App (withInsert)
 import Ribosome.Scratch (ScratchOptions (..))
 import qualified Ribosome.Settings as Settings
 
@@ -113,7 +114,7 @@ deleteWith deleter =
     compensateForMissingActiveBuffer delete keep
     deleteListedBuffersWith deleter delete
     deleteSelected
-    pure (Render AnchorLine)
+    pure (Just (Render AnchorLine))
 
 moveCurrentLast ::
   Member Rpc r =>
@@ -153,10 +154,10 @@ buffers = do
 
 actions ::
   Member Rpc r =>
-  Mappings BuffersState r BufferAction
+  MenuApp BuffersState r BufferAction
 actions =
   [
-    ("<cr>", load),
+    (withInsert "<cr>", load),
     ("d", deleteWith "bdelete"),
     ("D", deleteWith "bdelete!"),
     ("w", deleteWith "bwipeout"),

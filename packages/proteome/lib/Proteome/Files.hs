@@ -44,15 +44,16 @@ import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
   Filter (Fuzzy),
-  Mappings,
+  MenuApp,
   MenuItem,
   MenuWidget,
   Prompt (..),
-  PromptConfig (OnlyInsert),
   PromptMode,
+  PromptModes (OnlyInsert),
   PromptText (PromptText),
   WindowMenus,
   WindowOptions,
+  insert,
   menuOk,
   menuState,
   menuSuccess,
@@ -60,13 +61,14 @@ import Ribosome.Menu (
   modal,
   use,
   windowMenu,
+  withInsert,
   withSelection,
   (%=),
   )
 import Ribosome.Menu.Action (menuRenderLine)
 import Ribosome.Menu.Data.WithCursor (WithCursor)
-import Ribosome.Menu.Mappings (insert, withInsert)
 import Ribosome.Menu.MenuState (mode)
+import qualified Ribosome.Menu.Prompt.Data.Prompt
 import qualified Ribosome.Settings as Settings
 import Streamly.Prelude (SerialT)
 import Text.Regex.PCRE.Light (Regex, compileM)
@@ -179,7 +181,7 @@ tabUpdatePrompt ::
   Text ->
   Prompt
 tabUpdatePrompt st prefix =
-  Prompt (Text.length prefix) st (PromptText prefix)
+  Prompt (fromIntegral (Text.length prefix)) st (PromptText prefix)
 
 matchingBase ::
   [BaseDir] ->
@@ -194,7 +196,7 @@ tab ::
   MenuWidget FilesState r FileAction
 tab = do
   menuState do
-    Prompt _ promptState (PromptText promptText) <- ask
+    Prompt _ promptState (PromptText promptText) <- asks (.prompt)
     bases <- toList <$> use (#state . #bases)
     tabComplete bases promptText >>= \case
       Just (base, prefix) -> do
@@ -246,7 +248,7 @@ createFile ::
   Members [Stop FilesError, Embed IO] r =>
   MenuWidget FilesState r FileAction
 createFile = do
-  PromptText promptText <- asks (view #text)
+  PromptText promptText <- asks (view (#prompt . #text))
   base <- menuState currentBase
   let
     path =
@@ -277,16 +279,16 @@ insertFileDir =
   menuState $ use (#state . #bufferPath) >>= \case
     Right (bufDir, base) -> do
       let dir = pathText bufDir
-      Prompt _ m _ <- ask
+      Prompt _ m _ <- asks (.prompt)
       setBase base
-      menuUpdatePrompt (Prompt (Text.length dir) m (PromptText dir))
+      menuUpdatePrompt (Prompt (fromIntegral (Text.length dir)) m (PromptText dir))
     Left reason -> do
       Log.info reason
       menuOk
 
 actions ::
   Members [Stop FilesError, Log, Embed IO] r =>
-  Mappings FilesState r FileAction
+  MenuApp FilesState r FileAction
 actions =
   [
     (withInsert "<cr>", editFile),
@@ -384,7 +386,7 @@ filesMenuConfig cwd pathSpecs = do
   items <- fmap (fmap fileSegments) <$> files conf (view #absolute <$> baseDirs)
   pure (items, FilesState (modal (FilesMode Fuzzy Full)) (Zipper.fromNonEmpty baseDirs) bufPath, window)
   where
-    window = def & #prompt .~ OnlyInsert & #items .~ opt
+    window = def & #prompt . #modes .~ OnlyInsert & #items .~ opt
     opt =
       def {
         name = ScratchId name,

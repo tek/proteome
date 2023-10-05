@@ -6,16 +6,16 @@ import Path (Abs, Dir, Path, isProperPrefixOf, reldir, relfile, toFilePath, (</>
 import Path.IO (createDirIfMissing)
 import qualified Polysemy.Test as Test
 import Polysemy.Test (UnitTest, assert, assertEq, assertJust, evalMaybe, runTestAuto, unitTest, (===))
-import Ribosome (Report, mapReport, pathText)
+import Ribosome (mapReport, pathText)
 import Ribosome.Api (bufferContent, currentBufferPath, edit)
 import Ribosome.Api.Input (feedKey)
 import qualified Ribosome.Menu as MenuResult
-import Ribosome.Menu (defaultMappings, promptInput)
+import Ribosome.Menu (promptInput)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import qualified Ribosome.Menu.Effect.MenuTest as MenuTest
-import Ribosome.Menu.MenuTest (confSet, testNativeMenu)
-import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
-import qualified Ribosome.Scratch as Scratch
+import qualified Ribosome.Menu.Effect.MenuUi as MenuUi
+import Ribosome.Menu.Prompt (PromptEvent (Mapping), updateInsert)
+import Ribosome.Menu.Test (confSet, testNativeMenu)
 import qualified Ribosome.Settings as Settings
 import Ribosome.Test (assertWait, testError)
 import qualified Streamly.Prelude as Stream
@@ -29,6 +29,7 @@ import Proteome.Files.Source (files)
 import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Run (proteomeTest)
+import Ribosome.Test.Wait ((<--))
 
 paths :: Path Abs Dir -> NonEmpty (Path Abs Dir)
 paths base =
@@ -62,13 +63,13 @@ test_filesExclude =
 createEvents :: [PromptEvent]
 createEvents =
   [
-    Update "p",
+    updateInsert "p",
     Mapping "<tab>",
-    Update "path/t",
+    updateInsert "path/t",
     Mapping "<tab>",
-    Update "path/to/d",
+    updateInsert "path/to/d",
     Mapping "<tab>",
-    Update "path/to/dir/file",
+    updateInsert "path/to/dir/file",
     Mapping "<c-y>"
   ]
 
@@ -83,14 +84,6 @@ test_filesCreate =
       filesMenu base [toText (toFilePath base)]
     assertJust (targetDir </> [relfile|file|]) =<< currentBufferPath
 
-createCurDirEvents :: [PromptEvent]
-createCurDirEvents =
-  [
-    Mapping "<c-d>",
-    Update "path/to/dir/file",
-    Mapping "<c-y>"
-  ]
-
 test_filesCreateCurDir :: UnitTest
 test_filesCreateCurDir =
   proteomeTest $ testError @FilesError do
@@ -104,12 +97,12 @@ test_filesCreateCurDir =
     cur <- Test.tempFile ["cur"] (sub2 </> [relfile|sub/cur|])
     edit cur
     (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3]
-    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) (defaultMappings <> actions) do
-      prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
-      status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
+    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) actions do
+      prompt <- MenuUi.promptScratch
+      status <- MenuUi.statusScratch
       feedKey "<c-d>"
-      assertWait (bufferContent (prompt ^. #buffer)) (assertEq ["sub/"])
-      assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir2"] . drop 1)
+      ["sub/"] <-- bufferContent (prompt ^. #buffer)
+      ["🌳 dir2"] <-- (drop 1 <$> bufferContent (status ^. #buffer))
       traverse_ @[] feedKey ["f", "i", "l", "e"]
       feedKey "<c-b>"
       assertWait (bufferContent (status ^. #buffer)) (assertEq ["🌳 dir3"] . drop 1)
@@ -139,9 +132,9 @@ test_filesCreateTab =
     Test.tempFile [] (sub3 </> [relfile|second-good/cur|])
     Test.tempFile [] (sub4 </> [relfile|second-good/cur|])
     (items, s, window) <- filesMenuConfig base [pathText dir1, pathText dir2, pathText dir3, pathText dir4]
-    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) (defaultMappings <> actions) do
-      prompt <- stopNote @Report "no prompt scratch" =<< Scratch.find "ribosome-menu-prompt"
-      status <- stopNote @Report "no status scratch" =<< Scratch.find "ribosome-menu-status"
+    result <- testNativeMenu items (confSet #prompt (window ^. #prompt) def) s (window ^. #items) actions do
+      prompt <- MenuUi.promptScratch
+      status <- MenuUi.statusScratch
       feedKey "s"
       feedKey "<tab>"
       assertWait (bufferContent (prompt ^. #buffer)) (assertEq ["second-"])

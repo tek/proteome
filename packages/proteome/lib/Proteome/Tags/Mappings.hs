@@ -8,7 +8,7 @@ import Ribosome (Rpc)
 import Ribosome.Api (parseNvimFile)
 import Ribosome.Host.Data.Report (ReportLog)
 import qualified Ribosome.Menu as Menu
-import Ribosome.Menu (Mappings, MenuWidget, menuOk, menuState, withFocus', (%=))
+import Ribosome.Menu (MenuApp, MenuWidget, menuOk, menuState, withFocus', (%=))
 import qualified Ribosome.Menu.Data.MenuAction as MenuAction
 import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Report as Report
@@ -35,9 +35,9 @@ navigate =
   withFocus' \ Tag {..} ->
     checkPath path >>= \case
       Just file ->
-        pure (Menu.success (Navigate file line))
+        pure (Just (Menu.success (Navigate file line)))
       Nothing ->
-        MenuAction.Continue <$ Report.info [exon|File doesn't exist: #{path}|] [
+        Just MenuAction.Continue <$ Report.info [exon|File doesn't exist: #{path}|] [
           [exon|Tag file focused in menu doesn't exist: #{path}|]
           ]
 
@@ -49,6 +49,6 @@ cycleSegment =
 
 mappings ::
   Members [Rpc, ReportLog, Embed IO] r =>
-  Mappings TagsState r TagsAction
+  MenuApp TagsState r TagsAction
 mappings =
   [("<cr>", navigate), ("<c-s>", cycleSegment)]

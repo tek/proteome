@@ -30,7 +30,7 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu (
   Filter (Fuzzy),
-  Mappings,
+  MenuApp,
   MenuItem,
   MenuWidget,
   WindowMenus,
@@ -39,10 +39,10 @@ import Ribosome.Menu (
   modal,
   windowMenu,
   withFocus,
+  withInsert,
   withSelection,
   (%=),
   )
-import Ribosome.Menu.Mappings (withInsert)
 import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Settings as Settings
 import qualified Streamly.Internal.Data.Stream.IsStream as Stream
@@ -158,7 +158,7 @@ cycleSegment =
 
 actions ::
   Members [Scratch, Rpc, Rpc !! RpcError, AtomicState Env, Stop ReplaceError, Resource, Embed IO] r =>
-  Mappings GrepState r GrepAction
+  MenuApp GrepState r GrepAction
 actions =
   [
     ("<cr>", selectResult),
