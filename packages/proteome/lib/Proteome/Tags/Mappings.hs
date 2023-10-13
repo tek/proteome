@@ -8,7 +8,7 @@ import Ribosome (Rpc)
 import Ribosome.Api (parseNvimFile)
 import Ribosome.Host.Data.Report (ReportLog)
 import qualified Ribosome.Menu as Menu
-import Ribosome.Menu (MenuApp, MenuWidget, menuOk, menuState, withFocus', (%=))
+import Ribosome.Menu (MenuApp, MenuWidget, menuOk, menuState, withFocus', withInsert, (%=))
 import qualified Ribosome.Menu.Data.MenuAction as MenuAction
 import Ribosome.Menu.MenuState (mode)
 import qualified Ribosome.Report as Report
@@ -51,4 +51,4 @@ mappings ::
   Members [Rpc, ReportLog, Embed IO] r =>
   MenuApp TagsState r TagsAction
 mappings =
-  [("<cr>", navigate), ("<c-s>", cycleSegment)]
+  [(withInsert "<cr>", navigate), (withInsert "<c-s>", cycleSegment)]
