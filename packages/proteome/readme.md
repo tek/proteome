@@ -42,7 +42,7 @@ Most of these tasks are performed in pop up menus with fuzzy matching that have 
 * `<space>`: Toggle an item for batch processing
 * `*`: Toggle all items
 * `<esc>` and `<c-c>`: Quit without action
-* `<c-f>`: Cycle the filter type – fuzzy, prefix, regex, substring
+* `<m-f>`: Cycle the filter type – fuzzy, prefix, regex, substring
 
 ## Configuration
 
