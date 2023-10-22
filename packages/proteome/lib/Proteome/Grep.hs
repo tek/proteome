@@ -29,11 +29,11 @@ import qualified Ribosome.Data.Register as Register (Register (Special))
 import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import Ribosome.Data.SettingError (SettingError)
 import Ribosome.Menu (
-  Filter (Fuzzy),
   MenuApp,
   MenuItem,
   MenuWidget,
   WindowMenus,
+  fuzzy,
   menuOk,
   menuState,
   modal,
@@ -217,7 +217,7 @@ grepWith ::
 grepWith opt path patt =
   mapReport @RpcError do
     items <- grepItems path patt opt
-    result <- windowMenu items (modal (GrepMode Fuzzy Full)) (def & #items .~ scratchOptions) actions
+    result <- windowMenu items (modal (GrepMode fuzzy Full)) (def & #items .~ scratchOptions) actions
     handleResult grepAction result
   where
     scratchOptions =

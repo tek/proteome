@@ -17,8 +17,10 @@ import Ribosome (
   pathText,
   resumeReport,
   )
+import Ribosome.Api (parseNvimFile)
 import Ribosome.Host.Data.Report (ReportLog)
-import Ribosome.Menu (Filter (Fuzzy), MenuItem (MenuItem), MenuResult, WindowMenus, modal, windowMenu)
+import qualified Ribosome.Menu as Menu
+import Ribosome.Menu (MenuItem (MenuItem), MenuResult, WindowMenus, fuzzy, modal, windowMenu)
 import qualified Streamly.Prelude as Stream
 import Streamly.Prelude (SerialT)
 
@@ -28,6 +30,7 @@ import Proteome.Tags.Cycle (cword)
 import Proteome.Tags.Mappings (TagsAction (Navigate), mappings)
 import Proteome.Tags.Nav (loadOrEdit)
 import Proteome.Tags.Query (query)
+import qualified Proteome.Tags.State as State
 import Proteome.Tags.State (
   RawTagSegments,
   Segment (Module, Name),
@@ -37,11 +40,8 @@ import Proteome.Tags.State (
   TagsState,
   tagSegmentsFor,
   )
-import qualified Proteome.Tags.State as State
 import Proteome.Tags.Stream (readTags)
 import Proteome.Tags.Syntax (tagsSyntax)
-import qualified Ribosome.Menu as Menu
-import Ribosome.Api (parseNvimFile)
 
 getTags ::
   Members [AtomicState Env, Rpc] r =>
@@ -100,7 +100,7 @@ tagsMenu rex = do
       navigateUnique tag
     Right tags ->
       mapReport do
-        windowMenu tags (modal (TagsMode Fuzzy mode)) (def & #items .~ scratchOptions) mappings
+        windowMenu tags (modal (TagsMode fuzzy mode)) (def & #items .~ scratchOptions) mappings
   where
     mode =
       if isJust rex then Module else Name

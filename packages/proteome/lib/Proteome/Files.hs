@@ -43,7 +43,8 @@ import Ribosome.Data.ScratchOptions (ScratchOptions (filetype, name, syntax))
 import Ribosome.Data.Setting (Setting (Setting))
 import Ribosome.Host.Data.Args (ArgList (ArgList))
 import Ribosome.Menu (
-  Filter (Fuzzy),
+  Filter (Filter),
+  FilterMethod (Fuzzy),
   MenuApp,
   MenuItem,
   MenuWidget,
@@ -384,7 +385,7 @@ filesMenuConfig cwd pathSpecs = do
   conf <- filesConfig
   bufPath <- resolveBufPath baseDirs
   items <- fmap (fmap fileSegments) <$> files conf (view #absolute <$> baseDirs)
-  pure (items, FilesState (modal (FilesMode Fuzzy Full)) (Zipper.fromNonEmpty baseDirs) bufPath, window)
+  pure (items, FilesState (modal (FilesMode (Filter Fuzzy True) Full)) (Zipper.fromNonEmpty baseDirs) bufPath, window)
   where
     window = def & #prompt . #modes .~ OnlyInsert & #items .~ opt
     opt =

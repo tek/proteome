@@ -11,13 +11,13 @@ import Ribosome.Api (bufferContent, currentBufferPath, edit)
 import Ribosome.Api.Input (feedKey)
 import qualified Ribosome.Menu as MenuResult
 import Ribosome.Menu (promptInput)
-import qualified Ribosome.Menu.Data.MenuItem as MenuItem
 import qualified Ribosome.Menu.Effect.MenuTest as MenuTest
 import qualified Ribosome.Menu.Effect.MenuUi as MenuUi
 import Ribosome.Menu.Prompt (PromptEvent (Mapping), updateInsert)
 import Ribosome.Menu.Test (confSet, testNativeMenu)
 import qualified Ribosome.Settings as Settings
 import Ribosome.Test (assertWait, testError)
+import Ribosome.Test.Wait ((<--))
 import qualified Streamly.Prelude as Stream
 import Test.Tasty (TestTree, testGroup)
 import Text.Regex.PCRE.Heavy (re)
@@ -29,7 +29,6 @@ import Proteome.Files.Source (files)
 import Proteome.Menu (handleResult)
 import qualified Proteome.Settings as Settings
 import Proteome.Test.Run (proteomeTest)
-import Ribosome.Test.Wait ((<--))
 
 paths :: Path Abs Dir -> NonEmpty (Path Abs Dir)
 paths base =

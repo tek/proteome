@@ -16,12 +16,12 @@ import Ribosome (
   resumeReport,
   )
 import Ribosome.Menu (
-  Filter (Fuzzy),
   MenuItem (..),
   MenuResult,
   MenuWidget,
   ModalState,
   ModalWindowMenus,
+  fuzzy,
   modal,
   staticWindowMenu,
   traverseSelection_,
@@ -150,7 +150,7 @@ addMenu ::
 addMenu = do
   projectConfig <- Settings.get Settings.projectConfig
   projects <- sort <$> availableProjects projectConfig
-  staticWindowMenu projects (modal Fuzzy) (def & #items .~ scratchOptions) [("<cr>", menuAdd)]
+  staticWindowMenu projects (modal fuzzy) (def & #items .~ scratchOptions) [("<cr>", menuAdd)]
   where
     scratchOptions =
       (scratch "proteome-add") { syntax = [addSyntax] }

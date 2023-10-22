@@ -31,7 +31,6 @@ import Ribosome.Api (
   vimSetCurrentWindow,
   )
 import Ribosome.Menu (
-  Filter (Fuzzy),
   MenuAction (Render),
   MenuApp,
   MenuItem (MenuItem),
@@ -40,6 +39,7 @@ import Ribosome.Menu (
   ModalWindowMenus,
   RenderAnchor (AnchorLine),
   deleteSelected,
+  fuzzy,
   menuState,
   modal,
   staticWindowMenu,
@@ -189,7 +189,7 @@ buffersMenu ::
 buffersMenu = do
   items <- buffers
   result <- mapReport do
-    staticWindowMenu items (modal Fuzzy) (def & #items .~ scratchOptions) actions
+    staticWindowMenu items (modal fuzzy) (def & #items .~ scratchOptions) actions
   handleResult bufferAction result
   where
     scratchOptions =
