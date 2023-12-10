@@ -3,9 +3,10 @@ module Proteome.Test.TagsTest where
 import Path (Abs, Dir, Path, absdir, reldir, relfile, (</>))
 import Path.IO (doesFileExist)
 import qualified Polysemy.Test as Test
-import Polysemy.Test (UnitTest, assert, assertJust, unitTest, (===), assertEq)
+import Polysemy.Test (UnitTest, assert, assertEq, assertJust, unitTest, (===))
 import Ribosome (pathText)
-import Ribosome.Api (currentBufferPath, nvimSetCurrentDir, optionSetList, currentLine)
+import Ribosome.Api (currentBufferPath, currentCursor, currentLine, edit, nvimSetCurrentDir, optionSetList)
+import Ribosome.Api.Input (feedKey)
 import qualified Ribosome.Menu as Menu
 import Ribosome.Menu (promptInput)
 import Ribosome.Menu.Prompt (PromptEvent (Mapping, Update))
@@ -84,6 +85,13 @@ test_tagsCycle =
     proNextTag "func"
     assertJust file1 =<< currentBufferPath
     assertEq 2 =<< currentLine
+    edit file2
+    assertEq (0, 0) =<< currentCursor
+    proNextTag "func"
+    assertJust file2 =<< currentBufferPath
+    assertEq (2, 0) =<< currentCursor
+    feedKey "<c-o>"
+    assertJust file2 =<< currentBufferPath
 
 test_tags :: TestTree
 test_tags =

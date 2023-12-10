@@ -28,7 +28,7 @@ import Proteome.Data.Env (Env, mainType)
 import Proteome.Menu (handleResult)
 import Proteome.Tags.Cycle (cword)
 import Proteome.Tags.Mappings (TagsAction (Navigate), mappings)
-import Proteome.Tags.Nav (loadOrEdit)
+import Proteome.Tags.Nav (loadOrEdit, setContextMark)
 import Proteome.Tags.Query (query)
 import qualified Proteome.Tags.State as State
 import Proteome.Tags.State (
@@ -58,13 +58,14 @@ getTags mkSegments = \case
     Right <$> readTags mkSegments
 
 tagsAction ::
-  Members [Rpc, Stop Report, Embed IO] r =>
+  Members [Rpc !! RpcError, Rpc, Stop Report, Embed IO] r =>
   TagsAction ->
   Sem r ()
 tagsAction = \case
   Navigate path line -> do
     unlessM (doesFileExist path) do
       stop (fromText [exon|File doesn't exist: #{pathText path}|])
+    setContextMark
     void (loadOrEdit path line)
 
 navigateUnique ::

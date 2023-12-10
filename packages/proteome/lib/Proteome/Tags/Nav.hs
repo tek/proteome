@@ -1,9 +1,17 @@
 module Proteome.Tags.Nav where
 
 import Path (Abs, File, Path)
-import Prelude hiding (tag)
-import Ribosome (Buffer, Rpc)
-import Ribosome.Api (bufferForFile, edit, nvimBufIsLoaded, nvimCommand, nvimGetCurrentWin, nvimWinSetBuf, setCursor)
+import Ribosome (Buffer, Rpc, RpcError)
+import Ribosome.Api (
+  bufferForFile,
+  edit,
+  normal,
+  nvimBufIsLoaded,
+  nvimCommand,
+  nvimGetCurrentWin,
+  nvimWinSetBuf,
+  setCursor,
+  )
 import qualified Ribosome.Data.FileBuffer as FileBuffer
 
 filterUnloaded ::
@@ -28,3 +36,9 @@ loadOrEdit file line = do
   nvimCommand "normal! zv"
   nvimCommand "normal! zz"
   pure (isJust existingBuffer)
+
+setContextMark ::
+  Member (Rpc !! RpcError) r =>
+  Sem r ()
+setContextMark =
+  resume_ (normal "m`")

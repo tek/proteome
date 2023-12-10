@@ -184,14 +184,6 @@ tabUpdatePrompt ::
 tabUpdatePrompt st prefix =
   Prompt (fromIntegral (Text.length prefix)) st (PromptText prefix)
 
-matchingBase ::
-  [BaseDir] ->
-  Text ->
-  Maybe BaseDir
-matchingBase bases prefix =
-  trs (bases, prefix)
-  Nothing
-
 tab ::
   Member (Embed IO) r =>
   MenuWidget FilesState r FileAction
