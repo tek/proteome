@@ -7,6 +7,6 @@ tagsSyntax :: Syntax
 tagsSyntax =
   (#links <>~ [HiLink "Module" "Type"]) $ build $ prefix "ProTags" $
   match "Line" "^.*$" #>
-    link "String" (match "Name" [exon|🟣 \S\+|]) >-
+    link "String" (match "Name" [exon|🟣 [^📦]\+|]) >-
     link "Directory" (match "Package" [exon|📦 \S\+|]) >-
     link "Module" (match "Module" [exon|\S\+|])
