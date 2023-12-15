@@ -18,12 +18,13 @@ import Proteome.Grep.Replace (proReplaceQuit, proReplaceSave)
 import Proteome.Test.Run (proteomeTest)
 
 pat :: Text
-pat =
-  "target"
+pat = "target"
+
+replacePat :: Text
+replacePat = "target!"
 
 replacement :: Text
-replacement =
-  "replaced"
+replacement = "replaced"
 
 replaceEvents :: [PromptEvent]
 replaceEvents =
@@ -33,33 +34,33 @@ file1Lines :: [Text]
 file1Lines =
   [
     "garbage 0",
-    "target",
+    "target!",
     "garbage 1",
-    "and target here"
+    "and target! here"
   ]
 
 file2Lines :: [Text]
 file2Lines =
   [
     "garbage 2",
-    "and target"
+    "and target!"
   ]
 
 file3Lines :: [Text]
 file3Lines =
   [
-    "delete me target 1",
+    "delete me target! 1",
     "",
     "keep me 1",
     "",
-    "delete me target 2",
+    "delete me target! 2",
     "",
-    "keep me 2",
-    "delete me target 3",
-    "keep me 3",
+    "keep me target 2",
+    "delete me target! 3",
+    "keep me target 3",
     "",
     "keep me 4",
-    "delete me target 4",
+    "delete me target! 4",
     ""
   ]
 
@@ -84,8 +85,8 @@ file3Target =
   [
     "keep me 1",
     "",
-    "keep me 2",
-    "keep me 3",
+    "keep me target 2",
+    "keep me target 3",
     "",
     "keep me 4"
   ]
@@ -107,9 +108,9 @@ test_grepReplace =
     file3 <- Test.tempFile file3Lines [relfile|grep/replace/file3|]
     Grep.handleErrors (promptInput replaceEvents (grepWith [] dir pat))
     replaceContent <- currentBufferContent
-    assertEq 12 =<< nvimWinGetHeight =<< nvimGetCurrentWin
-    7 === length replaceContent
-    setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace pat replacement <$> replaceContent
+    assertEq 14 =<< nvimWinGetHeight =<< nvimGetCurrentWin
+    9 === length replaceContent
+    setCurrentBufferContent $ ([regex|^(delete me.*)$|] . group 0 .~ "") . Text.replace replacePat replacement <$> replaceContent
     proReplaceSave
     proReplaceQuit
     (2 ===) . length =<< filterM buflisted =<< vimGetBuffers
@@ -124,23 +125,23 @@ deleteEvents =
 deleteFile1Lines :: [Text]
 deleteFile1Lines =
   [
-    "target 0",
+    "target! 0",
     "",
-    "target 1",
+    "target! 1",
     "",
     "garbage",
-    "target 2",
-    "target 4",
+    "target! 2",
+    "target! 4",
     "garbage"
   ]
 
 deleteFile1Target :: [Text]
 deleteFile1Target =
   [
-    "target 0",
+    "target! 0",
     "",
     "garbage",
-    "target 2",
+    "target! 2",
     "garbage"
   ]
 

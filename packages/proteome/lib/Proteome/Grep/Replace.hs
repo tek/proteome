@@ -169,13 +169,17 @@ fileBuffer ::
 fileBuffer path =
   join <$> traverse bufferForFile (parseAbsFile (toString path))
 
+-- TODO load all buffers up front (but not atomic, failures might abort early)
 replaceLine ::
   Member (Rpc !! RpcError) r =>
   Text ->
   GrepOutputLine ->
   Sem r (Maybe (Path Abs File, Text), Maybe Buffer)
-replaceLine updatedLine (GrepOutputLine {file, line}) = do
-  either loadError withBuffer =<< runStop ensureBuffer
+replaceLine updatedLine (GrepOutputLine {file, line, content})
+  | updatedLine == content
+  = pure (Nothing, Nothing)
+  | otherwise
+  = either loadError withBuffer =<< runStop ensureBuffer
   where
     withBuffer (exists, buffer) =
       resuming writeError do
