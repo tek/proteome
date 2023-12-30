@@ -21,6 +21,7 @@ import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))
 import Proteome.Data.ProjectType (ProjectType (ProjectType))
 import Proteome.Path (existingFile)
+import Control.Monad.Extra (mapMaybeM)
 
 data StoreBuffersLock =
   StoreBuffersLock
@@ -51,9 +52,12 @@ storeBuffers ::
   Sem r ()
 storeBuffers =
   tag $ lockOrSkip_ $ projectPaths >>= traverse_ \ (cwd, path) -> do
-    names <- traverse bufferGetName =<< filterM buflisted =<< atomicGets (.buffers)
-    files <- catMaybes <$> traverse (existingFile cwd) names
+    names <- mapMaybeM safeName =<< filterM buflisted =<< atomicGets (.buffers)
+    files <- mapMaybeM (existingFile cwd) names
     Persist.store (Just (path </> file)) (PersistBuffers (listToMaybe files) files)
+  where
+    safeName buf = do
+      Nothing <! (Just <$> bufferGetName buf)
 
 decodePersistBuffers ::
   Member (Persist PersistBuffers) r =>
