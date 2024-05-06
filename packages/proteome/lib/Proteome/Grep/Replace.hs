@@ -50,6 +50,7 @@ import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, BufferErrors))
 import Proteome.Data.ReplaceError (ReplaceError)
+import Exon (exon)
 
 scratchName :: Text
 scratchName =
@@ -195,7 +196,8 @@ replaceLine updatedLine (GrepOutputLine {file, line, content})
     ensureBuffer =
       resumeHoist @RpcError show do
         exists <- isJust <$> bufferForFile file
-        unless exists (addBuffer (pathText file))
+        if | exists -> nvimCommand [exon|silent checktime #{pathText file}|]
+           | otherwise -> addBuffer (pathText file)
         () <- vimCallFunction "bufload" [toMsgpack file]
         FileBuffer buffer _ <- stopNote "Buffer vanished after loading" =<< bufferForFile file
         pure (exists, buffer)
