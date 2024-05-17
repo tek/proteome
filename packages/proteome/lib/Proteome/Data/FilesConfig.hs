@@ -5,6 +5,7 @@ import Text.Regex.PCRE.Light (Regex)
 data FilesConfig =
   FilesConfig {
     useRg :: Bool,
+    rgExclude :: [Text],
     ignoreHidden :: Bool,
     ignoreFiles :: [Regex],
     ignoreDirs :: [Regex],

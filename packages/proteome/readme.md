@@ -144,14 +144,25 @@ This directory is used as the base path when creating new files, and it can be c
 When inserting the current buffer's dir or tab completing, the base dir is updated with the best match for the inserted
 path.
 
-Config:
+Config for the built-in engine:
+
 * `g:proteome_files_exclude_hidden` Boolean indicating whether to exclude hidden files
 * `g:proteome_files_exclude_files` List of regexes to use as exclude filter for files
 * `g:proteome_files_exclude_directories` List of regexes to use as exclude filter for directories
-* `g:proteome_files_exclude_wildignore` Boolean indicating whether to honor the nvim option `'wildignore'`
-* `g:proteome_files_use_rg` Set to `v:false` to prevent the file name collection from using `rg`
 
 The regexes are matches against the entire path.
+
+Config for `rg`:
+
+* `g:proteome_files_rg_exclude` List of excludes in _ripgrep_ format (extended gitignore)
+
+General config:
+
+* `g:proteome_files_exclude_wildignore` Boolean indicating whether to honor the nvim option `'wildignore'`
+* `g:proteome_files_use_rg` Set to `v:false` to prevent the file name collection from using _ripgrep_
+
+**Note**: The target directories are passed to `rg` as absolute paths, so if your global git `excludesfile` specifies
+any patterns with the `/foo` syntax to match files in the project root, `rg` will not apply those correctly.
 
 # Grep
 

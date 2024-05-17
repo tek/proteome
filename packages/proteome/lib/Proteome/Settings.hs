@@ -43,29 +43,25 @@ tagsFileName :: Setting (Path Rel File)
 tagsFileName = Setting "tags_file_name" True (Just [relfile|.tags|])
 
 grepCmdline :: Setting Text
-grepCmdline =
-  Setting "grep_cmdline" True Nothing
+grepCmdline = Setting "grep_cmdline" True Nothing
 
 filesUseRg :: Setting Bool
-filesUseRg =
-  Setting "files_use_rg" True (Just True)
+filesUseRg = Setting "files_use_rg" True (Just True)
+
+filesRgExclude :: Setting [Text]
+filesRgExclude = Setting "files_rg_exclude" True (Just [])
 
 filesExcludeHidden :: Setting Bool
-filesExcludeHidden =
-  Setting "files_exclude_hidden" True (Just True)
+filesExcludeHidden = Setting "files_exclude_hidden" True (Just True)
 
 filesExcludeFiles :: Setting [Text]
-filesExcludeFiles =
-  Setting "files_exclude_files" True (Just [])
+filesExcludeFiles = Setting "files_exclude_files" True (Just [])
 
 filesExcludeDirectories :: Setting [Text]
-filesExcludeDirectories =
-  Setting "files_exclude_directories" True (Just [])
+filesExcludeDirectories = Setting "files_exclude_directories" True (Just [])
 
 filesExcludeWildIgnore :: Setting Bool
-filesExcludeWildIgnore =
-  Setting "files_exclude_wildignore" True (Just True)
+filesExcludeWildIgnore = Setting "files_exclude_wildignore" True (Just True)
 
 buffersCurrentLast :: Setting Bool
-buffersCurrentLast =
-  Setting "buffers_current_last" True (Just False)
+buffersCurrentLast = Setting "buffers_current_last" True (Just False)

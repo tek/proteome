@@ -2,11 +2,12 @@ module Proteome.Files.Source where
 
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TMChan (TMChan, closeTMChan, newTMChan, readTMChan, writeTMChan)
+import qualified Control.Exception as Base
 import Control.Lens.Regex.Text (match, regexing)
 import qualified Data.List.NonEmpty as NonEmpty (toList, zip)
 import qualified Data.Set as Set (fromList, toList)
 import qualified Data.Text as Text
-import Exon (exon)
+import qualified Data.Text.IO as Text
 import Path (
   Abs,
   Dir,
@@ -22,7 +23,7 @@ import Path (
   stripProperPrefix,
   toFilePath,
   )
-import Path.IO (doesDirExist, findExecutable, walkDir)
+import Path.IO (doesDirExist, findExecutable, getTempDir, openTempFile, removeFile, walkDir)
 import qualified Path.IO as WalkAction (WalkAction (WalkExclude))
 import Ribosome (pathText)
 import Ribosome.Menu (MenuItem (MenuItem))
@@ -30,14 +31,16 @@ import Ribosome.Menu.Stream.Util (takeUntilNothing)
 import qualified Streamly.Prelude as Stream
 import Streamly.Prelude (IsStream, SerialT)
 import System.FilePattern ((?==))
+import System.IO (Handle, hClose)
+import System.IO.Error (IOError)
 import Text.Regex.PCRE.Light (Regex)
 
 import Proteome.Data.FileScanItem (FileScanItem (FileScanItem))
+import qualified Proteome.Data.FilesConfig
 import Proteome.Data.FilesConfig (FilesConfig (FilesConfig))
 import Proteome.Grep.Process (processLines)
 import Proteome.Path (dropSlash)
 
--- TODO store traversals instead of Regexes?
 matchPath :: [Regex] -> Path Abs t -> Bool
 matchPath excludes path =
   any check excludes
@@ -90,7 +93,7 @@ scan ::
   Path Abs Dir ->
   Maybe Text ->
   Sem r ()
-scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir baseIndicator =
+scan FilesConfig {ignoreHidden, ignoreFiles, ignoreDirs, wildignore} chan dir baseIndicator =
   tryAny_ do
     walkDir enqueue dir
   where
@@ -98,9 +101,9 @@ scan (FilesConfig _ excludeHidden ignoreFiles ignoreDirs wildignore) chan dir ba
       exclude <$ atomically (traverse_ (writeTMChan chan) filteredFiles)
       where
         filteredFiles =
-          cons <$> filterFiles excludeHidden ignoreFiles (toString <$> wildignore) files'
+          cons <$> filterFiles ignoreHidden ignoreFiles (toString <$> wildignore) files'
         exclude =
-          WalkAction.WalkExclude (filterDirs excludeHidden ignoreDirs dirs)
+          WalkAction.WalkExclude (filterDirs ignoreHidden ignoreDirs dirs)
     cons =
       FileScanItem dir baseIndicator
 
@@ -176,11 +179,8 @@ filesNative conf paths = do
       fileMenuItem base baseIndicator path
 
 rgExcludes :: FilesConfig -> [Text]
-rgExcludes (FilesConfig _ _ _ _ wilds) =
-  concat (wild <$> wilds)
-  where
-    wild i =
-      ["--glob", [exon|!#{i}|]]
+rgExcludes FilesConfig {rgExclude, wildignore} =
+  rgExclude ++ wildignore
 
 findBase ::
   Path Abs File ->
@@ -198,28 +198,64 @@ rgMenuItem bases file = do
   (base, baseIndicator) <- findBase path bases
   pure (fileMenuItem base baseIndicator path)
 
+filesRgStream ::
+  Path Abs File ->
+  NonEmpty (Path Abs Dir) ->
+  [Text] ->
+  Maybe (Path Abs File, Handle) ->
+  SerialT IO (MenuItem (Path Abs File))
+filesRgStream rgExe paths excludes ignoreFile = do
+  for_ ignoreFile \ (_, handle) ->
+    Stream.fromEffect $ Base.try @IOError do
+      Text.hPutStrLn handle (Text.unlines excludes)
+      hClose handle
+  Stream.mapMaybe item (processLines rgExe args)
+  where
+    item = rgMenuItem (withBaseIndicators paths)
+
+    args = "--files" : foldMap ignoreOption ignoreFile <> patterns
+
+    ignoreOption (path, _) = ["--ignore-file", pathText path]
+
+    patterns = toText . toFilePath <$> toList paths
+
+rgIgnoreTempFile ::
+  IsStream t =>
+  (Maybe (Path Abs File, Handle) -> t IO a) ->
+  t IO a
+rgIgnoreTempFile =
+  Stream.bracket acquireTemp releaseTemp
+  where
+    acquireTemp = do
+      tmpfile <- Base.try @IOError do
+        tmp <- getTempDir
+        openTempFile tmp "proteome-rg-ignore.conf"
+      -- Silently discarding temp access errors for now
+      pure (rightToMaybe tmpfile)
+
+    releaseTemp =
+      traverse_ \ (path, handle) -> do
+        void (Base.try @IOError (hClose handle))
+        void (Base.try @IOError (removeFile path))
+
 filesRg ::
   Path Abs File ->
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
   SerialT IO (MenuItem (Path Abs File))
 filesRg rgExe conf paths =
-  Stream.mapMaybe item $
-  processLines rgExe ("--files" : excludes <> patterns)
+  bracketExcludes (filesRgStream rgExe paths excludes)
   where
-    patterns =
-      toText . toFilePath <$> toList paths
-    excludes =
-      rgExcludes conf
-    item =
-      rgMenuItem (withBaseIndicators paths)
+    bracketExcludes | null excludes = \ f -> f Nothing
+                    | otherwise = rgIgnoreTempFile
+    excludes = rgExcludes conf
 
 files ::
   Members [Async, Embed IO] r =>
   FilesConfig ->
   NonEmpty (Path Abs Dir) ->
   Sem r (SerialT IO (MenuItem (Path Abs File)))
-files conf@(FilesConfig useRg _ _ _ _) paths =
+files conf@FilesConfig {useRg} paths =
   filterM doesDirExist (toList paths) >>= \case
     [] ->
       pure Stream.nil

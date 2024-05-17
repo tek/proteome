@@ -49,8 +49,7 @@ test_filesEdit =
     assert (isProperPrefixOf dir p)
 
 conf :: FilesConfig
-conf =
-  FilesConfig False True [[re|b/c|]] [[re|/g/|/k/|]] []
+conf = FilesConfig False [] True [[re|b/c|]] [[re|/g/|/k/|]] []
 
 test_filesExclude :: UnitTest
 test_filesExclude =
@@ -174,7 +173,7 @@ filesMultiDirTest rg = do
     sub2 =
       [reldir|files/multi/dir2|]
     conf' =
-      FilesConfig rg False [] [] ["*.foo", "bar"]
+      FilesConfig rg [] False [] [] ["*.foo", "bar"]
     target =
       Set.fromList [[" * [dir1] file.bar"], [" * [dir1] file1"], [" * [dir2] file2"]]
 

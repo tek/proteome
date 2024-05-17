@@ -306,29 +306,25 @@ readRegex ::
 readRegex name rgx =
   stopNote (FilesError.BadRegex name rgx) (eitherToMaybe (compileM (encodeUtf8 rgx) mempty))
 
-readRegexs ::
+readRegexes ::
   Members [Settings, Stop FilesError] r =>
   Setting [Text] ->
   Sem r [Regex]
-readRegexs s@(Setting name _ _) =
+readRegexes s@(Setting name _ _) =
   traverse (readRegex name) =<< Settings.get s
 
 filesConfig ::
   Members [Rpc, Settings, Stop FilesError] r =>
   Sem r FilesConfig
 filesConfig =
-  FilesConfig <$> useRg <*> hidden <*> fs <*> dirs <*> wildignore
+  FilesConfig <$> useRg <*> rgExclude <*> hidden <*> fs <*> dirs <*> wildignore
   where
-    useRg =
-      Settings.get Settings.filesUseRg
-    hidden =
-      Settings.get Settings.filesExcludeHidden
-    fs =
-      readRegexs Settings.filesExcludeFiles
-    dirs =
-      readRegexs Settings.filesExcludeDirectories
-    wildignore =
-      Text.splitOn "," <$> nvimGetOption "wildignore"
+    useRg = Settings.get Settings.filesUseRg
+    rgExclude = Settings.get Settings.filesRgExclude
+    hidden = Settings.get Settings.filesExcludeHidden
+    fs = readRegexes Settings.filesExcludeFiles
+    dirs = readRegexes Settings.filesExcludeDirectories
+    wildignore = Text.splitOn "," <$> nvimGetOption "wildignore"
 
 fileAction ::
   Members [Rpc, Stop FilesError, Stop Report, Embed IO] r =>
