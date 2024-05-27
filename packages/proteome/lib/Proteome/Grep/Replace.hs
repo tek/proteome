@@ -6,7 +6,9 @@ import qualified Data.Map.Strict as Map
 import Data.MessagePack (Object)
 import Data.Semigroup (Sum (Sum, getSum))
 import qualified Data.Text as Text
+import Exon (exon)
 import Path (Abs, File, Path, SomeBase, fromSomeFile, parseAbsFile)
+import qualified Ribosome as Ribosome
 import Ribosome (
   Buffer,
   Handler,
@@ -30,7 +32,6 @@ import Ribosome.Api (
   nvimCommand,
   nvimCreateNamespace,
   nvimGetOption,
-  vimCallFunction,
   windowSetOption,
   )
 import Ribosome.Api.Autocmd (bufferAutocmd)
@@ -50,7 +51,6 @@ import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))
 import qualified Proteome.Data.ReplaceError as ReplaceError (ReplaceError (BadReplacement, BufferErrors))
 import Proteome.Data.ReplaceError (ReplaceError)
-import Exon (exon)
 
 scratchName :: Text
 scratchName =
@@ -194,7 +194,7 @@ replaceLinesInFile lns@((_, GrepOutputLine {file}) :| _) =
   either loadError withBuffer =<< runStop ensureBuffer
   where
     withBuffer (exists, buffer) =
-      resuming writeError do
+      resuming writeError $ Ribosome.noautocmd do
         traverse_ (uncurry (replaceLine buffer)) lns
         pure (Nothing, transientBuffer)
       where
@@ -204,11 +204,11 @@ replaceLinesInFile lns@((_, GrepOutputLine {file}) :| _) =
     loadError err = pure (Just (file, err), Nothing)
 
     ensureBuffer =
-      resumeHoist @RpcError show do
+      resumeHoist @RpcError show $ Ribosome.noautocmd do
         exists <- isJust <$> bufferForFile file
         if | exists -> nvimCommand [exon|silent checktime #{pathText file}|]
            | otherwise -> addBuffer (pathText file)
-        () <- vimCallFunction "bufload" [toMsgpack file]
+        nvimCommand [exon|silent call bufload('#{pathText file}')|]
         FileBuffer buffer _ <- stopNote "Buffer vanished after loading" =<< bufferForFile file
         pure (exists, buffer)
 
@@ -221,9 +221,9 @@ withReplaceEnv ::
   Sem r [(Maybe (Path Abs File, Text), Maybe Buffer)] ->
   Sem r ()
 withReplaceEnv run = do
-  withOption "hidden" True do
+  withOption "hidden" True $ Ribosome.noautocmd do
     (errors, transient) <- unzip <$> run
-    resume_ (nvimCommand "noautocmd wall")
+    resume_ (nvimCommand "wall")
     traverse_ (resume_ . wipeBuffer) (catMaybes transient)
     traverse_ (stop . ReplaceError.BufferErrors) (nonEmpty (catMaybes errors))
 
