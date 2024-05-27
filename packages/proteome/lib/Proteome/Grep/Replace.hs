@@ -170,22 +170,32 @@ fileBuffer ::
 fileBuffer path =
   join <$> traverse bufferForFile (parseAbsFile (toString path))
 
--- TODO load all buffers up front (but not atomic, failures might abort early)
 replaceLine ::
-  Member (Rpc !! RpcError) r =>
+  Member Rpc r =>
+  Buffer ->
   Text ->
   GrepOutputLine ->
-  Sem r (Maybe (Path Abs File, Text), Maybe Buffer)
-replaceLine updatedLine (GrepOutputLine {file, line, content})
+  Sem r ()
+replaceLine buffer updatedLine GrepOutputLine {line, content}
   | updatedLine == content
-  = pure (Nothing, Nothing)
+  = unit
   | otherwise
-  = either loadError withBuffer =<< runStop ensureBuffer
+  = do
+    bufferSetLines buffer line (line + 1) False replacement
+    deleteExtraBlankLine buffer line
+  where
+    replacement = [updatedLine | not (Text.null updatedLine)]
+
+replaceLinesInFile ::
+  Member (Rpc !! RpcError) r =>
+  NonEmpty (Text, GrepOutputLine) ->
+  Sem r (Maybe (Path Abs File, Text), Maybe Buffer)
+replaceLinesInFile lns@((_, GrepOutputLine {file}) :| _) =
+  either loadError withBuffer =<< runStop ensureBuffer
   where
     withBuffer (exists, buffer) =
       resuming writeError do
-        bufferSetLines buffer line (line + 1) False replacement
-        deleteExtraBlankLine buffer line
+        traverse_ (uncurry (replaceLine buffer)) lns
         pure (Nothing, transientBuffer)
       where
         writeError err = pure (Just (file, show err), transientBuffer)
@@ -202,11 +212,9 @@ replaceLine updatedLine (GrepOutputLine {file, line, content})
         FileBuffer buffer _ <- stopNote "Buffer vanished after loading" =<< bufferForFile file
         pure (exists, buffer)
 
-    replacement = [updatedLine | not (Text.null updatedLine)]
-
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
 lineNumberDesc (_, GrepOutputLine {line}) =
-  -line
+  - line
 
 withReplaceEnv ::
   Members [Stop ReplaceError, Rpc !! RpcError, Rpc, Resource] r =>
@@ -221,23 +229,35 @@ withReplaceEnv run = do
 
 replaceLines ::
   Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
+  [(Text, GrepOutputLine)] ->
+  Sem r ()
+replaceLines lines' =
+  withReplaceEnv do
+    traverse replaceLinesInFile sorted
+  where
+    sorted = mapMaybe nonEmpty (Map.elems (sortOn lineNumberDesc <$> byFile lines'))
+
+    byFile =
+      flip foldr mempty \ a@(_, GrepOutputLine {file}) ->
+        flip Map.alter file \ prev ->
+          Just (a : fold prev)
+
+replaceLinesFromBuffer ::
+  Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   Buffer ->
   [(Text, GrepOutputLine)] ->
   Sem r ()
-replaceLines scratchBuffer lines' = do
-  bufferSetOption scratchBuffer "buftype" ("nofile" :: Text)
-  withReplaceEnv do
-    traverse (uncurry replaceLine) (sortOn lineNumberDesc lines')
-  bufferSetOption scratchBuffer "buftype" ("acwrite" :: Text)
-  bufferSetOption scratchBuffer "modified" False
+replaceLinesFromBuffer buf lines' = do
+  bufferSetOption buf "buftype" ("nofile" :: Text)
+  replaceLines lines'
+  bufferSetOption buf "buftype" ("acwrite" :: Text)
+  bufferSetOption buf "modified" False
 
 deleteLines ::
   Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
   [GrepOutputLine] ->
   Sem r ()
-deleteLines lines' =
-  withReplaceEnv do
-    traverse (uncurry replaceLine) (sortOn lineNumberDesc (zip (repeat "") lines'))
+deleteLines lines' = replaceLines (zip (repeat "") lines')
 
 replaceSave ::
   Members [Rpc !! RpcError, Rpc, Resource, Stop ReplaceError] r =>
@@ -247,7 +267,7 @@ replaceSave (Replace (ScratchState _ _ buffer _ _ _ _) lines') = do
   updatedLines <- bufferContent buffer
   if length updatedLines /= getSum (foldMap (Sum . length) lines')
   then badReplacement
-  else replaceLines buffer (zip updatedLines (join (Map.elems lines')))
+  else replaceLinesFromBuffer buffer (zip updatedLines (join (Map.elems lines')))
   where
     badReplacement =
       stop ReplaceError.BadReplacement
