@@ -100,7 +100,7 @@ tagsMenu rex = do
     Left (Just tag) ->
       navigateUnique tag
     Right tags ->
-      mapReport do
+      mapReport @RpcError do
         windowMenu tags (modal (TagsMode fuzzy mode)) (def & #items .~ scratchOptions) mappings
   where
     mode =

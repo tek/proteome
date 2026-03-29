@@ -2,20 +2,25 @@ module Proteome.Test.BuffersTest where
 
 import Path (Abs, File, Path, relfile)
 import qualified Polysemy.Test as Test
-import Polysemy.Test (Test, UnitTest, assertEq, assertJust, unitTest)
+import Polysemy.Test (Test, UnitTest, assertEq, assertJust, unitTest, (===))
 import Ribosome (Rpc, pathText)
 import Ribosome.Api (bufferPath, currentBufferPath, vimGetBuffers)
 import Ribosome.Api.Buffer (bufferForFile, buflisted, edit)
 import qualified Ribosome.Data.FileBuffer as FileBuffer
+import Ribosome.Menu (fuzzy, modal)
 import qualified Ribosome.Menu.Data.MenuItem as MenuItem
+import qualified Ribosome.Menu.Data.MenuResult as MenuResult
+import qualified Ribosome.Menu.Effect.MenuTest as MenuTest
+import Ribosome.Menu.Effect.MenuTest (sendMapping, sendMappingRender)
 import Ribosome.Menu.Interpreter.Menu (promptInput)
 import Ribosome.Menu.Prompt.Data.PromptEvent (PromptEvent (Mapping))
+import Ribosome.Menu.Test (testStaticNvimMenu)
 import qualified Ribosome.Settings as Settings
 import Test.Tasty (TestTree, testGroup)
 
-import Proteome.Buffers (buffers, buffersMenu)
+import Proteome.Buffers (actions, buffers, buffersMenu)
 import Proteome.Data.Env (Env)
-import qualified Proteome.Data.ListedBuffer as ListedBuffer (name)
+import Proteome.Data.ListedBuffer (ListedBuffer (..))
 import qualified Proteome.Settings as Settings (buffersCurrentLast)
 import Proteome.Test.Run (proteomeTest)
 
@@ -88,6 +93,22 @@ test_deleteCurrentBuffer =
     promptInput (Mapping <$> ["d", "d", "<esc>"]) buffersMenu
     assertEq [buf1] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
 
+test_deleteBatchAllButCurrent :: UnitTest
+test_deleteBatchAllButCurrent =
+  proteomeTest do
+    Settings.update Settings.buffersCurrentLast True
+    (_, _, buf3) <- setupBuffers
+    assertEq 3 . length =<< filterM buflisted =<< vimGetBuffers
+    items <- buffers
+    result <- testStaticNvimMenu items def (modal fuzzy) def actions do
+      sendMappingRender "<space>"
+      sendMappingRender "<space>"
+      sendMappingRender "d"
+      sendMapping "<esc>"
+      MenuTest.result
+    MenuResult.Aborted === result
+    assertEq [buf3] . catMaybes =<< traverse bufferPath =<< filterM buflisted =<< vimGetBuffers
+
 test_currentBufferPosition :: UnitTest
 test_currentBufferPosition =
   proteomeTest do
@@ -105,5 +126,6 @@ test_buffers =
     unitTest "wipe a buffer" test_wipeBuffer,
     unitTest "delete multiple buffers" test_deleteMultipleBuffers,
     unitTest "delete the current buffer" test_deleteCurrentBuffer,
+    unitTest "delete all but the current buffer in batch" test_deleteBatchAllButCurrent,
     unitTest "show the current buffer as the last entry" test_currentBufferPosition
   ]

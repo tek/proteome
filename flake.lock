@@ -39,11 +39,11 @@
         "hix": "hix"
       },
       "locked": {
-        "lastModified": 1726324851,
-        "narHash": "sha256-cihFs3LzEiP35tO+AtJL9aWXu3ff6G/0+GdM55sSUmg=",
+        "lastModified": 1774882460,
+        "narHash": "sha256-h2AOmkWDMm9QcoxyGWrVGX0t1Dq91AW4GksoaT2EH6I=",
         "ref": "refs/heads/main",
-        "rev": "78da864d8700365bf14c098f59e22f433f96ef07",
-        "revCount": 860,
+        "rev": "4ef31e0579a2a8bd4a77c11fbc1230fb5fabc3ee",
+        "revCount": 864,
         "type": "git",
         "url": "https://git.tryp.io/tek/ribosome"
       },
