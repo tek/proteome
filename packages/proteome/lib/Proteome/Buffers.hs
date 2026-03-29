@@ -84,13 +84,13 @@ compensateForMissingActiveBuffer ::
   NonEmpty ListedBuffer ->
   [ListedBuffer] ->
   Sem r ()
-compensateForMissingActiveBuffer _ [] =
-  nvimCommand "enew"
-compensateForMissingActiveBuffer marked (next : _) = do
+compensateForMissingActiveBuffer marked keep = do
   prev <- vimGetCurrentWindow
   void ensureMainWindow
   current <- vimGetCurrentBuffer
-  when (any (\ b -> current == b ^. #buffer) marked) (loadListedBuffer next)
+  when (any (\ b -> current == b ^. #buffer) marked) case keep of
+    next : _ -> loadListedBuffer next
+    [] -> nvimCommand "enew"
   vimSetCurrentWindow prev
 
 deleteListedBuffersWith ::
@@ -188,7 +188,7 @@ buffersMenu ::
   Sem r ()
 buffersMenu = do
   items <- buffers
-  result <- mapReport do
+  result <- mapReport @RpcError do
     staticWindowMenu items (modal fuzzy) (def & #items .~ scratchOptions) actions
   handleResult bufferAction result
   where

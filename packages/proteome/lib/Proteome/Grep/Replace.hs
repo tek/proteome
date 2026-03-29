@@ -3,6 +3,7 @@ module Proteome.Grep.Replace where
 import Control.Monad (foldM)
 import Data.List (insertBy)
 import qualified Data.Map.Strict as Map
+import Data.Map.Strict ((!?))
 import Data.MessagePack (Object)
 import Data.Semigroup (Sum (Sum, getSum))
 import qualified Data.Text as Text
@@ -27,17 +28,19 @@ import Ribosome.Api (
   bufferGetLines,
   bufferSetLines,
   bufferSetOption,
+  nvimBufIsLoaded,
   nvimBufSetExtmark,
   nvimCallFunction,
   nvimCommand,
   nvimCreateNamespace,
+  nvimExecLua,
   nvimGetOption,
   windowSetOption,
   )
 import Ribosome.Api.Autocmd (bufferAutocmd)
-import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, wipeBuffer)
+import Ribosome.Api.Buffer (addBuffer, bufferContent, bufferForFile, fileBuffers, wipeBuffer)
 import Ribosome.Api.Option (withOption)
-import Ribosome.Data.FileBuffer (FileBuffer (FileBuffer))
+import Ribosome.Data.FileBuffer (FileBuffer (..))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Float (FloatOptions (FloatOptions), FloatRelative (Editor))
 import Ribosome.Host (msgpackMap)
@@ -186,31 +189,92 @@ replaceLine buffer updatedLine GrepOutputLine {line, content}
   where
     replacement = [updatedLine | not (Text.null updatedLine)]
 
-replaceLinesInFile ::
+-- | Pre-built index of existing file buffers with their loaded state.
+-- Built once before the replace operation to avoid per-file buffer list scans.
+type BufferIndex = Map (Path Abs File) (Buffer, Bool)
+
+-- | Build an index of all file buffers with their loaded state.
+buildBufferIndex ::
+  Members [Rpc !! RpcError, Rpc] r =>
+  Sem r BufferIndex
+buildBufferIndex = do
+  fbs <- fileBuffers
+  loaded <- atomic (traverse (nvimBufIsLoaded . (.buffer)) fbs)
+  pure (Map.fromList [(fb.path, (fb.buffer, l)) | (fb, l) <- zip fbs loaded])
+
+-- | Load a buffer for a file, using the pre-built index to avoid scanning the buffer list.
+-- Returns the buffer and whether it should be wiped after the operation
+-- (i.e. it was either not in the list or unloaded before we touched it).
+ensureBuffer ::
+  Member (Rpc !! RpcError) r =>
+  BufferIndex ->
+  Path Abs File ->
+  Sem r (Either RpcError (Buffer, Bool))
+ensureBuffer index file =
+  case index !? file of
+    Just (buffer, True) -> do
+      resumeEither do
+        nvimCommand [exon|silent checktime #{pathText file}|]
+        pure (buffer, False)
+    Just (buffer, False) -> do
+      resumeEither do
+        load
+        pure (buffer, True)
+    Nothing ->
+      resumingOr (pure . Left) addAndLoad \case
+        Just FileBuffer {buffer} -> pure (Right (buffer, True))
+        Nothing -> pure (Left "Buffer vanished after loading")
+  where
+    addAndLoad = do
+      addBuffer (pathText file)
+      load
+      bufferForFile file
+
+    load = Ribosome.noautocmd $ nvimCommand [exon|silent call bufload('#{pathText file}')|]
+
+-- | Write a buffer to disk, then wipe it if it's transient.
+-- Returns an error message if the write fails.
+writeAndCleanup ::
+  Member (Rpc !! RpcError) r =>
+  Path Abs File ->
+  Buffer ->
+  Bool ->
+  Sem r (Maybe (Path Abs File, RpcError))
+writeAndCleanup file buffer transient = do
+  result <- resuming onError $ Ribosome.noautocmd do
+    () <- nvimExecLua "vim.api.nvim_buf_call(..., function() vim.cmd('silent write') end)" [toMsgpack buffer]
+    pure Nothing
+  when transient do
+    resume_ (wipeBuffer buffer)
+  pure result
+  where
+    onError err = pure (Just (file, err))
+
+replaceInBuffer ::
   Member (Rpc !! RpcError) r =>
   NonEmpty (Text, GrepOutputLine) ->
-  Sem r (Maybe (Path Abs File, Text), Maybe Buffer)
-replaceLinesInFile lns@((_, GrepOutputLine {file}) :| _) =
-  either loadError withBuffer =<< runStop ensureBuffer
-  where
-    withBuffer (exists, buffer) =
-      resuming writeError $ Ribosome.noautocmd do
-        traverse_ (uncurry (replaceLine buffer)) lns
-        pure (Nothing, transientBuffer)
-      where
-        writeError err = pure (Just (file, show err), transientBuffer)
-        transientBuffer = justIf (not exists) buffer
+  (Buffer, Bool) ->
+  Sem r (Maybe (Path Abs File, RpcError))
+replaceInBuffer lns@((_, GrepOutputLine {file}) :| _) (buffer, transient) = do
+  replaceErr <- resuming (pure . Just . show) $ Ribosome.noautocmd do
+    traverse_ (uncurry (replaceLine buffer)) lns
+    pure Nothing
+  case replaceErr of
+    Just err -> do
+      when transient (resume_ (wipeBuffer buffer))
+      pure (Just (file, err))
+    Nothing ->
+      writeAndCleanup file buffer transient
 
-    loadError err = pure (Just (file, err), Nothing)
-
-    ensureBuffer =
-      resumeHoist @RpcError show $ Ribosome.noautocmd do
-        exists <- isJust <$> bufferForFile file
-        if | exists -> nvimCommand [exon|silent checktime #{pathText file}|]
-           | otherwise -> addBuffer (pathText file)
-        nvimCommand [exon|silent call bufload('#{pathText file}')|]
-        FileBuffer buffer _ <- stopNote "Buffer vanished after loading" =<< bufferForFile file
-        pure (exists, buffer)
+replaceLinesInFile ::
+  Member (Rpc !! RpcError) r =>
+  BufferIndex ->
+  NonEmpty (Text, GrepOutputLine) ->
+  Sem r (Maybe (Path Abs File, RpcError))
+replaceLinesInFile index lns@((_, GrepOutputLine {file}) :| _) =
+  ensureBuffer index file >>= \case
+    Left err -> pure (Just (file, err))
+    Right loaded -> replaceInBuffer lns loaded
 
 lineNumberDesc :: (Text, GrepOutputLine) -> Int
 lineNumberDesc (_, GrepOutputLine {line}) =
@@ -218,13 +282,11 @@ lineNumberDesc (_, GrepOutputLine {line}) =
 
 withReplaceEnv ::
   Members [Stop ReplaceError, Rpc !! RpcError, Rpc, Resource] r =>
-  Sem r [(Maybe (Path Abs File, Text), Maybe Buffer)] ->
+  Sem r [Maybe (Path Abs File, RpcError)] ->
   Sem r ()
 withReplaceEnv run = do
-  withOption "hidden" True $ Ribosome.noautocmd do
-    (errors, transient) <- unzip <$> run
-    resume_ (nvimCommand "wall")
-    traverse_ (resume_ . wipeBuffer) (catMaybes transient)
+  withOption "hidden" True do
+    errors <- run
     traverse_ (stop . ReplaceError.BufferErrors) (nonEmpty (catMaybes errors))
 
 replaceLines ::
@@ -233,7 +295,8 @@ replaceLines ::
   Sem r ()
 replaceLines lines' =
   withReplaceEnv do
-    traverse replaceLinesInFile sorted
+    index <- buildBufferIndex
+    traverse (replaceLinesInFile index) sorted
   where
     sorted = mapMaybe nonEmpty (Map.elems (sortOn lineNumberDesc <$> byFile lines'))
 
