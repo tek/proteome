@@ -27,8 +27,7 @@ import Ribosome.Report (storeReport)
 import qualified Ribosome.Settings as Settings
 import System.Process.Typed (proc, setWorkingDir)
 
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (mainProject, projects)
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.Project (Project (Project), langOrType)
 import Proteome.Data.ProjectLang (ProjectLang (unProjectLang))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))

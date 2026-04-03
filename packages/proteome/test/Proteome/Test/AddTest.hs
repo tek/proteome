@@ -7,7 +7,7 @@ import qualified Ribosome.Settings as Settings
 
 import Proteome.Add (proAdd)
 import Proteome.Data.AddOptions (AddOptions (AddOptions))
-import qualified Proteome.Data.Env as Env (projects)
+import Proteome.Data.Env qualified
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectConfig (ProjectConfig (ProjectConfig))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))

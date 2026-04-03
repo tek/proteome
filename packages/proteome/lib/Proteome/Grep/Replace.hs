@@ -44,11 +44,10 @@ import Ribosome.Data.FileBuffer (FileBuffer (..))
 import qualified Ribosome.Data.FloatOptions as FloatBorder
 import Ribosome.Float (FloatOptions (FloatOptions), FloatRelative (Editor))
 import Ribosome.Host (msgpackMap)
-import Ribosome.Host.Data.RpcType (group)
+import Ribosome.Host.Data.RpcType (AutocmdOptions (..))
 import qualified Ribosome.Scratch as Scratch
 
-import qualified Proteome.Data.Env as Env (replace)
-import Proteome.Data.Env (Env)
+import Proteome.Data.Env (Env (..))
 import qualified Proteome.Data.GrepState as GrepState
 import Proteome.Data.GrepState (GrepOutputLine (GrepOutputLine))
 import Proteome.Data.Replace (Replace (Replace))

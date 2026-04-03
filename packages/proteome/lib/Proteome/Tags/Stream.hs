@@ -6,10 +6,11 @@ import Prelude hiding (tag)
 import Ribosome (Rpc)
 import Ribosome.Api (optionList)
 import Ribosome.Menu (MenuItem)
-import qualified Streamly.Internal.Data.Fold as Fold
-import Streamly.Internal.FileSystem.File (toBytes)
+import qualified Streamly.Data.Fold as Fold
+import Streamly.Internal.FileSystem.File qualified as File
 import qualified Streamly.Prelude as Stream
-import Streamly.Prelude (SerialT)
+import Streamly.Internal.Data.Stream.IsStream (fromStream)
+import Streamly.Internal.Data.Stream.Serial (SerialT)
 
 import Proteome.Tags.Query (createTag)
 import Proteome.Tags.State (RawTagSegments, Tag, TagSegments)
@@ -27,7 +28,7 @@ parseTagLine mkSegments l =
 
 readLines :: Text -> SerialT IO Text
 readLines path =
-  Stream.splitOnSuffix (== 10) (decodeUtf8 . ByteString.pack <$> Fold.toList) (toBytes (toString path))
+  Stream.splitOnSuffix (== 10) (decodeUtf8 . ByteString.pack <$> Fold.toList) (fromStream (File.read (toString path)))
 
 readTags ::
   (RawTagSegments -> TagSegments) ->

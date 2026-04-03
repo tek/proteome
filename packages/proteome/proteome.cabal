@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.38.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -13,7 +13,7 @@ homepage:       https://github.com/tek/proteome#readme
 bug-reports:    https://github.com/tek/proteome/issues
 author:         Torsten Schmits
 maintainer:     hackage@tryp.io
-copyright:      2023 Torsten Schmits
+copyright:      2025 Torsten Schmits
 license:        BSD-2-Clause-Patent
 license-file:   LICENSE
 build-type:     Simple
@@ -111,8 +111,10 @@ library
       LiberalTypeSynonyms
       MonadComprehensions
       MultiWayIf
+      NoFieldSelectors
       OverloadedLabels
       OverloadedLists
+      OverloadedRecordDot
       OverloadedStrings
       PackageImports
       PartialTypeSignatures
@@ -128,8 +130,6 @@ library
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      OverloadedRecordDot
-      NoFieldSelectors
   ghc-options: -fplugin=Polysemy.Plugin -Wall -Widentities -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Wredundant-constraints -Wunused-type-patterns -Wunused-packages
   build-depends:
       Glob
@@ -151,7 +151,7 @@ library
     , polysemy-chronos
     , polysemy-plugin
     , polysemy-process
-    , prelate >=0.6 && <0.8
+    , prelate >=0.6 && <0.9
     , prettyprinter
     , raw-strings-qq
     , ribosome
@@ -159,6 +159,7 @@ library
     , ribosome-menu
     , stm-chans
     , streamly >=0.8
+    , streamly-core >=0.2
     , streamly-process >=0.1
     , transformers
     , typed-process
@@ -189,8 +190,10 @@ executable proteome
       LiberalTypeSynonyms
       MonadComprehensions
       MultiWayIf
+      NoFieldSelectors
       OverloadedLabels
       OverloadedLists
+      OverloadedRecordDot
       OverloadedStrings
       PackageImports
       PartialTypeSignatures
@@ -206,14 +209,12 @@ executable proteome
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      OverloadedRecordDot
-      NoFieldSelectors
   ghc-options: -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N -Wall -Widentities -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Wredundant-constraints -Wunused-type-patterns -Wunused-packages
   build-depends:
       base ==4.*
     , polysemy
     , polysemy-plugin
-    , prelate >=0.6 && <0.8
+    , prelate >=0.6 && <0.9
     , proteome
   mixins:
       base hiding (Prelude)
@@ -264,8 +265,10 @@ test-suite proteome-test
       LiberalTypeSynonyms
       MonadComprehensions
       MultiWayIf
+      NoFieldSelectors
       OverloadedLabels
       OverloadedLists
+      OverloadedRecordDot
       OverloadedStrings
       PackageImports
       PartialTypeSignatures
@@ -281,8 +284,6 @@ test-suite proteome-test
       UndecidableInstances
       UnicodeSyntax
       ViewPatterns
-      OverloadedRecordDot
-      NoFieldSelectors
   ghc-options: -fplugin=Polysemy.Plugin -threaded -rtsopts -with-rtsopts=-N -Wall -Widentities -Wincomplete-uni-patterns -Wmissing-deriving-strategies -Wredundant-constraints -Wunused-type-patterns -Wunused-packages
   build-depends:
       aeson
@@ -295,7 +296,7 @@ test-suite proteome-test
     , polysemy
     , polysemy-plugin
     , polysemy-test
-    , prelate >=0.6 && <0.8
+    , prelate >=0.6 && <0.9
     , proteome
     , ribosome
     , ribosome-menu

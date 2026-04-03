@@ -10,7 +10,9 @@ import Ribosome.Menu (MenuItem)
 import qualified Streamly.Data.Fold as Fold
 import qualified Streamly.Internal.Unicode.Stream as Stream
 import qualified Streamly.Prelude as Stream
-import Streamly.Prelude (IsStream)
+import Streamly.Internal.Data.Stream.IsStream (fromStream)
+import Streamly.Internal.Data.Stream.Serial (SerialT)
+import qualified Streamly.Internal.Data.Stream as D
 import qualified Streamly.System.Process as Process
 import Streamly.System.Process (ProcessFailure)
 
@@ -88,31 +90,28 @@ grepCmdline cmdline patt destination opt = do
       GrepError.NoSuchDestination destination
 
 processOutput ::
-  IsStream t =>
   String ->
   [Text] ->
-  t IO Word8
+  D.Stream IO Word8
 processOutput exe args =
   Process.toBytes exe (toString <$> args)
 
 processLines ::
-  IsStream t =>
   Path Abs File ->
   [Text] ->
-  t IO Text
+  SerialT IO Text
 processLines exe args =
+  fromStream $
   Stream.lines (toText <$> Fold.toList) $
   Stream.decodeUtf8 $
   processOutput (toFilePath exe) args
 
 grepMenuItems ::
-  Functor (t IO) =>
   Members [Log, Embed IO, Final IO] r =>
-  IsStream t =>
   Path Abs Dir ->
   Path Abs File ->
   [Text] ->
-  Sem r (t IO (MenuItem GrepOutputLine))
+  Sem r (SerialT IO (MenuItem GrepOutputLine))
 grepMenuItems cwd exe args =
   inFinal_ \ lower _ pur ->
     pur $

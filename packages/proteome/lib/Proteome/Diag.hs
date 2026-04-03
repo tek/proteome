@@ -23,8 +23,8 @@ import Ribosome (
 import qualified Ribosome.Scratch as Scratch
 import Ribosome.Scratch (ScratchOptions (filetype, focus))
 
-import qualified Proteome.Data.Env as Env
-import Proteome.Data.Env (Env)
+
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectLang (ProjectLang (ProjectLang, unProjectLang))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))

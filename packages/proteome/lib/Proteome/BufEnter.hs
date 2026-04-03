@@ -10,8 +10,7 @@ import Ribosome.Api.Buffer (bufferIsFile, buflisted)
 import Ribosome.Data.SettingError (SettingError)
 import qualified Ribosome.Settings as Settings
 
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (buffers)
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))

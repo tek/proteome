@@ -12,8 +12,7 @@ import qualified Ribosome.Data.FileBuffer as FileBuffer
 import Ribosome.Effect.Persist (Persist)
 import qualified Ribosome.Persist as Persist
 
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (buffers, mainProject)
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.PersistBuffers (PersistBuffers (PersistBuffers))
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))

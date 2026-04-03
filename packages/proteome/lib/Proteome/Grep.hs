@@ -18,8 +18,8 @@ import Ribosome (
   pluginLogReports,
   resumeReport,
   toMsgpack,
-  unArgs,
   )
+import Ribosome.Host.Data.Args (Args (..))
 import Ribosome.Api (nvimCallFunction, nvimCommand, nvimDir)
 import Ribosome.Api.Buffer (edit)
 import Ribosome.Api.Path (nvimCwd)

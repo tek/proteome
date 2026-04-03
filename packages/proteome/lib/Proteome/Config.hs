@@ -4,8 +4,8 @@ import Exon (exon)
 import Ribosome (Handler, Rpc, RpcError, msgpackArray, resumeReport)
 import Ribosome.Api (nvimGetOption, vimCallFunction, vimCommand)
 
-import qualified Proteome.Data.Env as Env
-import Proteome.Data.Env (Env)
+
+import Proteome.Data.Env (Env (..))
 import qualified Proteome.Data.Project as Project
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject))

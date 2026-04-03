@@ -6,6 +6,7 @@ import qualified Data.Text as Text
 import Exon (exon)
 import qualified Log
 import Path (Abs, Dir, Path, fromSomeFile, parseAbsFile, parseRelFile, (</>))
+import Prelude hiding (noneOf)
 import Ribosome.Menu.Data.MenuItem (MenuItem (MenuItem))
 import Text.Parser.Char (anyChar, char, noneOf)
 import Text.Parser.Combinators (manyTill)

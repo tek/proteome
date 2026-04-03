@@ -3,8 +3,7 @@ module Proteome.Project where
 import Lens.Micro.Extras (preview)
 import Path (Abs, Dir, Path, dirname, parent)
 
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (currentProjectIndex, mainProject, projects)
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.Project (Project)
 import Proteome.Data.ProjectName (ProjectName (ProjectName))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))

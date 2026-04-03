@@ -53,8 +53,7 @@ import Ribosome.Scratch (ScratchOptions (..))
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Buffers.Syntax (buffersSyntax)
-import qualified Proteome.Data.Env as Env
-import Proteome.Data.Env (Env)
+import Proteome.Data.Env (Env (..))
 import qualified Proteome.Data.ListedBuffer as ListedBuffer
 import Proteome.Data.ListedBuffer (ListedBuffer (ListedBuffer))
 import Proteome.Menu (handleResult)

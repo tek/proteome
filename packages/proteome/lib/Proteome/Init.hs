@@ -7,8 +7,7 @@ import Ribosome.Api (nvimCallFunction, nvimSetHl, uautocmd)
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Config (logConfig, readConfig)
-import Proteome.Data.Env (Env)
-import qualified Proteome.Data.Env as Env (mainProject)
+import Proteome.Data.Env (Env (..))
 import Proteome.Data.Project (Project (Project))
 import Proteome.Data.ProjectMetadata (ProjectMetadata (DirProject, VirtualProject))
 import Proteome.Data.ProjectRoot (ProjectRoot (ProjectRoot))

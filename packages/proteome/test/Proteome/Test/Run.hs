@@ -23,7 +23,7 @@ import Ribosome.Test (EmbedStackWith, TestConfig (TestConfig), testHandler, test
 
 import Proteome.Data.Env (Env)
 import Proteome.Data.PersistBuffers (PersistBuffers)
-import Proteome.Data.ProjectConfig (baseDirs)
+import Proteome.Data.ProjectConfig (ProjectConfig (..))
 import Proteome.Plugin (ProteomeStack, interpretProteomeStack)
 import qualified Proteome.Settings as Settings
 

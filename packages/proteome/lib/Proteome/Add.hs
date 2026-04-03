@@ -26,7 +26,8 @@ import Ribosome.Menu (
   staticWindowMenu,
   traverseSelection_,
   )
-import Ribosome.Scratch (scratch, syntax)
+import Ribosome.Scratch (scratch)
+import Ribosome.Data.ScratchOptions (ScratchOptions (..))
 import qualified Ribosome.Settings as Settings
 
 import Proteome.Add.Syntax (addSyntax)

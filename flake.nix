@@ -1,14 +1,12 @@
 {
   description = "Neovim Project Manager";
 
-  inputs = {
-    ribosome.url = "git+https://git.tryp.io/tek/ribosome";
-  };
+  inputs.ribosome.url = "git+https://git.tryp.io/tek/ribosome";
 
-  outputs = {ribosome, ...}: ribosome.lib.pro ({config, ...}: {
+  outputs = {self, ribosome}: ribosome.lib.pro ({config, ...}: {
     depsFull = [ribosome];
     compat.enable = false;
-    hackage.versionFile = "ops/version.nix";
+    release.versionFile = "ops/version.nix";
     gen-overrides.enable = true;
 
     cabal = {
@@ -21,12 +19,13 @@
         github = "tek/proteome";
         extra-source-files = ["readme.md" "changelog.md"];
       };
+      language = "GHC2021";
       ghc-options = ["-fplugin=Polysemy.Plugin"];
       prelude = {
         enable = true;
         package = {
           name = "prelate";
-          version = ">= 0.6 && < 0.8";
+          version = ">= 0.6 && < 0.9";
         };
         module = "Prelate";
       };
@@ -36,7 +35,7 @@
     buildInputs = pkgs: [pkgs.neovim pkgs.ripgrep];
 
     overrides = {hackage, jailbreak, notest, ...}: {
-      streamly-process = jailbreak (notest (hackage "0.2.0.1" "0sip03na3g7b7avbhiqsg6xri649zizfikd10gd9ar54lpjx93wy"));
+      streamly-process = jailbreak (notest (hackage "0.4.0" "19czzdf68c13vd17587vmq1d58plh99zyj029zy9a3j3s0nqakgh"));
     };
 
     packages.proteome = {
@@ -74,6 +73,7 @@
           "ribosome-menu"
           "stm-chans"
           "streamly >= 0.8"
+          "streamly-core >= 0.2"
           "streamly-process >= 0.1"
           "transformers"
           "typed-process"
